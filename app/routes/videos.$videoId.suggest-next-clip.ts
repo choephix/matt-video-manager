@@ -15,7 +15,45 @@ const requestSchema = Schema.Struct({
   enabledFiles: Schema.optionalWith(Schema.Array(Schema.String), {
     default: () => [],
   }),
+  // When set, truncate the transcript to only include clips up to and including this clip ID
+  truncateAfterClipId: Schema.optionalWith(
+    Schema.Union(Schema.String, Schema.Null),
+    { default: () => null }
+  ),
 });
+
+/**
+ * Build a transcript for suggestions, optionally truncated after a specific clip.
+ * The transcript is formatted clip-by-clip for clarity.
+ */
+const buildSuggestionTranscript = (
+  clips: { id: string; text: string | null; order: string }[],
+  truncateAfterClipId: string | null
+): string => {
+  // Sort clips by order
+  const sortedClips = [...clips].sort((a, b) =>
+    a.order < b.order ? -1 : a.order > b.order ? 1 : 0
+  );
+
+  // Find truncation point if specified
+  let clipsToInclude = sortedClips;
+  if (truncateAfterClipId) {
+    const truncateIndex = sortedClips.findIndex(
+      (clip) => clip.id === truncateAfterClipId
+    );
+    if (truncateIndex !== -1) {
+      clipsToInclude = sortedClips.slice(0, truncateIndex + 1);
+    }
+  }
+
+  // Build clip-by-clip transcript
+  const transcriptLines = clipsToInclude
+    .filter((clip) => clip.text && clip.text.trim().length > 0)
+    .map((clip, index) => `Clip ${index + 1}: ${clip.text}`)
+    .join("\n");
+
+  return transcriptLines;
+};
 
 export const action = async (args: Route.ActionArgs) => {
   const body = await args.request.json();
@@ -25,13 +63,23 @@ export const action = async (args: Route.ActionArgs) => {
     const db = yield* DBService;
     const parsed = yield* Schema.decodeUnknown(requestSchema)(body);
     const enabledFiles: string[] = [...parsed.enabledFiles];
+    const truncateAfterClipId = parsed.truncateAfterClipId;
 
     const videoContext = yield* acquireTextWritingContext({
       videoId,
       enabledFiles,
-      includeTranscript: true,
+      includeTranscript: false, // We'll build our own transcript
       enabledSections: [],
     });
+
+    // Get the video with clips for building the transcript
+    const video = yield* db.getVideoWithClipsById(videoId);
+
+    // Build transcript, truncated if specified
+    const transcript = buildSuggestionTranscript(
+      video.clips,
+      truncateAfterClipId
+    );
 
     // Get videos for few-shot examples (excluding current video)
     const exampleVideos = yield* db.getVideosForFewShotExamples(videoId);
@@ -51,7 +99,7 @@ export const action = async (args: Route.ActionArgs) => {
 
     const systemPrompt = generateSuggestNextClipPrompt({
       code: videoContext.textFiles,
-      transcript: videoContext.transcript,
+      transcript,
       fewShotExamples,
     });
 

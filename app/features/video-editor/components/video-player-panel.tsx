@@ -77,6 +77,10 @@ export const VideoPlayerPanel = () => {
     (ctx) => ctx.clipsToAggressivelyPreload
   );
   const clips = useContextSelector(VideoEditorContext, (ctx) => ctx.clips);
+  const insertionPoint = useContextSelector(
+    VideoEditorContext,
+    (ctx) => ctx.insertionPoint
+  );
   const clipIdsPreloaded = useContextSelector(
     VideoEditorContext,
     (ctx) => ctx.clipIdsPreloaded
@@ -397,6 +401,8 @@ export const VideoPlayerPanel = () => {
                 <SuggestionsPanel
                   videoId={videoId}
                   lastTranscribedClipId={lastTranscribedClipId}
+                  clips={clips}
+                  insertionPoint={insertionPoint}
                 />
               )}
 

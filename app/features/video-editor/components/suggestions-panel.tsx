@@ -6,6 +6,7 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import { Loader2Icon, RefreshCwIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import type { Clip, FrontendInsertionPoint } from "../clip-state-reducer";
 
 const partsToText = (parts: UIMessage["parts"]) => {
   return parts
@@ -18,9 +19,48 @@ const partsToText = (parts: UIMessage["parts"]) => {
     .join("");
 };
 
+/**
+ * Gets the database clip ID to truncate the transcript after.
+ * Returns undefined if we should use the full transcript (insertion at end)
+ * or if there's no clip before the insertion point (insertion at start).
+ */
+const getClipIdToTruncateAfter = (
+  clips: Clip[],
+  insertionPoint: FrontendInsertionPoint
+): string | undefined => {
+  if (insertionPoint.type === "start") {
+    return undefined;
+  }
+
+  if (insertionPoint.type === "end") {
+    // Full transcript - no truncation needed
+    return undefined;
+  }
+
+  if (insertionPoint.type === "after-clip") {
+    const clip = clips.find(
+      (c) =>
+        c.frontendId === insertionPoint.frontendClipId &&
+        c.type === "on-database"
+    );
+    return clip?.type === "on-database" ? clip.databaseId : undefined;
+  }
+
+  if (insertionPoint.type === "after-clip-section") {
+    // Find the last clip before this clip section
+    // We need to iterate through clips and find the one just before the section
+    // For now, return undefined to use full transcript (safe default)
+    return undefined;
+  }
+
+  return undefined;
+};
+
 export type SuggestionsPanelProps = {
   videoId: string;
   lastTranscribedClipId: string | null;
+  clips: Clip[];
+  insertionPoint: FrontendInsertionPoint;
 };
 
 const SUGGESTIONS_ENABLED_KEY = "suggestions-enabled";
@@ -46,15 +86,21 @@ export function SuggestionsPanel(props: SuggestionsPanelProps) {
 
   const triggerSuggestion = useCallback(() => {
     setMessages([]);
+    // Get the clip ID to truncate after based on the current insertion point
+    const truncateAfterClipId = getClipIdToTruncateAfter(
+      props.clips,
+      props.insertionPoint
+    );
     sendMessage(
       { text: "Suggest what I should say next." },
       {
         body: {
           enabledFiles: [],
+          truncateAfterClipId,
         },
       }
     );
-  }, [sendMessage, setMessages]);
+  }, [sendMessage, setMessages, props.clips, props.insertionPoint]);
 
   // Track the previous lastTranscribedClipId to detect new transcriptions
   const lastTranscribedClipIdRef = useRef<string | null>(null);
