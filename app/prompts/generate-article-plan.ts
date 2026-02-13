@@ -54,6 +54,16 @@ The purpose of this article plan is to distill raw information (transcripts, cod
 <documents>
 ${transcriptSection}${courseStructureSection}${codeSection}</documents>
 
+<lesson-types>
+Before planning, consider what type of lesson this is:
+
+- **Knowledge**: Lecture/explainer format. Teaches prerequisite understanding needed before hands-on work. Focus on clarity and progressive concept-building.
+- **Skills**: Hands-on training. Exercises, code challenges, playgrounds, sandboxes. Focus on doing, not explaining.
+- **Wisdom**: The "it depends" questions. Hardest to teach. Surfaces through discussion and reflection. Usually layered in after knowledge and skills are established.
+
+Identify which type this lesson is and let that shape the plan's structure and emphasis. A lesson should be ONE type only. Mixing types signals the lesson is too diffuse, too long, or too hard to reference — flag this if you notice it.
+</lesson-types>
+
 <the-ask>
 Create an article plan with the following characteristics:
 
