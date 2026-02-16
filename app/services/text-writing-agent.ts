@@ -12,7 +12,8 @@ import { generateNewsletterPrompt } from "@/prompts/generate-newsletter";
 import { generateInterviewPrepPrompt } from "@/prompts/generate-interview-prep";
 import { generateInterviewPrompt } from "@/prompts/generate-interview";
 import { generateBrainstormingPrompt } from "@/prompts/generate-brainstorming";
-import { generateLessonScopingPrompt } from "@/prompts/generate-lesson-scoping";
+import { generateScopingDiscussionPrompt } from "@/prompts/generate-scoping-discussion";
+import { generateScopingDocumentPrompt } from "@/prompts/generate-scoping-document";
 import type { GlobalLink } from "@/prompts/link-instructions";
 import {
   Experimental_Agent as Agent,
@@ -152,8 +153,16 @@ export const createTextWritingAgent = (props: {
           courseStructure: props.courseStructure,
           links,
         });
-      case "lesson-scoping":
-        return generateLessonScopingPrompt({
+      case "scoping-discussion":
+        return generateScopingDiscussionPrompt({
+          code: props.code,
+          transcript: props.transcript,
+          images: props.imageFiles.map((file) => file.path),
+          courseStructure: props.courseStructure,
+          links,
+        });
+      case "scoping-document":
+        return generateScopingDocumentPrompt({
           code: props.code,
           transcript: props.transcript,
           images: props.imageFiles.map((file) => file.path),

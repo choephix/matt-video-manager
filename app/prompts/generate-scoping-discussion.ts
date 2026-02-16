@@ -1,7 +1,7 @@
 import { getImageInstructions } from "./image-instructions";
 import { getLinkInstructions, type GlobalLink } from "./link-instructions";
 
-export const generateLessonScopingPrompt = (opts: {
+export const generateScopingDiscussionPrompt = (opts: {
   code: {
     path: string;
     content: string;

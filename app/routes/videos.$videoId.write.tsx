@@ -423,7 +423,8 @@ const modeToLabel: Record<Mode, string> = {
   "interview-prep": "Interview Me (Pre-Interview)",
   interview: "Interview Me (Live)",
   brainstorming: "Brainstorming",
-  "lesson-scoping": "Lesson Scoping",
+  "scoping-discussion": "Scoping Discussion",
+  "scoping-document": "Scoping Document",
 };
 
 const MODE_STORAGE_KEY = "article-writer-mode";
@@ -513,8 +514,11 @@ export function InnerComponent(props: Route.ComponentProps) {
       );
     }
 
-    // Auto-enable course structure for lesson scoping
-    if (newMode === "lesson-scoping" && courseStructure) {
+    // Auto-enable course structure for scoping modes
+    if (
+      (newMode === "scoping-discussion" || newMode === "scoping-document") &&
+      courseStructure
+    ) {
       setIncludeCourseStructure(true);
       if (typeof localStorage !== "undefined") {
         localStorage.setItem(COURSE_STRUCTURE_STORAGE_KEY, "true");
@@ -1333,14 +1337,24 @@ export function InnerComponent(props: Route.ComponentProps) {
                         </div>
                       </div>
                     </SelectItem>
-                    <SelectItem value="lesson-scoping">
+                    <SelectItem value="scoping-discussion">
                       <div className="flex items-start gap-2">
                         <CrosshairIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
                         <div>
-                          <div>Lesson Scoping</div>
+                          <div>Scoping Discussion</div>
                           <div className="text-xs text-muted-foreground">
-                            Scope a lesson with an opinionated curriculum
-                            facilitator
+                            Open-ended discussion to scope a lesson
+                          </div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="scoping-document">
+                      <div className="flex items-start gap-2">
+                        <FileTextIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <div>Scoping Document</div>
+                          <div className="text-xs text-muted-foreground">
+                            Generate a concise scoping document for recording
                           </div>
                         </div>
                       </div>
@@ -1376,7 +1390,7 @@ export function InnerComponent(props: Route.ComponentProps) {
                 {mode === "interview-prep" ||
                 mode === "interview" ||
                 mode === "brainstorming" ||
-                mode === "lesson-scoping" ? (
+                mode === "scoping-discussion" ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
