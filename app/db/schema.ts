@@ -314,6 +314,32 @@ export const planLessonsRelations = relations(planLessons, ({ one }) => ({
   }),
 }));
 
+// YouTube OAuth tokens table (single-user, stores one token set)
+export const youtubeAuth = createTable("youtube_auth", {
+  id: varchar("id", { length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token").notNull(),
+  expiresAt: timestamp("expires_at", {
+    mode: "date",
+    withTimezone: true,
+  }).notNull(),
+  createdAt: timestamp("created_at", {
+    mode: "date",
+    withTimezone: true,
+  })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at", {
+    mode: "date",
+    withTimezone: true,
+  })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+});
+
 // Global links table for article writing
 export const links = createTable("link", {
   id: varchar("id", { length: 255 })
