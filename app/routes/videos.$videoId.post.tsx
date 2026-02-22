@@ -39,8 +39,11 @@ import { StandaloneFilePasteModal } from "@/components/standalone-file-paste-mod
 import { DeleteStandaloneFileModal } from "@/components/delete-standalone-file-modal";
 import { LessonFilePasteModal } from "@/components/lesson-file-paste-modal";
 import {
+  CheckCircle2Icon,
   Loader2Icon,
   SparklesIcon,
+  UploadIcon,
+  XCircleIcon,
   YoutubeIcon,
   UnplugIcon,
 } from "lucide-react";
@@ -370,6 +373,13 @@ export default function PostPage(props: Route.ComponentProps) {
   >(null);
   const [pendingGeneratedText, setPendingGeneratedText] = useState<string>("");
 
+  // Upload state
+  const [uploadStatus, setUploadStatus] = useState<
+    "idle" | "uploading" | "success" | "error"
+  >("idle");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState<string>("");
+
   const generateContent = async (
     mode: "youtube-title" | "youtube-description"
   ) => {
@@ -448,6 +458,71 @@ export default function PostPage(props: Route.ComponentProps) {
   const handleCancelOverwrite = () => {
     setConfirmOverwriteField(null);
     setPendingGeneratedText("");
+  };
+
+  const handleUpload = async () => {
+    if (!title.trim() || !description.trim()) return;
+
+    setUploadStatus("uploading");
+    setUploadProgress(0);
+    setUploadError("");
+
+    let finalStatus: "success" | "error" | null = null;
+
+    try {
+      const response = await fetch(`/api/videos/${videoId}/upload`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description }),
+      });
+
+      if (!response.ok || !response.body) {
+        setUploadStatus("error");
+        setUploadError("Failed to start upload");
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        let eventType = "";
+        for (const line of lines) {
+          if (line.startsWith("event: ")) {
+            eventType = line.slice(7);
+          } else if (line.startsWith("data: ") && eventType) {
+            const eventData = JSON.parse(line.slice(6));
+            if (eventType === "progress") {
+              setUploadProgress(eventData.percentage);
+            } else if (eventType === "complete") {
+              setUploadStatus("success");
+              finalStatus = "success";
+            } else if (eventType === "error") {
+              setUploadStatus("error");
+              setUploadError(eventData.message);
+              finalStatus = "error";
+            }
+            eventType = "";
+          }
+        }
+      }
+
+      if (!finalStatus) {
+        setUploadStatus("error");
+        setUploadError("Upload connection closed unexpectedly");
+      }
+    } catch (error) {
+      setUploadStatus("error");
+      setUploadError(error instanceof Error ? error.message : "Upload failed");
+    }
   };
 
   const handleDisconnect = async () => {
@@ -609,6 +684,65 @@ export default function PostPage(props: Route.ComponentProps) {
                   placeholder="Enter video description..."
                   className="min-h-[300px] resize-y"
                 />
+              </div>
+
+              {/* Upload section */}
+              <div className="space-y-3">
+                <Button
+                  onClick={handleUpload}
+                  disabled={
+                    uploadStatus === "uploading" ||
+                    !title.trim() ||
+                    !description.trim()
+                  }
+                  className="w-full"
+                  size="lg"
+                >
+                  {uploadStatus === "uploading" ? (
+                    <>
+                      <Loader2Icon className="h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <UploadIcon className="h-4 w-4" />
+                      Post to YouTube
+                    </>
+                  )}
+                </Button>
+
+                {/* Progress bar */}
+                {uploadStatus === "uploading" && (
+                  <div className="space-y-1">
+                    <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-primary h-full rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                    <p className="text-sm text-muted-foreground text-center">
+                      {uploadProgress}%
+                    </p>
+                  </div>
+                )}
+
+                {/* Success state */}
+                {uploadStatus === "success" && (
+                  <div className="flex items-center gap-2 text-green-500 justify-center">
+                    <CheckCircle2Icon className="h-4 w-4" />
+                    <span className="text-sm">
+                      Video uploaded successfully as unlisted
+                    </span>
+                  </div>
+                )}
+
+                {/* Error state */}
+                {uploadStatus === "error" && (
+                  <div className="flex items-center gap-2 text-destructive justify-center">
+                    <XCircleIcon className="h-4 w-4" />
+                    <span className="text-sm">{uploadError}</span>
+                  </div>
+                )}
               </div>
 
               {/* Disconnect YouTube account */}
