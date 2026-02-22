@@ -38,7 +38,19 @@ import { StandaloneFileManagementModal } from "@/components/standalone-file-mana
 import { StandaloneFilePasteModal } from "@/components/standalone-file-paste-modal";
 import { DeleteStandaloneFileModal } from "@/components/delete-standalone-file-modal";
 import { LessonFilePasteModal } from "@/components/lesson-file-paste-modal";
-import { Loader2Icon, SparklesIcon } from "lucide-react";
+import {
+  Loader2Icon,
+  SparklesIcon,
+  YoutubeIcon,
+  UnplugIcon,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 const POST_TITLE_STORAGE_KEY = (videoId: string) => `post-title-${videoId}`;
 const POST_DESCRIPTION_STORAGE_KEY = (videoId: string) =>
@@ -50,6 +62,10 @@ export const loader = async (args: Route.LoaderArgs) => {
     const db = yield* DBFunctionsService;
     const fs = yield* FileSystem.FileSystem;
     const video = yield* db.getVideoWithClipsById(videoId);
+
+    // Check YouTube auth status
+    const youtubeAuth = yield* db.getYoutubeAuth();
+    const isYoutubeAuthenticated = youtubeAuth !== null;
     const globalLinks = yield* db.getLinks();
 
     const lesson = video.lesson;
@@ -170,6 +186,7 @@ export const loader = async (args: Route.LoaderArgs) => {
         clipSections: sectionsWithWordCount,
         links: globalLinks,
         courseStructure: null as CourseStructure | null,
+        isYoutubeAuthenticated,
       };
     }
 
@@ -247,6 +264,7 @@ export const loader = async (args: Route.LoaderArgs) => {
       clipSections: sectionsWithWordCount,
       links: globalLinks,
       courseStructure,
+      isYoutubeAuthenticated,
     };
   }).pipe(
     Effect.tapErrorCause((e) => Console.dir(e, { depth: null })),
@@ -281,6 +299,7 @@ export default function PostPage(props: Route.ComponentProps) {
     clipSections,
     links,
     courseStructure,
+    isYoutubeAuthenticated,
   } = props.loaderData;
 
   // Title and description with localStorage persistence
@@ -431,6 +450,16 @@ export default function PostPage(props: Route.ComponentProps) {
     setPendingGeneratedText("");
   };
 
+  const handleDisconnect = async () => {
+    const response = await fetch("/api/auth/google/disconnect", {
+      method: "POST",
+    });
+    if (response.ok) {
+      // Reload to reflect disconnected state
+      window.location.reload();
+    }
+  };
+
   const handleFileClick = (filePath: string) => {
     setPreviewFilePath(filePath);
     setIsPreviewModalOpen(true);
@@ -494,71 +523,108 @@ export default function PostPage(props: Route.ComponentProps) {
           videoSlot={<Video src={`/api/videos/${videoId}/stream`} />}
         />
 
-        {/* Right panel: Title and Description */}
+        {/* Right panel: Title and Description (or Connect prompt) */}
         <div className="w-3/4 flex flex-col p-6 overflow-y-auto scrollbar scrollbar-track-transparent scrollbar-thumb-gray-700 hover:scrollbar-thumb-gray-600">
-          <div className="max-w-2xl mx-auto w-full space-y-6">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="title">Title</Label>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleGenerateTitle}
-                  disabled={isGeneratingTitle || isGeneratingDescription}
-                >
-                  {isGeneratingTitle ? (
-                    <>
-                      <Loader2Icon className="h-4 w-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <SparklesIcon className="h-4 w-4" />
-                      Generate
-                    </>
-                  )}
-                </Button>
-              </div>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Enter video title..."
-                className="text-lg"
-              />
+          {!isYoutubeAuthenticated ? (
+            <div className="flex-1 flex items-center justify-center">
+              <Card className="max-w-md w-full">
+                <CardHeader className="text-center">
+                  <YoutubeIcon className="h-12 w-12 mx-auto mb-2 text-red-500" />
+                  <CardTitle>Connect YouTube Account</CardTitle>
+                  <CardDescription>
+                    Connect your YouTube account to upload videos directly from
+                    this app.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center">
+                  <Button asChild>
+                    <a
+                      href={`/api/auth/google/initiate?returnTo=/videos/${videoId}/post`}
+                    >
+                      Connect YouTube Account
+                    </a>
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
+          ) : (
+            <div className="max-w-2xl mx-auto w-full space-y-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="title">Title</Label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGenerateTitle}
+                    disabled={isGeneratingTitle || isGeneratingDescription}
+                  >
+                    {isGeneratingTitle ? (
+                      <>
+                        <Loader2Icon className="h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <SparklesIcon className="h-4 w-4" />
+                        Generate
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Enter video title..."
+                  className="text-lg"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="description">Description</Label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="description">Description</Label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGenerateDescription}
+                    disabled={isGeneratingTitle || isGeneratingDescription}
+                  >
+                    {isGeneratingDescription ? (
+                      <>
+                        <Loader2Icon className="h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <SparklesIcon className="h-4 w-4" />
+                        Generate
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Enter video description..."
+                  className="min-h-[300px] resize-y"
+                />
+              </div>
+
+              {/* Disconnect YouTube account */}
+              <div className="pt-4 border-t border-border">
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  onClick={handleGenerateDescription}
-                  disabled={isGeneratingTitle || isGeneratingDescription}
+                  className="text-muted-foreground"
+                  onClick={handleDisconnect}
                 >
-                  {isGeneratingDescription ? (
-                    <>
-                      <Loader2Icon className="h-4 w-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <SparklesIcon className="h-4 w-4" />
-                      Generate
-                    </>
-                  )}
+                  <UnplugIcon className="h-4 w-4" />
+                  Disconnect YouTube Account
                 </Button>
               </div>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Enter video description..."
-                className="min-h-[300px] resize-y"
-              />
             </div>
-          </div>
+          )}
         </div>
       </div>
 
