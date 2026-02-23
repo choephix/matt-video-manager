@@ -1,7 +1,7 @@
 import { DBFunctionsService } from "@/services/db-service";
 import { runtimeLive } from "@/services/layer";
 import { Console, Effect } from "effect";
-import { data, useRevalidator } from "react-router";
+import { data } from "react-router";
 import type { Route } from "./+types/videos.$videoId.thumbnails";
 import {
   CameraIcon,
@@ -16,23 +16,14 @@ import {
   ScissorsIcon,
   AlertCircleIcon,
 } from "lucide-react";
-import type { ThumbnailLayers } from "@/services/thumbnail-schema";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { CaptureCameraModal } from "@/components/capture-camera-modal";
+import { useThumbnailReducer } from "@/hooks/use-thumbnail-reducer";
 
 const CANVAS_WIDTH = 1280;
 const CANVAS_HEIGHT = 720;
-
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
 
 export const loader = async (args: Route.LoaderArgs) => {
   const { videoId } = args.params;
@@ -113,59 +104,14 @@ function YouTubePreview({
 
 export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
   const { videoId, thumbnails } = loaderData;
-  const [cameraOpen, setCameraOpen] = useState(false);
-  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
-  const [diagramImage, setDiagramImage] = useState<string | null>(null);
-  const [diagramPosition, setDiagramPosition] = useState(50);
-  const [cutoutImage, setCutoutImage] = useState<string | null>(null);
-  const [cutoutPosition, setCutoutPosition] = useState(50);
-  const [removingBackground, setRemovingBackground] = useState(false);
-  const [backgroundRemovalError, setBackgroundRemovalError] = useState<
-    string | null
-  >(null);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState<string | null>(null);
-  const [editingThumbnailId, setEditingThumbnailId] = useState<string | null>(
-    null
-  );
-  const [loadingEdit, setLoadingEdit] = useState<string | null>(null);
-  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
+  const { state, dispatch } = useThumbnailReducer(thumbnails);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const revalidator = useRevalidator();
-
-  const handleCapture = async (dataUrl: string) => {
-    setCapturedPhoto(dataUrl);
-    setCutoutImage(null);
-    setBackgroundRemovalError(null);
-
-    // Automatically send to background removal API
-    setRemovingBackground(true);
-    try {
-      const response = await fetch("/api/remove-background", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageDataUrl: dataUrl }),
-      });
-      if (!response.ok) {
-        throw new Error("Background removal failed");
-      }
-      const result = await response.json();
-      setCutoutImage(result.imageDataUrl);
-    } catch (error) {
-      console.error("Background removal failed:", error);
-      setBackgroundRemovalError(
-        "Background removal failed. You can retry or continue without it."
-      );
-    } finally {
-      setRemovingBackground(false);
-    }
-  };
 
   // Draw all layers onto the canvas compositor
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !capturedPhoto) {
-      setPreviewDataUrl(null);
+    if (!canvas || !state.capturedPhoto) {
+      dispatch({ type: "preview-updated", dataUrl: null });
       return;
     }
 
@@ -173,12 +119,15 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
     if (!ctx) return;
 
     const updatePreview = () => {
-      setPreviewDataUrl(canvas.toDataURL("image/png"));
+      dispatch({
+        type: "preview-updated",
+        dataUrl: canvas.toDataURL("image/png"),
+      });
     };
 
     // Helper to draw Layer 3 (cutout) after earlier layers finish
     const drawCutout = () => {
-      if (!cutoutImage) {
+      if (!state.cutoutImage) {
         updatePreview();
         return;
       }
@@ -187,11 +136,11 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
         const scale = CANVAS_HEIGHT / cutImg.naturalHeight;
         const scaledWidth = cutImg.naturalWidth * scale;
         const maxOffset = CANVAS_WIDTH - scaledWidth;
-        const x = maxOffset * (cutoutPosition / 100);
+        const x = maxOffset * (state.cutoutPosition / 100);
         ctx.drawImage(cutImg, x, 0, scaledWidth, CANVAS_HEIGHT);
         updatePreview();
       };
-      cutImg.src = cutoutImage;
+      cutImg.src = state.cutoutImage;
     };
 
     // Layer 1: Background photo (crop-to-cover)
@@ -200,32 +149,32 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
       drawCropToCover(ctx, bgImg, CANVAS_WIDTH, CANVAS_HEIGHT);
 
       // Layer 2: Diagram (scaled to full height, positioned horizontally)
-      if (diagramImage) {
+      if (state.diagramImage) {
         const diagImg = new Image();
         diagImg.onload = () => {
           const scale = CANVAS_HEIGHT / diagImg.naturalHeight;
           const scaledWidth = diagImg.naturalWidth * scale;
-          // diagramPosition: 0 = left edge, 50 = center, 100 = right edge
           const maxOffset = CANVAS_WIDTH - scaledWidth;
-          const x = maxOffset * (diagramPosition / 100);
+          const x = maxOffset * (state.diagramPosition / 100);
           ctx.drawImage(diagImg, x, 0, scaledWidth, CANVAS_HEIGHT);
 
           // Layer 3: Cutout (on top of diagram)
           drawCutout();
         };
-        diagImg.src = diagramImage;
+        diagImg.src = state.diagramImage;
       } else {
         // No diagram, draw cutout directly on top of background
         drawCutout();
       }
     };
-    bgImg.src = capturedPhoto;
+    bgImg.src = state.capturedPhoto;
   }, [
-    capturedPhoto,
-    diagramImage,
-    diagramPosition,
-    cutoutImage,
-    cutoutPosition,
+    state.capturedPhoto,
+    state.diagramImage,
+    state.diagramPosition,
+    state.cutoutImage,
+    state.cutoutPosition,
+    dispatch,
   ]);
 
   useEffect(() => {
@@ -235,7 +184,7 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
   // Handle clipboard paste for diagram images
   const handlePaste = useCallback(
     (e: ClipboardEvent) => {
-      if (!capturedPhoto) return;
+      if (!state.capturedPhoto) return;
       const items = e.clipboardData?.items;
       if (!items) return;
 
@@ -248,14 +197,17 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
           e.preventDefault();
           const reader = new FileReader();
           reader.onload = () => {
-            setDiagramImage(reader.result as string);
+            dispatch({
+              type: "diagram-pasted",
+              dataUrl: reader.result as string,
+            });
           };
           reader.readAsDataURL(blob);
           return;
         }
       }
     },
-    [capturedPhoto]
+    [state.capturedPhoto, dispatch]
   );
 
   useEffect(() => {
@@ -263,144 +215,20 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
     return () => document.removeEventListener("paste", handlePaste);
   }, [handlePaste]);
 
-  const handleDelete = async (thumbnailId: string) => {
-    if (!confirm("Delete this thumbnail?")) return;
-    setDeleting(thumbnailId);
-    try {
-      const response = await fetch(`/api/thumbnails/${thumbnailId}/delete`, {
-        method: "POST",
-      });
-      if (!response.ok) {
-        throw new Error("Failed to delete thumbnail");
-      }
-      revalidator.revalidate();
-    } catch (error) {
-      console.error("Failed to delete thumbnail:", error);
-    } finally {
-      setDeleting(null);
-    }
-  };
-
-  const handleEdit = async (thumbnailId: string) => {
-    const thumbnail = thumbnails.find((t) => t.id === thumbnailId);
-    if (!thumbnail) return;
-
-    setLoadingEdit(thumbnailId);
-    try {
-      const layers = thumbnail.layers as unknown as ThumbnailLayers;
-
-      // Fetch background photo as data URL
-      const bgResponse = await fetch(`/api/thumbnails/${thumbnailId}/layer/bg`);
-      if (!bgResponse.ok) throw new Error("Failed to load background image");
-      const bgBlob = await bgResponse.blob();
-      const bgDataUrl = await blobToDataUrl(bgBlob);
-
-      // Fetch diagram if it exists
-      let diagDataUrl: string | null = null;
-      let diagPos = 50;
-      if (layers.diagram) {
-        const diagResponse = await fetch(
-          `/api/thumbnails/${thumbnailId}/layer/diagram`
-        );
-        if (diagResponse.ok) {
-          const diagBlob = await diagResponse.blob();
-          diagDataUrl = await blobToDataUrl(diagBlob);
-          diagPos = layers.diagram.horizontalPosition;
-        }
-      }
-
-      // Fetch cutout if it exists
-      let cutDataUrl: string | null = null;
-      let cutPos = 50;
-      if (layers.cutout) {
-        const cutResponse = await fetch(
-          `/api/thumbnails/${thumbnailId}/layer/cutout`
-        );
-        if (cutResponse.ok) {
-          const cutBlob = await cutResponse.blob();
-          cutDataUrl = await blobToDataUrl(cutBlob);
-          cutPos = layers.cutout.horizontalPosition;
-        }
-      }
-
-      // Load into editor state
-      setCapturedPhoto(bgDataUrl);
-      setDiagramImage(diagDataUrl);
-      setDiagramPosition(diagPos);
-      setCutoutImage(cutDataUrl);
-      setCutoutPosition(cutPos);
-      setBackgroundRemovalError(null);
-      setEditingThumbnailId(thumbnailId);
-    } catch (error) {
-      console.error("Failed to load thumbnail for editing:", error);
-    } finally {
-      setLoadingEdit(null);
-    }
-  };
-
-  const handleSave = async () => {
+  const handleSave = () => {
     const canvas = canvasRef.current;
-    if (!canvas || !capturedPhoto) return;
+    if (!canvas || !state.capturedPhoto) return;
 
-    setSaving(true);
-    try {
-      // Export canvas to data URL
-      const exportDataUrl = canvas.toDataURL("image/png");
-
-      const payload = {
-        videoId,
-        imageDataUrl: exportDataUrl,
-        diagramDataUrl: diagramImage,
-        diagramPosition: diagramImage ? diagramPosition : undefined,
-        cutoutDataUrl: cutoutImage,
-        cutoutPosition: cutoutImage ? cutoutPosition : undefined,
-      };
-
-      let response: Response;
-      if (editingThumbnailId) {
-        // Update existing thumbnail
-        response = await fetch(`/api/thumbnails/${editingThumbnailId}/update`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      } else {
-        // Create new thumbnail
-        response = await fetch("/api/thumbnails/create", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      }
-
-      if (!response.ok) {
-        throw new Error("Failed to save thumbnail");
-      }
-
-      // Clear state and revalidate to show updated/new thumbnail
-      setCapturedPhoto(null);
-      setDiagramImage(null);
-      setDiagramPosition(50);
-      setCutoutImage(null);
-      setCutoutPosition(50);
-      setBackgroundRemovalError(null);
-      setEditingThumbnailId(null);
-      revalidator.revalidate();
-    } catch (error) {
-      console.error("Failed to save thumbnail:", error);
-    } finally {
-      setSaving(false);
-    }
+    dispatch({
+      type: "save-requested",
+      videoId,
+      compositeDataUrl: canvas.toDataURL("image/png"),
+    });
   };
 
-  const handleNewThumbnail = () => {
-    setCapturedPhoto(null);
-    setDiagramImage(null);
-    setDiagramPosition(50);
-    setCutoutImage(null);
-    setCutoutPosition(50);
-    setBackgroundRemovalError(null);
-    setEditingThumbnailId(null);
+  const handleDelete = (thumbnailId: string) => {
+    if (!confirm("Delete this thumbnail?")) return;
+    dispatch({ type: "delete-requested", thumbnailId });
   };
 
   return (
@@ -409,16 +237,16 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
         <h2 className="text-xl font-semibold">
           Thumbnails {thumbnails.length > 0 && `(${thumbnails.length})`}
         </h2>
-        <Button onClick={() => setCameraOpen(true)}>
+        <Button onClick={() => dispatch({ type: "open-camera" })}>
           <CameraIcon />
           Capture Face
         </Button>
       </div>
 
-      {capturedPhoto && (
+      {state.capturedPhoto && (
         <div className="mb-6">
           <h3 className="mb-2 text-sm font-medium text-gray-400">
-            {editingThumbnailId ? "Editing Thumbnail" : "Canvas Preview"}
+            {state.editingThumbnailId ? "Editing Thumbnail" : "Canvas Preview"}
           </h3>
           <div className="inline-block overflow-hidden rounded-lg border">
             <canvas
@@ -439,7 +267,7 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
             </div>
 
             {/* Diagram layer */}
-            {diagramImage ? (
+            {state.diagramImage ? (
               <div className="rounded border px-3 py-2">
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
@@ -447,7 +275,7 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
                     <span>Diagram</span>
                   </div>
                   <button
-                    onClick={() => setDiagramImage(null)}
+                    onClick={() => dispatch({ type: "diagram-removed" })}
                     className="text-gray-400 hover:text-gray-200"
                   >
                     <XIcon className="size-4" />
@@ -461,8 +289,13 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
                     type="range"
                     min={0}
                     max={100}
-                    value={diagramPosition}
-                    onChange={(e) => setDiagramPosition(Number(e.target.value))}
+                    value={state.diagramPosition}
+                    onChange={(e) =>
+                      dispatch({
+                        type: "diagram-position-changed",
+                        value: Number(e.target.value),
+                      })
+                    }
                     className="mt-1 w-full"
                   />
                 </div>
@@ -475,12 +308,12 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
             )}
 
             {/* Cutout layer */}
-            {removingBackground ? (
+            {state.removingBackground ? (
               <div className="flex items-center gap-2 rounded border px-3 py-2 text-sm text-gray-400">
                 <Loader2Icon className="size-4 animate-spin" />
                 <span>Removing background...</span>
               </div>
-            ) : backgroundRemovalError ? (
+            ) : state.backgroundRemovalError ? (
               <div className="rounded border border-red-800 px-3 py-2">
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2 text-red-400">
@@ -488,41 +321,19 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
                     <span>Cutout</span>
                   </div>
                   <button
-                    onClick={async () => {
-                      if (!capturedPhoto) return;
-                      setBackgroundRemovalError(null);
-                      setRemovingBackground(true);
-                      try {
-                        const response = await fetch("/api/remove-background", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            imageDataUrl: capturedPhoto,
-                          }),
-                        });
-                        if (!response.ok)
-                          throw new Error("Background removal failed");
-                        const result = await response.json();
-                        setCutoutImage(result.imageDataUrl);
-                      } catch (error) {
-                        console.error("Background removal failed:", error);
-                        setBackgroundRemovalError(
-                          "Background removal failed. You can retry or continue without it."
-                        );
-                      } finally {
-                        setRemovingBackground(false);
-                      }
-                    }}
+                    onClick={() =>
+                      dispatch({ type: "retry-background-removal" })
+                    }
                     className="text-xs text-red-400 hover:text-red-300 underline"
                   >
                     Retry
                   </button>
                 </div>
                 <p className="mt-1 text-xs text-red-400/70">
-                  {backgroundRemovalError}
+                  {state.backgroundRemovalError}
                 </p>
               </div>
-            ) : cutoutImage ? (
+            ) : state.cutoutImage ? (
               <div className="rounded border px-3 py-2">
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
@@ -530,7 +341,7 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
                     <span>Cutout</span>
                   </div>
                   <button
-                    onClick={() => setCutoutImage(null)}
+                    onClick={() => dispatch({ type: "cutout-removed" })}
                     className="text-gray-400 hover:text-gray-200"
                   >
                     <XIcon className="size-4" />
@@ -544,8 +355,13 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
                     type="range"
                     min={0}
                     max={100}
-                    value={cutoutPosition}
-                    onChange={(e) => setCutoutPosition(Number(e.target.value))}
+                    value={state.cutoutPosition}
+                    onChange={(e) =>
+                      dispatch({
+                        type: "cutout-position-changed",
+                        value: Number(e.target.value),
+                      })
+                    }
                     className="mt-1 w-full"
                   />
                 </div>
@@ -559,26 +375,26 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
           </div>
 
           {/* YouTube size previews */}
-          {previewDataUrl && (
+          {state.previewDataUrl && (
             <div className="mt-4">
               <h3 className="mb-2 text-sm font-medium text-gray-400">
                 YouTube Previews
               </h3>
               <div className="flex items-end gap-4">
                 <YouTubePreview
-                  src={previewDataUrl}
+                  src={state.previewDataUrl}
                   width={360}
                   height={202}
                   label="Home Feed"
                 />
                 <YouTubePreview
-                  src={previewDataUrl}
+                  src={state.previewDataUrl}
                   width={246}
                   height={138}
                   label="Search Results"
                 />
                 <YouTubePreview
-                  src={previewDataUrl}
+                  src={state.previewDataUrl}
                   width={168}
                   height={94}
                   label="Sidebar"
@@ -588,16 +404,23 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
           )}
 
           <div className="mt-3 flex gap-2">
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? <Loader2Icon className="animate-spin" /> : <SaveIcon />}
-              {saving
+            <Button onClick={handleSave} disabled={state.saving}>
+              {state.saving ? (
+                <Loader2Icon className="animate-spin" />
+              ) : (
+                <SaveIcon />
+              )}
+              {state.saving
                 ? "Saving..."
-                : editingThumbnailId
+                : state.editingThumbnailId
                   ? "Update Thumbnail"
                   : "Save Thumbnail"}
             </Button>
-            {editingThumbnailId && (
-              <Button variant="outline" onClick={handleNewThumbnail}>
+            {state.editingThumbnailId && (
+              <Button
+                variant="outline"
+                onClick={() => dispatch({ type: "new-thumbnail-clicked" })}
+              >
                 <PlusIcon />
                 New Thumbnail
               </Button>
@@ -606,7 +429,7 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
         </div>
       )}
 
-      {thumbnails.length === 0 && !capturedPhoto ? (
+      {thumbnails.length === 0 && !state.capturedPhoto ? (
         <div className="flex flex-col items-center justify-center h-64 text-gray-400 gap-4">
           <ImageIcon className="size-16 opacity-50" />
           <div className="text-center">
@@ -627,11 +450,16 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
                 <div
                   key={thumbnail.id}
                   className={`group relative rounded-lg overflow-hidden cursor-pointer transition-all ${
-                    editingThumbnailId === thumbnail.id
+                    state.editingThumbnailId === thumbnail.id
                       ? "ring-2 ring-blue-500 border border-blue-500"
                       : "border hover:border-gray-400"
                   }`}
-                  onClick={() => handleEdit(thumbnail.id)}
+                  onClick={() =>
+                    dispatch({
+                      type: "edit-requested",
+                      thumbnailId: thumbnail.id,
+                    })
+                  }
                 >
                   {thumbnail.filePath ? (
                     <img
@@ -644,7 +472,7 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
                       Not rendered
                     </div>
                   )}
-                  {loadingEdit === thumbnail.id && (
+                  {state.loadingEdit === thumbnail.id && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                       <Loader2Icon className="size-6 animate-spin text-white" />
                     </div>
@@ -657,10 +485,10 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
                       e.stopPropagation();
                       handleDelete(thumbnail.id);
                     }}
-                    disabled={deleting === thumbnail.id}
+                    disabled={state.deleting === thumbnail.id}
                     className="absolute top-2 right-2 rounded-md bg-black/60 p-1.5 text-gray-300 opacity-0 transition-opacity hover:bg-red-600 hover:text-white group-hover:opacity-100 disabled:opacity-50"
                   >
-                    {deleting === thumbnail.id ? (
+                    {state.deleting === thumbnail.id ? (
                       <Loader2Icon className="size-4 animate-spin" />
                     ) : (
                       <Trash2Icon className="size-4" />
@@ -674,9 +502,11 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
       )}
 
       <CaptureCameraModal
-        open={cameraOpen}
-        onOpenChange={setCameraOpen}
-        onCapture={handleCapture}
+        open={state.cameraOpen}
+        onOpenChange={(open) =>
+          dispatch({ type: open ? "open-camera" : "close-camera" })
+        }
+        onCapture={(dataUrl) => dispatch({ type: "photo-captured", dataUrl })}
       />
     </div>
   );

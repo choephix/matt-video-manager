@@ -1,0 +1,534 @@
+import { describe, expect, it, vi } from "vitest";
+import {
+  thumbnailStateReducer,
+  createInitialThumbnailState,
+} from "./thumbnail-state-reducer";
+import type {
+  EffectObject,
+  EffectReducer,
+  EffectReducerExec,
+  EventObject,
+} from "use-effect-reducer";
+
+const createMockExec = () => {
+  const fn = vi.fn() as any;
+  fn.stop = vi.fn();
+  fn.replace = vi.fn();
+  return fn;
+};
+
+class ReducerTester<
+  TState,
+  TAction extends EventObject,
+  TEffect extends EffectObject<TState, TAction>,
+> {
+  private reducer: EffectReducer<TState, TAction, TEffect>;
+  private state: TState;
+  private exec: EffectReducerExec<TState, TAction, TEffect>;
+
+  constructor(
+    reducer: EffectReducer<TState, TAction, TEffect>,
+    initialState: TState
+  ) {
+    this.reducer = reducer;
+    this.state = initialState;
+    this.exec = createMockExec();
+  }
+
+  public send(action: TAction) {
+    this.state = this.reducer(this.state, action, this.exec);
+    return this;
+  }
+
+  public getState() {
+    return this.state;
+  }
+
+  public getExec() {
+    return this.exec;
+  }
+
+  public resetExec() {
+    this.exec = createMockExec();
+    return this;
+  }
+}
+
+const createState = (
+  overrides: Partial<thumbnailStateReducer.State> = {}
+): thumbnailStateReducer.State => ({
+  ...createInitialThumbnailState(),
+  ...overrides,
+});
+
+describe("thumbnailStateReducer", () => {
+  describe("Initial State", () => {
+    it("should have correct initial state", () => {
+      const state = createInitialThumbnailState();
+
+      expect(state.cameraOpen).toBe(false);
+      expect(state.capturedPhoto).toBeNull();
+      expect(state.diagramImage).toBeNull();
+      expect(state.diagramPosition).toBe(50);
+      expect(state.cutoutImage).toBeNull();
+      expect(state.cutoutPosition).toBe(50);
+      expect(state.removingBackground).toBe(false);
+      expect(state.backgroundRemovalError).toBeNull();
+      expect(state.saving).toBe(false);
+      expect(state.deleting).toBeNull();
+      expect(state.editingThumbnailId).toBeNull();
+      expect(state.loadingEdit).toBeNull();
+      expect(state.previewDataUrl).toBeNull();
+    });
+  });
+
+  describe("Camera", () => {
+    it("open-camera: should set cameraOpen to true", () => {
+      const tester = new ReducerTester(thumbnailStateReducer, createState());
+
+      const state = tester.send({ type: "open-camera" }).getState();
+      expect(state.cameraOpen).toBe(true);
+    });
+
+    it("close-camera: should set cameraOpen to false", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({ cameraOpen: true })
+      );
+
+      const state = tester.send({ type: "close-camera" }).getState();
+      expect(state.cameraOpen).toBe(false);
+    });
+
+    it("photo-captured: should set capturedPhoto, clear cutout and error, and emit remove-background effect", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({
+          cutoutImage: "old-cutout",
+          backgroundRemovalError: "old error",
+        })
+      );
+
+      const state = tester
+        .send({ type: "photo-captured", dataUrl: "photo-data-url" })
+        .getState();
+
+      expect(state.capturedPhoto).toBe("photo-data-url");
+      expect(state.cutoutImage).toBeNull();
+      expect(state.backgroundRemovalError).toBeNull();
+      expect(state.removingBackground).toBe(true);
+      expect(tester.getExec()).toHaveBeenCalledWith({
+        type: "remove-background",
+        dataUrl: "photo-data-url",
+      });
+    });
+  });
+
+  describe("Background Removal", () => {
+    it("background-removal-succeeded: should set cutoutImage and clear removingBackground", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({ removingBackground: true })
+      );
+
+      const state = tester
+        .send({
+          type: "background-removal-succeeded",
+          dataUrl: "cutout-data-url",
+        })
+        .getState();
+
+      expect(state.cutoutImage).toBe("cutout-data-url");
+      expect(state.removingBackground).toBe(false);
+    });
+
+    it("background-removal-failed: should set error and clear removingBackground", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({ removingBackground: true })
+      );
+
+      const state = tester
+        .send({
+          type: "background-removal-failed",
+          error: "API error",
+        })
+        .getState();
+
+      expect(state.backgroundRemovalError).toBe("API error");
+      expect(state.removingBackground).toBe(false);
+    });
+
+    it("retry-background-removal: should clear error, set removingBackground, and emit effect", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({
+          capturedPhoto: "photo-data-url",
+          backgroundRemovalError: "previous error",
+        })
+      );
+
+      const state = tester
+        .send({ type: "retry-background-removal" })
+        .getState();
+
+      expect(state.backgroundRemovalError).toBeNull();
+      expect(state.removingBackground).toBe(true);
+      expect(tester.getExec()).toHaveBeenCalledWith({
+        type: "remove-background",
+        dataUrl: "photo-data-url",
+      });
+    });
+
+    it("retry-background-removal: does nothing if no capturedPhoto", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({ capturedPhoto: null })
+      );
+
+      const state = tester
+        .send({ type: "retry-background-removal" })
+        .getState();
+
+      expect(state.removingBackground).toBe(false);
+      expect(tester.getExec()).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Diagram", () => {
+    it("diagram-pasted: should set diagramImage", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({ capturedPhoto: "photo" })
+      );
+
+      const state = tester
+        .send({ type: "diagram-pasted", dataUrl: "diagram-data-url" })
+        .getState();
+
+      expect(state.diagramImage).toBe("diagram-data-url");
+    });
+
+    it("diagram-pasted: does nothing if no capturedPhoto", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({ capturedPhoto: null })
+      );
+
+      const state = tester
+        .send({ type: "diagram-pasted", dataUrl: "diagram-data-url" })
+        .getState();
+
+      expect(state.diagramImage).toBeNull();
+    });
+
+    it("diagram-removed: should clear diagramImage", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({ diagramImage: "diagram-data-url" })
+      );
+
+      const state = tester.send({ type: "diagram-removed" }).getState();
+
+      expect(state.diagramImage).toBeNull();
+    });
+
+    it("diagram-position-changed: should update diagramPosition", () => {
+      const tester = new ReducerTester(thumbnailStateReducer, createState());
+
+      const state = tester
+        .send({ type: "diagram-position-changed", value: 75 })
+        .getState();
+
+      expect(state.diagramPosition).toBe(75);
+    });
+  });
+
+  describe("Cutout", () => {
+    it("cutout-removed: should clear cutoutImage", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({ cutoutImage: "cutout-data-url" })
+      );
+
+      const state = tester.send({ type: "cutout-removed" }).getState();
+
+      expect(state.cutoutImage).toBeNull();
+    });
+
+    it("cutout-position-changed: should update cutoutPosition", () => {
+      const tester = new ReducerTester(thumbnailStateReducer, createState());
+
+      const state = tester
+        .send({ type: "cutout-position-changed", value: 30 })
+        .getState();
+
+      expect(state.cutoutPosition).toBe(30);
+    });
+  });
+
+  describe("Save", () => {
+    it("save-requested: should set saving to true and emit save effect", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({
+          capturedPhoto: "photo",
+          diagramImage: "diagram",
+          diagramPosition: 60,
+          cutoutImage: "cutout",
+          cutoutPosition: 40,
+        })
+      );
+
+      const state = tester
+        .send({
+          type: "save-requested",
+          videoId: "v1",
+          compositeDataUrl: "composite",
+        })
+        .getState();
+
+      expect(state.saving).toBe(true);
+      expect(tester.getExec()).toHaveBeenCalledWith({
+        type: "save-thumbnail",
+        videoId: "v1",
+        compositeDataUrl: "composite",
+        diagramImage: "diagram",
+        diagramPosition: 60,
+        cutoutImage: "cutout",
+        cutoutPosition: 40,
+        editingThumbnailId: null,
+      });
+    });
+
+    it("save-requested: does nothing if no capturedPhoto", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({ capturedPhoto: null })
+      );
+
+      const state = tester
+        .send({
+          type: "save-requested",
+          videoId: "v1",
+          compositeDataUrl: "composite",
+        })
+        .getState();
+
+      expect(state.saving).toBe(false);
+      expect(tester.getExec()).not.toHaveBeenCalled();
+    });
+
+    it("save-requested: should pass editingThumbnailId when editing", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({
+          capturedPhoto: "photo",
+          editingThumbnailId: "thumb-1",
+        })
+      );
+
+      tester.send({
+        type: "save-requested",
+        videoId: "v1",
+        compositeDataUrl: "composite",
+      });
+
+      expect(tester.getExec()).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "save-thumbnail",
+          editingThumbnailId: "thumb-1",
+        })
+      );
+    });
+
+    it("save-succeeded: should clear all editor state", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({
+          saving: true,
+          capturedPhoto: "photo",
+          diagramImage: "diagram",
+          diagramPosition: 60,
+          cutoutImage: "cutout",
+          cutoutPosition: 40,
+          editingThumbnailId: "thumb-1",
+          backgroundRemovalError: "err",
+        })
+      );
+
+      const state = tester.send({ type: "save-succeeded" }).getState();
+
+      expect(state.saving).toBe(false);
+      expect(state.capturedPhoto).toBeNull();
+      expect(state.diagramImage).toBeNull();
+      expect(state.diagramPosition).toBe(50);
+      expect(state.cutoutImage).toBeNull();
+      expect(state.cutoutPosition).toBe(50);
+      expect(state.editingThumbnailId).toBeNull();
+      expect(state.backgroundRemovalError).toBeNull();
+      expect(tester.getExec()).toHaveBeenCalledWith({
+        type: "revalidate",
+      });
+    });
+
+    it("save-failed: should set saving to false", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({ saving: true })
+      );
+
+      const state = tester.send({ type: "save-failed" }).getState();
+
+      expect(state.saving).toBe(false);
+    });
+  });
+
+  describe("Delete", () => {
+    it("delete-requested: should set deleting to thumbnailId and emit effect", () => {
+      const tester = new ReducerTester(thumbnailStateReducer, createState());
+
+      const state = tester
+        .send({ type: "delete-requested", thumbnailId: "thumb-1" })
+        .getState();
+
+      expect(state.deleting).toBe("thumb-1");
+      expect(tester.getExec()).toHaveBeenCalledWith({
+        type: "delete-thumbnail",
+        thumbnailId: "thumb-1",
+      });
+    });
+
+    it("delete-succeeded: should clear deleting and emit revalidate", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({ deleting: "thumb-1" })
+      );
+
+      const state = tester.send({ type: "delete-succeeded" }).getState();
+
+      expect(state.deleting).toBeNull();
+      expect(tester.getExec()).toHaveBeenCalledWith({
+        type: "revalidate",
+      });
+    });
+
+    it("delete-failed: should clear deleting", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({ deleting: "thumb-1" })
+      );
+
+      const state = tester.send({ type: "delete-failed" }).getState();
+
+      expect(state.deleting).toBeNull();
+    });
+  });
+
+  describe("Edit", () => {
+    it("edit-requested: should set loadingEdit to thumbnailId and emit effect", () => {
+      const tester = new ReducerTester(thumbnailStateReducer, createState());
+
+      const state = tester
+        .send({ type: "edit-requested", thumbnailId: "thumb-1" })
+        .getState();
+
+      expect(state.loadingEdit).toBe("thumb-1");
+      expect(tester.getExec()).toHaveBeenCalledWith({
+        type: "load-thumbnail",
+        thumbnailId: "thumb-1",
+      });
+    });
+
+    it("edit-loaded: should populate editor with loaded data", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({ loadingEdit: "thumb-1" })
+      );
+
+      const state = tester
+        .send({
+          type: "edit-loaded",
+          thumbnailId: "thumb-1",
+          capturedPhoto: "bg-photo",
+          diagramImage: "diagram",
+          diagramPosition: 30,
+          cutoutImage: "cutout",
+          cutoutPosition: 70,
+        })
+        .getState();
+
+      expect(state.loadingEdit).toBeNull();
+      expect(state.editingThumbnailId).toBe("thumb-1");
+      expect(state.capturedPhoto).toBe("bg-photo");
+      expect(state.diagramImage).toBe("diagram");
+      expect(state.diagramPosition).toBe(30);
+      expect(state.cutoutImage).toBe("cutout");
+      expect(state.cutoutPosition).toBe(70);
+      expect(state.backgroundRemovalError).toBeNull();
+    });
+
+    it("edit-failed: should clear loadingEdit", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({ loadingEdit: "thumb-1" })
+      );
+
+      const state = tester.send({ type: "edit-failed" }).getState();
+
+      expect(state.loadingEdit).toBeNull();
+    });
+  });
+
+  describe("New Thumbnail", () => {
+    it("new-thumbnail-clicked: should clear all editor state", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({
+          capturedPhoto: "photo",
+          diagramImage: "diagram",
+          diagramPosition: 60,
+          cutoutImage: "cutout",
+          cutoutPosition: 40,
+          editingThumbnailId: "thumb-1",
+          backgroundRemovalError: "err",
+        })
+      );
+
+      const state = tester.send({ type: "new-thumbnail-clicked" }).getState();
+
+      expect(state.capturedPhoto).toBeNull();
+      expect(state.diagramImage).toBeNull();
+      expect(state.diagramPosition).toBe(50);
+      expect(state.cutoutImage).toBeNull();
+      expect(state.cutoutPosition).toBe(50);
+      expect(state.editingThumbnailId).toBeNull();
+      expect(state.backgroundRemovalError).toBeNull();
+    });
+  });
+
+  describe("Preview", () => {
+    it("preview-updated: should set previewDataUrl", () => {
+      const tester = new ReducerTester(thumbnailStateReducer, createState());
+
+      const state = tester
+        .send({ type: "preview-updated", dataUrl: "preview-url" })
+        .getState();
+
+      expect(state.previewDataUrl).toBe("preview-url");
+    });
+
+    it("preview-updated: should handle null (cleared preview)", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({ previewDataUrl: "old-preview" })
+      );
+
+      const state = tester
+        .send({ type: "preview-updated", dataUrl: null })
+        .getState();
+
+      expect(state.previewDataUrl).toBeNull();
+    });
+  });
+});
