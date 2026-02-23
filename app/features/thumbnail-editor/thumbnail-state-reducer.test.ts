@@ -215,6 +215,43 @@ describe("thumbnailStateReducer", () => {
       expect(state.diagramPosition).toBe(42);
     });
 
+    it("diagram-pasted: should set pendingAutoSave when editingThumbnailId is set", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({
+          capturedPhoto: "photo",
+          editingThumbnailId: "thumb-1",
+        })
+      );
+
+      const state = tester
+        .send({
+          type: "diagram-pasted",
+          dataUrl: "diagram-data-url",
+          position: 42,
+        })
+        .getState();
+
+      expect(state.pendingAutoSave).toBe(true);
+    });
+
+    it("diagram-pasted: should not set pendingAutoSave without editingThumbnailId", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({ capturedPhoto: "photo" })
+      );
+
+      const state = tester
+        .send({
+          type: "diagram-pasted",
+          dataUrl: "diagram-data-url",
+          position: 42,
+        })
+        .getState();
+
+      expect(state.pendingAutoSave).toBe(false);
+    });
+
     it("diagram-pasted: works without capturedPhoto (diagram-first workflow)", () => {
       const tester = new ReducerTester(
         thumbnailStateReducer,
@@ -232,6 +269,20 @@ describe("thumbnailStateReducer", () => {
       expect(state.diagramImage).toBe("diagram-data-url");
       expect(state.diagramPosition).toBe(42);
       expect(state.capturedPhoto).toBeNull();
+    });
+
+    it("diagram-removed: should set pendingAutoSave when editingThumbnailId is set", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({
+          diagramImage: "diagram",
+          editingThumbnailId: "thumb-1",
+        })
+      );
+
+      const state = tester.send({ type: "diagram-removed" }).getState();
+
+      expect(state.pendingAutoSave).toBe(true);
     });
 
     it("diagram-removed: should clear diagramImage", () => {
@@ -254,9 +305,36 @@ describe("thumbnailStateReducer", () => {
 
       expect(state.diagramPosition).toBe(75);
     });
+
+    it("diagram-position-changed: should set pendingAutoSave when editingThumbnailId is set", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({ editingThumbnailId: "thumb-1" })
+      );
+
+      const state = tester
+        .send({ type: "diagram-position-changed", value: 75 })
+        .getState();
+
+      expect(state.pendingAutoSave).toBe(true);
+    });
   });
 
   describe("Cutout", () => {
+    it("cutout-removed: should set pendingAutoSave when editingThumbnailId is set", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({
+          cutoutImage: "cutout",
+          editingThumbnailId: "thumb-1",
+        })
+      );
+
+      const state = tester.send({ type: "cutout-removed" }).getState();
+
+      expect(state.pendingAutoSave).toBe(true);
+    });
+
     it("cutout-removed: should clear cutoutImage", () => {
       const tester = new ReducerTester(
         thumbnailStateReducer,
@@ -276,6 +354,19 @@ describe("thumbnailStateReducer", () => {
         .getState();
 
       expect(state.cutoutPosition).toBe(30);
+    });
+
+    it("cutout-position-changed: should set pendingAutoSave when editingThumbnailId is set", () => {
+      const tester = new ReducerTester(
+        thumbnailStateReducer,
+        createState({ editingThumbnailId: "thumb-1" })
+      );
+
+      const state = tester
+        .send({ type: "cutout-position-changed", value: 30 })
+        .getState();
+
+      expect(state.pendingAutoSave).toBe(true);
     });
   });
 

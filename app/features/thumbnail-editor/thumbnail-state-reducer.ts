@@ -148,17 +148,34 @@ export const thumbnailStateReducer: EffectReducer<
         ...state,
         diagramImage: action.dataUrl,
         diagramPosition: action.position,
+        ...(state.editingThumbnailId && { pendingAutoSave: true }),
       };
     case "diagram-removed":
-      return { ...state, diagramImage: null };
+      return {
+        ...state,
+        diagramImage: null,
+        ...(state.editingThumbnailId && { pendingAutoSave: true }),
+      };
     case "diagram-position-changed":
-      return { ...state, diagramPosition: action.value };
+      return {
+        ...state,
+        diagramPosition: action.value,
+        ...(state.editingThumbnailId && { pendingAutoSave: true }),
+      };
 
     // Cutout
     case "cutout-removed":
-      return { ...state, cutoutImage: null };
+      return {
+        ...state,
+        cutoutImage: null,
+        ...(state.editingThumbnailId && { pendingAutoSave: true }),
+      };
     case "cutout-position-changed":
-      return { ...state, cutoutPosition: action.value };
+      return {
+        ...state,
+        cutoutPosition: action.value,
+        ...(state.editingThumbnailId && { pendingAutoSave: true }),
+      };
 
     // Save
     case "save-requested":

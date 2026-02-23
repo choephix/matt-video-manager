@@ -158,7 +158,7 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
     return () => document.removeEventListener("paste", handlePaste);
   }, [handlePaste]);
 
-  // Auto-save after background removal completes and canvas has rendered
+  // Auto-save when pendingAutoSave is set (debounced for slider drags)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (
@@ -169,11 +169,15 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
     )
       return;
 
-    dispatch({
-      type: "save-requested",
-      videoId,
-      compositeDataUrl: canvas.toDataURL("image/png"),
-    });
+    const timer = setTimeout(() => {
+      dispatch({
+        type: "save-requested",
+        videoId,
+        compositeDataUrl: canvas.toDataURL("image/png"),
+      });
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, [
     state.pendingAutoSave,
     state.previewDataUrl,
