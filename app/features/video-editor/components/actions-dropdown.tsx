@@ -19,11 +19,10 @@ import {
   FilmIcon,
   FolderOpen,
   Loader2,
-  PencilIcon,
   PencilLineIcon,
   Plus,
 } from "lucide-react";
-import { Link, type FetcherWithComponents } from "react-router";
+import { type FetcherWithComponents } from "react-router";
 
 /**
  * Actions dropdown menu for video editor
@@ -92,18 +91,6 @@ export const ActionsDropdown = (props: {
         )}
       </Tooltip>
       <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuItem asChild>
-          <Link to={`/videos/${props.videoId}/write`}>
-            <PencilIcon className="w-4 h-4 mr-2" />
-            <div className="flex flex-col">
-              <span className="font-medium">Write Article</span>
-              <span className="text-xs text-muted-foreground">
-                Go to article writing interface
-              </span>
-            </div>
-          </Link>
-        </DropdownMenuItem>
-
         <DropdownMenuItem onSelect={props.onRenameVideoClick}>
           <PencilLineIcon className="w-4 h-4 mr-2" />
           <div className="flex flex-col">

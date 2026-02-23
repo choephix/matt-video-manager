@@ -58,7 +58,6 @@ import {
   Trash2,
   VideoIcon,
   VideoOffIcon,
-  VideotapeIcon,
 } from "lucide-react";
 import React, { useState } from "react";
 import {
@@ -733,7 +732,7 @@ export default function Component(props: Route.ComponentProps) {
                                   <ContextMenu key={video.id}>
                                     <ContextMenuTrigger asChild>
                                       <Link
-                                        to={`/videos/${video.id}/write`}
+                                        to={`/videos/${video.id}/edit`}
                                         className={cn(
                                           "flex items-center justify-between text-sm border-x px-3 py-2 cursor-context-menu hover:bg-muted/50 transition-colors",
                                           index !== 0 ? "border-t" : ""
@@ -758,18 +757,6 @@ export default function Component(props: Route.ComponentProps) {
                                       </Link>
                                     </ContextMenuTrigger>
                                     <ContextMenuContent>
-                                      <ContextMenuItem asChild>
-                                        <Link to={`/videos/${video.id}/edit`}>
-                                          <VideotapeIcon className="w-4 h-4" />
-                                          Edit Video
-                                        </Link>
-                                      </ContextMenuItem>
-                                      <ContextMenuItem asChild>
-                                        <Link to={`/videos/${video.id}/write`}>
-                                          <PencilIcon className="w-4 h-4" />
-                                          Write Article
-                                        </Link>
-                                      </ContextMenuItem>
                                       <ContextMenuItem
                                         onSelect={() => {
                                           setVideoPlayerState({

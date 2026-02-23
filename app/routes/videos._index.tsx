@@ -18,7 +18,6 @@ import { Console, Effect } from "effect";
 import {
   Archive,
   ArrowLeft,
-  FileTextIcon,
   FolderOpen,
   PencilIcon,
   Plus,
@@ -167,12 +166,6 @@ export default function Component(props: Route.ComponentProps) {
                     </Link>
                   </ContextMenuTrigger>
                   <ContextMenuContent>
-                    <ContextMenuItem asChild>
-                      <Link to={`/videos/${video.id}/write`}>
-                        <FileTextIcon className="w-4 h-4" />
-                        Write Article
-                      </Link>
-                    </ContextMenuItem>
                     <ContextMenuItem
                       onSelect={() => {
                         setVideoToRename({ id: video.id, path: video.path });
@@ -258,12 +251,6 @@ export default function Component(props: Route.ComponentProps) {
                       </Link>
                     </ContextMenuTrigger>
                     <ContextMenuContent>
-                      <ContextMenuItem asChild>
-                        <Link to={`/videos/${video.id}/write`}>
-                          <FileTextIcon className="w-4 h-4" />
-                          Write Article
-                        </Link>
-                      </ContextMenuItem>
                       <ContextMenuItem
                         onSelect={() => {
                           setVideoToRename({ id: video.id, path: video.path });
