@@ -50,6 +50,7 @@ import {
   CheckIcon,
   ImageIcon,
   Loader2Icon,
+  PlusIcon,
   SparklesIcon,
   UploadIcon,
   XCircleIcon,
@@ -783,43 +784,56 @@ export default function PostPage(props: Route.ComponentProps) {
                   <div className="border border-dashed rounded-lg p-6 text-center text-muted-foreground">
                     <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     <p className="text-sm">No thumbnails created yet.</p>
-                    <Link
-                      to={`/videos/${videoId}/thumbnails`}
-                      className="text-sm text-primary hover:underline mt-1 inline-block"
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      asChild
                     >
-                      Create a thumbnail
-                    </Link>
+                      <Link to={`/videos/${videoId}/thumbnails`}>
+                        <PlusIcon className="h-4 w-4" />
+                        Add New Thumbnail
+                      </Link>
+                    </Button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 gap-3">
-                    {thumbnails.map((thumbnail) => (
-                      <button
-                        key={thumbnail.id}
-                        onClick={() => handleSelectThumbnail(thumbnail.id)}
-                        disabled={selectingThumbnailId !== null}
-                        className={`relative aspect-video rounded-lg overflow-hidden border-2 transition-all ${
-                          thumbnail.selectedForUpload
-                            ? "border-primary ring-2 ring-primary/30"
-                            : "border-transparent hover:border-muted-foreground/30"
-                        }`}
-                      >
-                        <img
-                          src={`/api/thumbnails/${thumbnail.id}/image`}
-                          alt="Thumbnail"
-                          className="w-full h-full object-cover"
-                        />
-                        {thumbnail.selectedForUpload && (
-                          <div className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full p-0.5">
-                            <CheckIcon className="h-3 w-3" />
-                          </div>
-                        )}
-                        {selectingThumbnailId === thumbnail.id && (
-                          <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
-                            <Loader2Icon className="h-5 w-5 animate-spin" />
-                          </div>
-                        )}
-                      </button>
-                    ))}
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-3">
+                      {thumbnails.map((thumbnail) => (
+                        <button
+                          key={thumbnail.id}
+                          onClick={() => handleSelectThumbnail(thumbnail.id)}
+                          disabled={selectingThumbnailId !== null}
+                          className={`relative aspect-video rounded-lg overflow-hidden border-2 transition-all ${
+                            thumbnail.selectedForUpload
+                              ? "border-primary ring-2 ring-primary/30"
+                              : "border-transparent hover:border-muted-foreground/30"
+                          }`}
+                        >
+                          <img
+                            src={`/api/thumbnails/${thumbnail.id}/image`}
+                            alt="Thumbnail"
+                            className="w-full h-full object-cover"
+                          />
+                          {thumbnail.selectedForUpload && (
+                            <div className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full p-0.5">
+                              <CheckIcon className="h-3 w-3" />
+                            </div>
+                          )}
+                          {selectingThumbnailId === thumbnail.id && (
+                            <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
+                              <Loader2Icon className="h-5 w-5 animate-spin" />
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to={`/videos/${videoId}/thumbnails`}>
+                        <PlusIcon className="h-4 w-4" />
+                        Add New Thumbnail
+                      </Link>
+                    </Button>
                   </div>
                 )}
               </div>

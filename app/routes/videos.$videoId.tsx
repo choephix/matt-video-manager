@@ -6,7 +6,6 @@ import { Console, Effect } from "effect";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
-  ImageIcon,
   VideoIcon,
   PenIcon,
   SendIcon,
@@ -64,7 +63,7 @@ export const loader = async (args: Route.LoaderArgs) => {
   );
 };
 
-type Tab = "edit" | "write" | "thumbnails" | "post";
+type Tab = "edit" | "write" | "post";
 
 const tabs: {
   id: Tab;
@@ -74,12 +73,6 @@ const tabs: {
 }[] = [
   { id: "edit", label: "Video", path: "edit", icon: VideoIcon },
   { id: "write", label: "Write", path: "write", icon: PenIcon },
-  {
-    id: "thumbnails",
-    label: "Thumbnails",
-    path: "thumbnails",
-    icon: ImageIcon,
-  },
   { id: "post", label: "Post", path: "post", icon: SendIcon },
 ];
 
@@ -101,11 +94,9 @@ export default function VideoLayout({ loaderData }: Route.ComponentProps) {
   // Determine active tab from current path
   const activeTab: Tab = location.pathname.endsWith("/write")
     ? "write"
-    : location.pathname.endsWith("/thumbnails")
-      ? "thumbnails"
-      : location.pathname.endsWith("/post")
-        ? "post"
-        : "edit";
+    : location.pathname.endsWith("/post")
+      ? "post"
+      : "edit";
 
   // Build back button URL
   const backButtonUrl =
