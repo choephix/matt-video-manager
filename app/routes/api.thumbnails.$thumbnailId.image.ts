@@ -1,0 +1,37 @@
+import { createReadStream } from "fs";
+import type { Route } from "./+types/api.thumbnails.$thumbnailId.image";
+import { DBFunctionsService } from "@/services/db-service";
+import { runtimeLive } from "@/services/layer";
+import { Console, Effect } from "effect";
+import { data } from "react-router";
+
+export const loader = async (args: Route.LoaderArgs) => {
+  const { thumbnailId } = args.params;
+
+  return Effect.gen(function* () {
+    const db = yield* DBFunctionsService;
+    const record = yield* db.getThumbnailById(thumbnailId);
+
+    if (!record.filePath) {
+      return yield* Effect.die(
+        data("Thumbnail has no rendered image", { status: 404 })
+      );
+    }
+
+    return new Response(createReadStream(record.filePath) as any, {
+      headers: {
+        "Content-Type": "image/png",
+        "Cache-Control": "no-cache",
+      },
+    });
+  }).pipe(
+    Effect.tapErrorCause((e) => Console.dir(e, { depth: null })),
+    Effect.catchTag("NotFoundError", () => {
+      return Effect.die(data("Thumbnail not found", { status: 404 }));
+    }),
+    Effect.catchAll(() => {
+      return Effect.die(data("Internal server error", { status: 500 }));
+    }),
+    runtimeLive.runPromise
+  );
+};

@@ -2346,6 +2346,44 @@ export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
             })
           );
         }),
+        createThumbnail: Effect.fn("createThumbnail")(function* (params: {
+          videoId: string;
+          layers: unknown;
+          filePath: string | null;
+        }) {
+          const [record] = yield* makeDbCall(() =>
+            db
+              .insert(thumbnails)
+              .values({
+                videoId: params.videoId,
+                layers: params.layers,
+                filePath: params.filePath,
+              })
+              .returning()
+          );
+          if (!record) {
+            return yield* Effect.die("Failed to create thumbnail");
+          }
+          return record;
+        }),
+        getThumbnailById: Effect.fn("getThumbnailById")(function* (
+          thumbnailId: string
+        ) {
+          const thumbnail = yield* makeDbCall(() =>
+            db.query.thumbnails.findFirst({
+              where: eq(thumbnails.id, thumbnailId),
+            })
+          );
+
+          if (!thumbnail) {
+            return yield* new NotFoundError({
+              type: "getThumbnailById",
+              params: { thumbnailId },
+            });
+          }
+
+          return thumbnail;
+        }),
       };
     }),
   }

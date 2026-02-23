@@ -1,0 +1,88 @@
+import { Console, Effect } from "effect";
+import { FileSystem } from "@effect/platform";
+import type { Route } from "./+types/api.thumbnails.create";
+import { DBFunctionsService } from "@/services/db-service";
+import { runtimeLive } from "@/services/layer";
+import { withDatabaseDump } from "@/services/dump-service";
+import { getStandaloneVideoFilePath } from "@/services/standalone-video-files";
+import { data } from "react-router";
+
+export const action = async (args: Route.ActionArgs) => {
+  const body = await args.request.json();
+
+  return Effect.gen(function* () {
+    const { videoId, imageDataUrl } = body;
+
+    if (typeof videoId !== "string" || !videoId) {
+      return yield* Effect.die(data("videoId is required", { status: 400 }));
+    }
+    if (typeof imageDataUrl !== "string" || !imageDataUrl.startsWith("data:")) {
+      return yield* Effect.die(
+        data("imageDataUrl is required", { status: 400 })
+      );
+    }
+
+    const db = yield* DBFunctionsService;
+    const fs = yield* FileSystem.FileSystem;
+
+    // Decode base64 data URL to binary
+    const match = imageDataUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match || !match[2]) {
+      return yield* Effect.die(
+        data("Invalid base64 data URL format", { status: 400 })
+      );
+    }
+
+    const base64Data = match[2];
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    // Generate thumbnail ID for file naming
+    const thumbnailId = crypto.randomUUID();
+    const filename = `thumbnail-${thumbnailId}.png`;
+    const videoDir = getStandaloneVideoFilePath(videoId);
+    const filePath = getStandaloneVideoFilePath(videoId, filename);
+
+    // Ensure directory exists
+    const dirExists = yield* fs.exists(videoDir);
+    if (!dirExists) {
+      yield* fs.makeDirectory(videoDir, { recursive: true });
+    }
+
+    // Write PNG to disk
+    yield* fs.writeFile(filePath, bytes);
+
+    // Also save the background photo source image
+    const bgFilename = `thumbnail-${thumbnailId}-bg.png`;
+    const bgFilePath = getStandaloneVideoFilePath(videoId, bgFilename);
+    yield* fs.writeFile(bgFilePath, bytes);
+
+    // Create DB record with layers JSON
+    const layers = {
+      backgroundPhoto: {
+        filePath: bgFilePath,
+        horizontalPosition: 0,
+      },
+      diagram: null,
+      cutout: null,
+    };
+
+    const thumbnail = yield* db.createThumbnail({
+      videoId,
+      layers,
+      filePath,
+    });
+
+    return { success: true, thumbnailId: thumbnail.id };
+  }).pipe(
+    withDatabaseDump,
+    Effect.tapErrorCause((e) => Console.dir(e, { depth: null })),
+    Effect.catchAll(() => {
+      return Effect.die(data("Internal server error", { status: 500 }));
+    }),
+    runtimeLive.runPromise
+  );
+};

@@ -1,12 +1,15 @@
 import { DBFunctionsService } from "@/services/db-service";
 import { runtimeLive } from "@/services/layer";
 import { Console, Effect } from "effect";
-import { data } from "react-router";
+import { data, useRevalidator } from "react-router";
 import type { Route } from "./+types/videos.$videoId.thumbnails";
-import { CameraIcon, ImageIcon } from "lucide-react";
-import { useState } from "react";
+import { CameraIcon, ImageIcon, SaveIcon, Loader2Icon } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { CaptureCameraModal } from "@/components/capture-camera-modal";
+
+const CANVAS_WIDTH = 1280;
+const CANVAS_HEIGHT = 720;
 
 export const loader = async (args: Route.LoaderArgs) => {
   const { videoId } = args.params;
@@ -24,13 +27,98 @@ export const loader = async (args: Route.LoaderArgs) => {
   );
 };
 
+/**
+ * Draws an image onto a canvas using crop-to-cover (fills entire canvas, cropping excess).
+ */
+function drawCropToCover(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  canvasWidth: number,
+  canvasHeight: number
+) {
+  const imgAspect = img.naturalWidth / img.naturalHeight;
+  const canvasAspect = canvasWidth / canvasHeight;
+
+  let sx: number, sy: number, sw: number, sh: number;
+
+  if (imgAspect > canvasAspect) {
+    // Image is wider — crop sides
+    sh = img.naturalHeight;
+    sw = sh * canvasAspect;
+    sx = (img.naturalWidth - sw) / 2;
+    sy = 0;
+  } else {
+    // Image is taller — crop top/bottom
+    sw = img.naturalWidth;
+    sh = sw / canvasAspect;
+    sx = 0;
+    sy = (img.naturalHeight - sh) / 2;
+  }
+
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvasWidth, canvasHeight);
+}
+
 export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
-  const { thumbnails } = loaderData;
+  const { videoId, thumbnails } = loaderData;
   const [cameraOpen, setCameraOpen] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const revalidator = useRevalidator();
 
   const handleCapture = (dataUrl: string) => {
     setCapturedPhoto(dataUrl);
+  };
+
+  // Draw captured photo onto the canvas compositor
+  const renderCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !capturedPhoto) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const img = new Image();
+    img.onload = () => {
+      drawCropToCover(ctx, img, CANVAS_WIDTH, CANVAS_HEIGHT);
+    };
+    img.src = capturedPhoto;
+  }, [capturedPhoto]);
+
+  useEffect(() => {
+    renderCanvas();
+  }, [renderCanvas]);
+
+  const handleSave = async () => {
+    const canvas = canvasRef.current;
+    if (!canvas || !capturedPhoto) return;
+
+    setSaving(true);
+    try {
+      // Export canvas to data URL
+      const exportDataUrl = canvas.toDataURL("image/png");
+
+      const response = await fetch("/api/thumbnails/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          videoId,
+          imageDataUrl: exportDataUrl,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save thumbnail");
+      }
+
+      // Clear the captured photo and revalidate to show new thumbnail
+      setCapturedPhoto(null);
+      revalidator.revalidate();
+    } catch (error) {
+      console.error("Failed to save thumbnail:", error);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -48,14 +136,21 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
       {capturedPhoto && (
         <div className="mb-6">
           <h3 className="mb-2 text-sm font-medium text-gray-400">
-            Captured Photo
+            Canvas Preview
           </h3>
           <div className="inline-block overflow-hidden rounded-lg border">
-            <img
-              src={capturedPhoto}
-              alt="Captured face"
-              className="h-auto max-w-md"
+            <canvas
+              ref={canvasRef}
+              width={CANVAS_WIDTH}
+              height={CANVAS_HEIGHT}
+              className="h-auto max-w-2xl w-full"
             />
+          </div>
+          <div className="mt-3">
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2Icon className="animate-spin" /> : <SaveIcon />}
+              {saving ? "Saving..." : "Save Thumbnail"}
+            </Button>
           </div>
         </div>
       )}
@@ -71,26 +166,33 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-4">
-          {thumbnails.map((thumbnail) => (
-            <div
-              key={thumbnail.id}
-              className="border rounded-lg overflow-hidden"
-            >
-              {thumbnail.filePath ? (
-                <img
-                  src={`/api/thumbnails/${thumbnail.id}/image`}
-                  alt="Thumbnail"
-                  className="w-full aspect-video object-cover"
-                />
-              ) : (
-                <div className="w-full aspect-video bg-gray-800 flex items-center justify-center text-gray-500">
-                  Not rendered
+        thumbnails.length > 0 && (
+          <div>
+            <h3 className="mb-3 text-sm font-medium text-gray-400">
+              Saved Thumbnails
+            </h3>
+            <div className="grid grid-cols-3 gap-4">
+              {thumbnails.map((thumbnail) => (
+                <div
+                  key={thumbnail.id}
+                  className="border rounded-lg overflow-hidden"
+                >
+                  {thumbnail.filePath ? (
+                    <img
+                      src={`/api/thumbnails/${thumbnail.id}/image`}
+                      alt="Thumbnail"
+                      className="w-full aspect-video object-cover"
+                    />
+                  ) : (
+                    <div className="w-full aspect-video bg-gray-800 flex items-center justify-center text-gray-500">
+                      Not rendered
+                    </div>
+                  )}
                 </div>
-              )}
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        )
       )}
 
       <CaptureCameraModal
