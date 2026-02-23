@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/card";
 import { useState } from "react";
 import { UploadProvider } from "@/features/upload-manager/upload-context";
+import { GlobalUploadProgress } from "@/features/upload-manager/global-upload-progress";
 import "./app.css";
 
 export const links: Route.LinksFunction = () => [
@@ -69,6 +70,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <UploadProvider>
+      <GlobalUploadProgress />
       <Outlet />
     </UploadProvider>
   );
