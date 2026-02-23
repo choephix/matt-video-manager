@@ -213,7 +213,7 @@ describe("thumbnailStateReducer", () => {
       expect(state.diagramPosition).toBe(42);
     });
 
-    it("diagram-pasted: does nothing if no capturedPhoto", () => {
+    it("diagram-pasted: works without capturedPhoto (diagram-first workflow)", () => {
       const tester = new ReducerTester(
         thumbnailStateReducer,
         createState({ capturedPhoto: null })
@@ -227,7 +227,9 @@ describe("thumbnailStateReducer", () => {
         })
         .getState();
 
-      expect(state.diagramImage).toBeNull();
+      expect(state.diagramImage).toBe("diagram-data-url");
+      expect(state.diagramPosition).toBe(42);
+      expect(state.capturedPhoto).toBeNull();
     });
 
     it("diagram-removed: should clear diagramImage", () => {

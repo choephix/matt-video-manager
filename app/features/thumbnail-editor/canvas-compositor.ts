@@ -2,7 +2,7 @@ export const CANVAS_WIDTH = 1280;
 export const CANVAS_HEIGHT = 720;
 
 export interface ThumbnailLayers {
-  capturedPhoto: string;
+  capturedPhoto: string | null;
   diagramImage: string | null;
   diagramPosition: number;
   cutoutImage: string | null;
@@ -63,14 +63,16 @@ export async function composeThumbnailLayers(
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
-  // Layer 1: Background photo (positioned to match cutout for hand-through-frame illusion)
-  const bgImg = await loadImage(layers.capturedPhoto);
-  if (signal?.cancelled) return null;
-
-  // Clear canvas to black (covers gaps when image is offset)
+  // Clear canvas to black (covers gaps when image is offset or no background)
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-  drawScaledLayer(ctx, bgImg, layers.cutoutPosition);
+
+  // Layer 1: Background photo (positioned to match cutout for hand-through-frame illusion)
+  if (layers.capturedPhoto) {
+    const bgImg = await loadImage(layers.capturedPhoto);
+    if (signal?.cancelled) return null;
+    drawScaledLayer(ctx, bgImg, layers.cutoutPosition);
+  }
 
   // Layer 2: Diagram (scaled to full height, positioned horizontally)
   if (layers.diagramImage) {

@@ -82,7 +82,7 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
   // Draw all layers onto the canvas compositor
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !state.capturedPhoto) {
+    if (!canvas || !(state.capturedPhoto || state.diagramImage)) {
       dispatch({ type: "preview-updated", dataUrl: null });
       return;
     }
@@ -120,7 +120,6 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
   // Handle clipboard paste for diagram images
   const handlePaste = useCallback(
     (e: ClipboardEvent) => {
-      if (!state.capturedPhoto) return;
       const items = e.clipboardData?.items;
       if (!items) return;
 
@@ -152,7 +151,7 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
         }
       }
     },
-    [state.capturedPhoto, dispatch]
+    [dispatch]
   );
 
   useEffect(() => {
@@ -188,7 +187,7 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
         </Button>
       </div>
 
-      {state.capturedPhoto && (
+      {(state.capturedPhoto || state.diagramImage) && (
         <div className="mb-6">
           <h3 className="mb-2 text-sm font-medium text-gray-400">
             {state.editingThumbnailId ? "Editing Thumbnail" : "Canvas Preview"}
@@ -206,10 +205,20 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
             <h3 className="text-sm font-medium text-gray-400">Layers</h3>
 
             {/* Background layer */}
-            <div className="flex items-center gap-2 rounded border px-3 py-2 text-sm">
-              <ImageIcon className="size-4 text-gray-400" />
-              <span>Background Photo</span>
-            </div>
+            {state.capturedPhoto ? (
+              <div className="flex items-center gap-2 rounded border px-3 py-2 text-sm">
+                <ImageIcon className="size-4 text-gray-400" />
+                <span>Background Photo</span>
+              </div>
+            ) : (
+              <button
+                onClick={() => dispatch({ type: "open-camera" })}
+                className="flex w-full items-center gap-2 rounded border border-dashed px-3 py-2 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-400"
+              >
+                <CameraIcon className="size-4" />
+                <span>Capture a face photo</span>
+              </button>
+            )}
 
             {/* Diagram layer */}
             {state.diagramImage ? (
@@ -349,7 +358,10 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
           )}
 
           <div className="mt-3 flex gap-2">
-            <Button onClick={handleSave} disabled={state.saving}>
+            <Button
+              onClick={handleSave}
+              disabled={state.saving || !state.capturedPhoto}
+            >
               {state.saving ? (
                 <Loader2Icon className="animate-spin" />
               ) : (
@@ -374,13 +386,16 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
         </div>
       )}
 
-      {thumbnails.length === 0 && !state.capturedPhoto ? (
+      {thumbnails.length === 0 &&
+      !state.capturedPhoto &&
+      !state.diagramImage ? (
         <div className="flex flex-col items-center justify-center h-64 text-gray-400 gap-4">
           <ImageIcon className="size-16 opacity-50" />
           <div className="text-center">
             <p className="text-lg font-medium">No thumbnails yet</p>
             <p className="text-sm mt-1">
-              Capture a face photo to start creating thumbnails.
+              Capture a face photo or paste a diagram to start creating
+              thumbnails.
             </p>
           </div>
         </div>

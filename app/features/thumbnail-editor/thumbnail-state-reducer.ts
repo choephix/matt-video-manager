@@ -141,7 +141,6 @@ export const thumbnailStateReducer: EffectReducer<
 
     // Diagram
     case "diagram-pasted":
-      if (!state.capturedPhoto) return state;
       return {
         ...state,
         diagramImage: action.dataUrl,
