@@ -287,6 +287,12 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
               </ContextMenu>
             ))}
           </div>
+          <button
+            className="mt-2 flex w-full items-center justify-center rounded-lg border border-dashed border-gray-600 p-2 text-gray-400 hover:border-gray-400 hover:text-gray-200 transition-colors"
+            onClick={() => dispatch({ type: "new-thumbnail-clicked" })}
+          >
+            <PlusIcon className="size-4" />
+          </button>
         </div>
       )}
 
