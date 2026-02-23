@@ -25,7 +25,13 @@ export const action = async (args: Route.ActionArgs) => {
   const body = await args.request.json();
 
   return Effect.gen(function* () {
-    const { imageDataUrl, diagramDataUrl, diagramPosition } = body;
+    const {
+      imageDataUrl,
+      diagramDataUrl,
+      diagramPosition,
+      cutoutDataUrl,
+      cutoutPosition,
+    } = body;
 
     if (typeof imageDataUrl !== "string" || !imageDataUrl.startsWith("data:")) {
       return yield* Effect.die(
@@ -95,6 +101,43 @@ export const action = async (args: Route.ActionArgs) => {
         .pipe(Effect.catchAll(() => Effect.void));
     }
 
+    // Handle cutout layer
+    let cutoutLayer = null;
+    if (
+      typeof cutoutDataUrl === "string" &&
+      cutoutDataUrl.startsWith("data:")
+    ) {
+      const cutoutBytes = decodeDataUrl(cutoutDataUrl);
+
+      if (existingLayers.cutout?.filePath) {
+        // Overwrite existing cutout file
+        yield* fs.writeFile(existingLayers.cutout.filePath, cutoutBytes);
+        cutoutLayer = {
+          filePath: existingLayers.cutout.filePath,
+          horizontalPosition:
+            typeof cutoutPosition === "number" ? cutoutPosition : 50,
+        };
+      } else {
+        // New cutout — create file
+        const cutoutFilename = `thumbnail-${thumbnailId}-cutout.png`;
+        const cutoutFilePath = getStandaloneVideoFilePath(
+          existing.videoId,
+          cutoutFilename
+        );
+        yield* fs.writeFile(cutoutFilePath, cutoutBytes);
+        cutoutLayer = {
+          filePath: cutoutFilePath,
+          horizontalPosition:
+            typeof cutoutPosition === "number" ? cutoutPosition : 50,
+        };
+      }
+    } else if (existingLayers.cutout?.filePath) {
+      // Cutout was removed — delete the old file
+      yield* fs
+        .remove(existingLayers.cutout.filePath)
+        .pipe(Effect.catchAll(() => Effect.void));
+    }
+
     // Build updated layers JSON
     const layers = {
       backgroundPhoto: existingLayers.backgroundPhoto ?? {
@@ -102,7 +145,7 @@ export const action = async (args: Route.ActionArgs) => {
         horizontalPosition: 0,
       },
       diagram: diagramLayer,
-      cutout: existingLayers.cutout ?? null,
+      cutout: cutoutLayer,
     };
 
     // Update DB record

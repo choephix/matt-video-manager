@@ -13,6 +13,8 @@ import {
   Trash2Icon,
   PencilIcon,
   PlusIcon,
+  ScissorsIcon,
+  AlertCircleIcon,
 } from "lucide-react";
 import type { ThumbnailLayers } from "@/services/thumbnail-schema";
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -85,6 +87,12 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [diagramImage, setDiagramImage] = useState<string | null>(null);
   const [diagramPosition, setDiagramPosition] = useState(50);
+  const [cutoutImage, setCutoutImage] = useState<string | null>(null);
+  const [cutoutPosition, setCutoutPosition] = useState(50);
+  const [removingBackground, setRemovingBackground] = useState(false);
+  const [backgroundRemovalError, setBackgroundRemovalError] = useState<
+    string | null
+  >(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [editingThumbnailId, setEditingThumbnailId] = useState<string | null>(
@@ -94,8 +102,32 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const revalidator = useRevalidator();
 
-  const handleCapture = (dataUrl: string) => {
+  const handleCapture = async (dataUrl: string) => {
     setCapturedPhoto(dataUrl);
+    setCutoutImage(null);
+    setBackgroundRemovalError(null);
+
+    // Automatically send to background removal API
+    setRemovingBackground(true);
+    try {
+      const response = await fetch("/api/remove-background", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageDataUrl: dataUrl }),
+      });
+      if (!response.ok) {
+        throw new Error("Background removal failed");
+      }
+      const result = await response.json();
+      setCutoutImage(result.imageDataUrl);
+    } catch (error) {
+      console.error("Background removal failed:", error);
+      setBackgroundRemovalError(
+        "Background removal failed. You can retry or continue without it."
+      );
+    } finally {
+      setRemovingBackground(false);
+    }
   };
 
   // Draw all layers onto the canvas compositor
@@ -105,6 +137,20 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+
+    // Helper to draw Layer 3 (cutout) after earlier layers finish
+    const drawCutout = () => {
+      if (!cutoutImage) return;
+      const cutImg = new Image();
+      cutImg.onload = () => {
+        const scale = CANVAS_HEIGHT / cutImg.naturalHeight;
+        const scaledWidth = cutImg.naturalWidth * scale;
+        const maxOffset = CANVAS_WIDTH - scaledWidth;
+        const x = maxOffset * (cutoutPosition / 100);
+        ctx.drawImage(cutImg, x, 0, scaledWidth, CANVAS_HEIGHT);
+      };
+      cutImg.src = cutoutImage;
+    };
 
     // Layer 1: Background photo (crop-to-cover)
     const bgImg = new Image();
@@ -121,12 +167,24 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
           const maxOffset = CANVAS_WIDTH - scaledWidth;
           const x = maxOffset * (diagramPosition / 100);
           ctx.drawImage(diagImg, x, 0, scaledWidth, CANVAS_HEIGHT);
+
+          // Layer 3: Cutout (on top of diagram)
+          drawCutout();
         };
         diagImg.src = diagramImage;
+      } else {
+        // No diagram, draw cutout directly on top of background
+        drawCutout();
       }
     };
     bgImg.src = capturedPhoto;
-  }, [capturedPhoto, diagramImage, diagramPosition]);
+  }, [
+    capturedPhoto,
+    diagramImage,
+    diagramPosition,
+    cutoutImage,
+    cutoutPosition,
+  ]);
 
   useEffect(() => {
     renderCanvas();
@@ -209,10 +267,27 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
         }
       }
 
+      // Fetch cutout if it exists
+      let cutDataUrl: string | null = null;
+      let cutPos = 50;
+      if (layers.cutout) {
+        const cutResponse = await fetch(
+          `/api/thumbnails/${thumbnailId}/layer/cutout`
+        );
+        if (cutResponse.ok) {
+          const cutBlob = await cutResponse.blob();
+          cutDataUrl = await blobToDataUrl(cutBlob);
+          cutPos = layers.cutout.horizontalPosition;
+        }
+      }
+
       // Load into editor state
       setCapturedPhoto(bgDataUrl);
       setDiagramImage(diagDataUrl);
       setDiagramPosition(diagPos);
+      setCutoutImage(cutDataUrl);
+      setCutoutPosition(cutPos);
+      setBackgroundRemovalError(null);
       setEditingThumbnailId(thumbnailId);
     } catch (error) {
       console.error("Failed to load thumbnail for editing:", error);
@@ -235,6 +310,8 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
         imageDataUrl: exportDataUrl,
         diagramDataUrl: diagramImage,
         diagramPosition: diagramImage ? diagramPosition : undefined,
+        cutoutDataUrl: cutoutImage,
+        cutoutPosition: cutoutImage ? cutoutPosition : undefined,
       };
 
       let response: Response;
@@ -262,6 +339,9 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
       setCapturedPhoto(null);
       setDiagramImage(null);
       setDiagramPosition(50);
+      setCutoutImage(null);
+      setCutoutPosition(50);
+      setBackgroundRemovalError(null);
       setEditingThumbnailId(null);
       revalidator.revalidate();
     } catch (error) {
@@ -275,6 +355,9 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
     setCapturedPhoto(null);
     setDiagramImage(null);
     setDiagramPosition(50);
+    setCutoutImage(null);
+    setCutoutPosition(50);
+    setBackgroundRemovalError(null);
     setEditingThumbnailId(null);
   };
 
@@ -346,6 +429,89 @@ export default function ThumbnailsPage({ loaderData }: Route.ComponentProps) {
               <div className="flex items-center gap-2 rounded border border-dashed px-3 py-2 text-sm text-gray-500">
                 <ClipboardIcon className="size-4" />
                 <span>Paste a diagram from clipboard (Ctrl+V)</span>
+              </div>
+            )}
+
+            {/* Cutout layer */}
+            {removingBackground ? (
+              <div className="flex items-center gap-2 rounded border px-3 py-2 text-sm text-gray-400">
+                <Loader2Icon className="size-4 animate-spin" />
+                <span>Removing background...</span>
+              </div>
+            ) : backgroundRemovalError ? (
+              <div className="rounded border border-red-800 px-3 py-2">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2 text-red-400">
+                    <AlertCircleIcon className="size-4" />
+                    <span>Cutout</span>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!capturedPhoto) return;
+                      setBackgroundRemovalError(null);
+                      setRemovingBackground(true);
+                      try {
+                        const response = await fetch("/api/remove-background", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            imageDataUrl: capturedPhoto,
+                          }),
+                        });
+                        if (!response.ok)
+                          throw new Error("Background removal failed");
+                        const result = await response.json();
+                        setCutoutImage(result.imageDataUrl);
+                      } catch (error) {
+                        console.error("Background removal failed:", error);
+                        setBackgroundRemovalError(
+                          "Background removal failed. You can retry or continue without it."
+                        );
+                      } finally {
+                        setRemovingBackground(false);
+                      }
+                    }}
+                    className="text-xs text-red-400 hover:text-red-300 underline"
+                  >
+                    Retry
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-red-400/70">
+                  {backgroundRemovalError}
+                </p>
+              </div>
+            ) : cutoutImage ? (
+              <div className="rounded border px-3 py-2">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <ScissorsIcon className="size-4 text-gray-400" />
+                    <span>Cutout</span>
+                  </div>
+                  <button
+                    onClick={() => setCutoutImage(null)}
+                    className="text-gray-400 hover:text-gray-200"
+                  >
+                    <XIcon className="size-4" />
+                  </button>
+                </div>
+                <div className="mt-2">
+                  <Label className="text-xs text-gray-400">
+                    Horizontal Position
+                  </Label>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={cutoutPosition}
+                    onChange={(e) => setCutoutPosition(Number(e.target.value))}
+                    className="mt-1 w-full"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 rounded border border-dashed px-3 py-2 text-sm text-gray-500">
+                <ScissorsIcon className="size-4" />
+                <span>No cutout layer</span>
               </div>
             )}
           </div>

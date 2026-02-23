@@ -24,7 +24,14 @@ export const action = async (args: Route.ActionArgs) => {
   const body = await args.request.json();
 
   return Effect.gen(function* () {
-    const { videoId, imageDataUrl, diagramDataUrl, diagramPosition } = body;
+    const {
+      videoId,
+      imageDataUrl,
+      diagramDataUrl,
+      diagramPosition,
+      cutoutDataUrl,
+      cutoutPosition,
+    } = body;
 
     if (typeof videoId !== "string" || !videoId) {
       return yield* Effect.die(data("videoId is required", { status: 400 }));
@@ -78,6 +85,27 @@ export const action = async (args: Route.ActionArgs) => {
       };
     }
 
+    // Save cutout image if provided
+    let cutoutLayer = null;
+    if (
+      typeof cutoutDataUrl === "string" &&
+      cutoutDataUrl.startsWith("data:")
+    ) {
+      const cutoutBytes = decodeDataUrl(cutoutDataUrl);
+      const cutoutFilename = `thumbnail-${thumbnailId}-cutout.png`;
+      const cutoutFilePath = getStandaloneVideoFilePath(
+        videoId,
+        cutoutFilename
+      );
+      yield* fs.writeFile(cutoutFilePath, cutoutBytes);
+
+      cutoutLayer = {
+        filePath: cutoutFilePath,
+        horizontalPosition:
+          typeof cutoutPosition === "number" ? cutoutPosition : 50,
+      };
+    }
+
     // Create DB record with layers JSON
     const layers = {
       backgroundPhoto: {
@@ -85,7 +113,7 @@ export const action = async (args: Route.ActionArgs) => {
         horizontalPosition: 0,
       },
       diagram: diagramLayer,
-      cutout: null,
+      cutout: cutoutLayer,
     };
 
     const thumbnail = yield* db.createThumbnail({
