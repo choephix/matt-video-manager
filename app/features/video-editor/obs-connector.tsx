@@ -219,6 +219,7 @@ export const useRunOBSImportRepeatedly = (props: {
           } catch (e) {
             error = e as Error;
           }
+          await new Promise((resolve) => setTimeout(resolve, 500));
         }
       })();
 
