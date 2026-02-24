@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { uploadReducer, createInitialUploadState } from "./upload-reducer";
 import { startSSEUpload } from "./sse-upload-client";
 import { startSSESocialPost } from "./sse-social-client";
+import { startSSEAiHeroPost } from "./sse-ai-hero-client";
 
 export interface UploadContextType {
   uploads: uploadReducer.State["uploads"];
@@ -22,6 +23,12 @@ export interface UploadContextType {
     videoId: string,
     title: string,
     caption: string
+  ) => string;
+  startAiHeroUpload: (
+    videoId: string,
+    title: string,
+    body: string,
+    description: string
   ) => string;
   dismissUpload: (uploadId: string) => void;
 }
@@ -48,6 +55,11 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
 
   // Stores caption for Buffer retries
   const socialParamsRef = useRef<Map<string, { caption: string }>>(new Map());
+
+  // Stores body + description for AI Hero retries
+  const aiHeroParamsRef = useRef<
+    Map<string, { body: string; description: string }>
+  >(new Map());
 
   const initiateSSEConnection = useCallback(
     (
@@ -143,6 +155,53 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const initiateSSEAiHeroConnection = useCallback(
+    (
+      uploadId: string,
+      videoId: string,
+      title: string,
+      body: string,
+      description: string
+    ) => {
+      const existing = abortControllersRef.current.get(uploadId);
+      if (existing) {
+        existing.abort();
+      }
+
+      const abortController = startSSEAiHeroPost(
+        { videoId, title, body, description },
+        {
+          onProgress: (percentage) => {
+            dispatch({
+              type: "UPDATE_PROGRESS",
+              uploadId,
+              progress: percentage,
+            });
+          },
+          onComplete: (aiHeroSlug) => {
+            dispatch({
+              type: "UPLOAD_SUCCESS",
+              uploadId,
+              aiHeroSlug,
+            });
+            abortControllersRef.current.delete(uploadId);
+          },
+          onError: (message) => {
+            dispatch({
+              type: "UPLOAD_ERROR",
+              uploadId,
+              errorMessage: message,
+            });
+            abortControllersRef.current.delete(uploadId);
+          },
+        }
+      );
+
+      abortControllersRef.current.set(uploadId, abortController);
+    },
+    []
+  );
+
   const startUpload = useCallback(
     (
       videoId: string,
@@ -195,6 +254,27 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     [initiateSSESocialConnection]
   );
 
+  const startAiHeroUpload = useCallback(
+    (videoId: string, title: string, body: string, description: string) => {
+      const uploadId = generateUploadId();
+
+      aiHeroParamsRef.current.set(uploadId, { body, description });
+
+      dispatch({
+        type: "START_UPLOAD",
+        uploadId,
+        videoId,
+        title,
+        uploadType: "ai-hero",
+      });
+
+      initiateSSEAiHeroConnection(uploadId, videoId, title, body, description);
+
+      return uploadId;
+    },
+    [initiateSSEAiHeroConnection]
+  );
+
   const dismissUpload = useCallback((uploadId: string) => {
     const abortController = abortControllersRef.current.get(uploadId);
     if (abortController) {
@@ -203,6 +283,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     }
     uploadParamsRef.current.delete(uploadId);
     socialParamsRef.current.delete(uploadId);
+    aiHeroParamsRef.current.delete(uploadId);
     dispatch({ type: "DISMISS", uploadId });
   }, []);
 
@@ -246,8 +327,19 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
               },
             },
           });
+        } else if (upload.uploadType === "ai-hero") {
+          const aiHeroPageUrl = `/videos/${upload.videoId}/ai-hero`;
+
+          toast.success(`"${upload.title}" posted to AI Hero`, {
+            duration: Infinity,
+            cancel: {
+              label: "Go to AI Hero",
+              onClick: () => {
+                window.location.href = aiHeroPageUrl;
+              },
+            },
+          });
         }
-        // ai-hero success toast handled in #259
       }
 
       if (upload.status === "error") {
@@ -287,13 +379,28 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
               params.privacyStatus
             );
           }
+        } else if (upload.uploadType === "ai-hero") {
+          const params = aiHeroParamsRef.current.get(uploadId);
+          if (params) {
+            initiateSSEAiHeroConnection(
+              uploadId,
+              upload.videoId,
+              upload.title,
+              params.body,
+              params.description
+            );
+          }
         }
-        // ai-hero retry handled in #259
       }
     }
 
     previousUploadsRef.current = current;
-  }, [state.uploads, initiateSSEConnection, initiateSSESocialConnection]);
+  }, [
+    state.uploads,
+    initiateSSEConnection,
+    initiateSSESocialConnection,
+    initiateSSEAiHeroConnection,
+  ]);
 
   // Clean up abort controllers on unmount
   useEffect(() => {
@@ -310,6 +417,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
         uploads: state.uploads,
         startUpload,
         startSocialUpload,
+        startAiHeroUpload,
         dismissUpload,
       }}
     >

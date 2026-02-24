@@ -255,7 +255,18 @@ function UploadStatusDetail({ upload }: { upload: uploadReducer.UploadEntry }) {
           </div>
         );
       }
-      // ai-hero success UI added in #259
+      if (upload.uploadType === "ai-hero") {
+        return (
+          <div className="flex items-center gap-2 mt-0.5">
+            <Badge
+              variant="secondary"
+              className="text-green-500 text-[10px] px-1.5 py-0"
+            >
+              Posted to AI Hero
+            </Badge>
+          </div>
+        );
+      }
       return (
         <div className="flex items-center gap-2 mt-0.5">
           <Badge

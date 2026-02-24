@@ -5,7 +5,7 @@ import { sortByOrder } from "@/lib/sort-by-order";
 import { runtimeLive } from "@/services/layer";
 import type { SectionWithWordCount } from "@/features/article-writer/types";
 import { Array as EffectArray, Console, Effect } from "effect";
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { data, Link, useFetcher } from "react-router";
 import {
   VideoContextPanel,
@@ -35,7 +35,13 @@ import { StandaloneFileManagementModal } from "@/components/standalone-file-mana
 import { StandaloneFilePasteModal } from "@/components/standalone-file-paste-modal";
 import { DeleteStandaloneFileModal } from "@/components/delete-standalone-file-modal";
 import { LessonFilePasteModal } from "@/components/lesson-file-paste-modal";
-import { Loader2Icon, SendIcon, SparklesIcon } from "lucide-react";
+import {
+  CheckCircle2Icon,
+  Loader2Icon,
+  SendIcon,
+  SparklesIcon,
+} from "lucide-react";
+import { UploadContext } from "@/features/upload-manager/upload-context";
 import {
   Card,
   CardContent,
@@ -52,6 +58,7 @@ const AI_HERO_TITLE_STORAGE_KEY = (videoId: string) =>
 const AI_HERO_BODY_STORAGE_KEY = (videoId: string) => `ai-hero-body-${videoId}`;
 const AI_HERO_SEO_DESCRIPTION_STORAGE_KEY = (videoId: string) =>
   `ai-hero-seo-description-${videoId}`;
+const AI_HERO_SLUG_STORAGE_KEY = (videoId: string) => `ai-hero-slug-${videoId}`;
 
 export const loader = async (args: Route.LoaderArgs) => {
   const { videoId } = args.params;
@@ -347,6 +354,51 @@ export default function AiHeroPostPage(props: Route.ComponentProps) {
     }
   }, [seoDescription, videoId]);
 
+  // Upload context
+  const { uploads, startAiHeroUpload } = useContext(UploadContext);
+
+  // Check if there's an active AI Hero upload for this video
+  const activeAiHeroUpload = Object.values(uploads).find(
+    (u) =>
+      u.uploadType === "ai-hero" &&
+      u.videoId === videoId &&
+      (u.status === "uploading" || u.status === "retrying")
+  );
+
+  // Stored slug from successful upload
+  const [storedSlug, setStoredSlug] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof localStorage !== "undefined") {
+      setStoredSlug(
+        localStorage.getItem(AI_HERO_SLUG_STORAGE_KEY(videoId)) ?? null
+      );
+    }
+  }, [videoId]);
+
+  // Watch for successful AI Hero uploads and store the slug
+  useEffect(() => {
+    for (const upload of Object.values(uploads)) {
+      if (
+        upload.uploadType === "ai-hero" &&
+        upload.videoId === videoId &&
+        upload.status === "success" &&
+        upload.aiHeroSlug
+      ) {
+        localStorage.setItem(
+          AI_HERO_SLUG_STORAGE_KEY(videoId),
+          upload.aiHeroSlug
+        );
+        setStoredSlug(upload.aiHeroSlug);
+      }
+    }
+  }, [uploads, videoId]);
+
+  const handlePostToAiHero = () => {
+    if (!title.trim()) return;
+    startAiHeroUpload(videoId, title, body, seoDescription);
+  };
+
   // Context panel state
   const [enabledFiles, setEnabledFiles] = useState<Set<string>>(() => {
     return new Set(files.filter((f) => f.defaultEnabled).map((f) => f.path));
@@ -605,11 +657,47 @@ export default function AiHeroPostPage(props: Route.ComponentProps) {
                 </p>
               </div>
 
-              {/* Post button (disabled in this slice) */}
-              <Button disabled className="w-full" size="lg">
-                <SendIcon className="h-4 w-4" />
-                Post to AI Hero
-              </Button>
+              {/* Post to AI Hero button */}
+              {storedSlug ? (
+                <div className="flex items-center gap-3 p-3 rounded-md bg-green-500/10 border border-green-500/20">
+                  <CheckCircle2Icon className="h-5 w-5 text-green-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-green-500">
+                      Posted to AI Hero
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {storedSlug}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePostToAiHero}
+                    disabled={!title.trim() || !!activeAiHeroUpload}
+                  >
+                    Repost
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  onClick={handlePostToAiHero}
+                  disabled={!title.trim() || !!activeAiHeroUpload}
+                  className="w-full"
+                  size="lg"
+                >
+                  {activeAiHeroUpload ? (
+                    <>
+                      <Loader2Icon className="h-4 w-4 animate-spin" />
+                      Posting to AI Hero...
+                    </>
+                  ) : (
+                    <>
+                      <SendIcon className="h-4 w-4" />
+                      Post to AI Hero
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           )}
         </div>
