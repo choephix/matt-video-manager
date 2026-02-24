@@ -9,7 +9,6 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { data, Link, useFetcher, useRevalidator } from "react-router";
 import { toast } from "sonner";
 import { UploadContext } from "@/features/upload-manager/upload-context";
-import type { uploadReducer } from "@/features/upload-manager/upload-reducer";
 import type { Route } from "./+types/videos.$videoId.post";
 import path from "path";
 import { FileSystem } from "@effect/platform";
@@ -54,7 +53,6 @@ import {
   ImageIcon,
   Loader2Icon,
   PlusIcon,
-  SendIcon,
   SparklesIcon,
   UploadIcon,
   XCircleIcon,
@@ -68,17 +66,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const POST_TITLE_STORAGE_KEY = (videoId: string) => `post-title-${videoId}`;
 const POST_DESCRIPTION_STORAGE_KEY = (videoId: string) =>
   `post-description-${videoId}`;
 const YOUTUBE_VIDEO_ID_STORAGE_KEY = (videoId: string) =>
   `youtube-video-id-${videoId}`;
-const SOCIAL_CAPTION_STORAGE_KEY = (videoId: string) =>
-  `social-caption-${videoId}`;
-const BUFFER_POSTED_STORAGE_KEY = (videoId: string) =>
-  `buffer-posted-${videoId}`;
 
 export const loader = async (args: Route.LoaderArgs) => {
   const { videoId } = args.params;
@@ -405,51 +398,8 @@ export default function PostPage(props: Route.ComponentProps) {
     "unlisted"
   );
 
-  // Social caption state with localStorage persistence
-  const [socialCaption, setSocialCaption] = useState(() => {
-    if (typeof localStorage !== "undefined") {
-      return localStorage.getItem(SOCIAL_CAPTION_STORAGE_KEY(videoId)) ?? "";
-    }
-    return "";
-  });
-
-  // Auto-save social caption to localStorage
-  useEffect(() => {
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(SOCIAL_CAPTION_STORAGE_KEY(videoId), socialCaption);
-    }
-  }, [socialCaption, videoId]);
-
-  // Social AI generation state
-  const [isGeneratingCaption, setIsGeneratingCaption] = useState(false);
-  const [confirmOverwriteCaption, setConfirmOverwriteCaption] = useState(false);
-  const [pendingGeneratedCaption, setPendingGeneratedCaption] = useState("");
-
-  // Buffer posted status from localStorage (hydration-safe: read in useEffect)
-  const [bufferPostedInfo, setBufferPostedInfo] = useState<{
-    timestamp: string;
-    caption: string;
-  } | null>(null);
-
-  useEffect(() => {
-    if (typeof localStorage !== "undefined") {
-      const stored = localStorage.getItem(BUFFER_POSTED_STORAGE_KEY(videoId));
-      if (stored) {
-        try {
-          setBufferPostedInfo(JSON.parse(stored));
-        } catch {
-          // Ignore malformed data
-        }
-      }
-    }
-  }, [videoId]);
-
   // Upload state from global context
-  const {
-    uploads,
-    startUpload: globalStartUpload,
-    startSocialUpload: globalStartSocialUpload,
-  } = useContext(UploadContext);
+  const { uploads, startUpload: globalStartUpload } = useContext(UploadContext);
 
   // Find active upload for this video in global context
   const activeUpload = Object.values(uploads).find(
@@ -617,87 +567,6 @@ export default function PostPage(props: Route.ComponentProps) {
     });
   };
 
-  // Find active social upload for this video
-  const activeSocialUpload = Object.values(uploads).find(
-    (u): u is uploadReducer.BufferUploadEntry =>
-      u.videoId === videoId && u.uploadType === "buffer"
-  );
-
-  // Save buffer posted status to localStorage on success
-  useEffect(() => {
-    if (activeSocialUpload?.status === "success") {
-      const info = {
-        timestamp: new Date().toISOString(),
-        caption: socialCaption,
-      };
-      localStorage.setItem(
-        BUFFER_POSTED_STORAGE_KEY(videoId),
-        JSON.stringify(info)
-      );
-      setBufferPostedInfo(info);
-    }
-  }, [activeSocialUpload?.status, videoId, socialCaption]);
-
-  const handleGenerateCaption = async () => {
-    setIsGeneratingCaption(true);
-    try {
-      const transcriptEnabled =
-        clipSections.length > 0 ? enabledSections.size > 0 : includeTranscript;
-
-      const response = await fetch(`/api/videos/${videoId}/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "social-caption",
-          enabledFiles: Array.from(enabledFiles),
-          includeTranscript: transcriptEnabled,
-          enabledSections: Array.from(enabledSections),
-          courseStructure:
-            includeCourseStructure && courseStructure
-              ? courseStructure
-              : undefined,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to generate caption");
-      }
-
-      const result = await response.json();
-      const generatedText = result.text as string;
-
-      if (socialCaption.trim()) {
-        setPendingGeneratedCaption(generatedText);
-        setConfirmOverwriteCaption(true);
-      } else {
-        setSocialCaption(generatedText);
-      }
-    } catch (error) {
-      console.error("Failed to generate caption:", error);
-    } finally {
-      setIsGeneratingCaption(false);
-    }
-  };
-
-  const handleConfirmOverwriteCaption = () => {
-    setSocialCaption(pendingGeneratedCaption);
-    setConfirmOverwriteCaption(false);
-    setPendingGeneratedCaption("");
-  };
-
-  const handleCancelOverwriteCaption = () => {
-    setConfirmOverwriteCaption(false);
-    setPendingGeneratedCaption("");
-  };
-
-  const handleSocialPost = () => {
-    if (!socialCaption.trim()) return;
-    globalStartSocialUpload(videoId, title || "Social Post", socialCaption);
-    toast("Social post started", {
-      description: "Copying video to Dropbox and posting to Buffer",
-    });
-  };
-
   const handleDisconnect = async () => {
     const response = await fetch("/api/auth/google/disconnect", {
       method: "POST",
@@ -773,402 +642,266 @@ export default function PostPage(props: Route.ComponentProps) {
 
         {/* Right panel: Tabbed posting interface */}
         <div className="w-3/4 flex flex-col p-6 overflow-y-auto scrollbar scrollbar-track-transparent scrollbar-thumb-gray-700 hover:scrollbar-thumb-gray-600">
-          <Tabs defaultValue="youtube" className="flex-1 flex flex-col">
-            <TabsList className="mb-4">
-              <TabsTrigger value="youtube">
-                <YoutubeIcon className="h-4 w-4" />
-                YouTube
-              </TabsTrigger>
-              <TabsTrigger value="social">
-                <SendIcon className="h-4 w-4" />X / LinkedIn
-              </TabsTrigger>
-            </TabsList>
-
-            {/* YouTube Tab */}
-            <TabsContent value="youtube" className="flex-1">
-              {!isYoutubeAuthenticated ? (
-                <div className="flex-1 flex items-center justify-center h-full">
-                  <Card className="max-w-md w-full">
-                    <CardHeader className="text-center">
-                      <YoutubeIcon className="h-12 w-12 mx-auto mb-2 text-red-500" />
-                      <CardTitle>Connect YouTube Account</CardTitle>
-                      <CardDescription>
-                        Connect your YouTube account to upload videos directly
-                        from this app.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex justify-center">
-                      <Button asChild>
-                        <a
-                          href={`/api/auth/google/initiate?returnTo=/videos/${videoId}/post`}
-                        >
-                          Connect YouTube Account
-                        </a>
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              ) : (
-                <div className="max-w-2xl mx-auto w-full space-y-6">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="title">Title</Label>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleGenerateTitle}
-                        disabled={isGeneratingTitle || isGeneratingDescription}
-                      >
-                        {isGeneratingTitle ? (
-                          <>
-                            <Loader2Icon className="h-4 w-4 animate-spin" />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <SparklesIcon className="h-4 w-4" />
-                            Generate
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                    <Input
-                      id="title"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Enter video title..."
-                      className="text-lg"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="description">Description</Label>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleGenerateDescription}
-                        disabled={isGeneratingTitle || isGeneratingDescription}
-                      >
-                        {isGeneratingDescription ? (
-                          <>
-                            <Loader2Icon className="h-4 w-4 animate-spin" />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <SparklesIcon className="h-4 w-4" />
-                            Generate
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                    <Textarea
-                      id="description"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Enter video description..."
-                      className="min-h-[300px] resize-y"
-                    />
-                  </div>
-
-                  {/* Visibility */}
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="visibility">Visibility</Label>
-                    <Select
-                      value={privacyStatus}
-                      onValueChange={(value: "public" | "unlisted") =>
-                        setPrivacyStatus(value)
-                      }
+          {!isYoutubeAuthenticated ? (
+            <div className="flex-1 flex items-center justify-center h-full">
+              <Card className="max-w-md w-full">
+                <CardHeader className="text-center">
+                  <YoutubeIcon className="h-12 w-12 mx-auto mb-2 text-red-500" />
+                  <CardTitle>Connect YouTube Account</CardTitle>
+                  <CardDescription>
+                    Connect your YouTube account to upload videos directly from
+                    this app.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center">
+                  <Button asChild>
+                    <a
+                      href={`/api/auth/google/initiate?returnTo=/videos/${videoId}/post`}
                     >
-                      <SelectTrigger id="visibility">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unlisted">Unlisted</SelectItem>
-                        <SelectItem value="public">Public</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Thumbnail selection */}
-                  <div className="space-y-2">
-                    <Label>Thumbnail</Label>
-                    {thumbnails.length === 0 ? (
-                      <div className="border border-dashed rounded-lg p-6 text-center text-muted-foreground">
-                        <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">No thumbnails created yet.</p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-2"
-                          asChild
-                        >
-                          <Link to={`/videos/${videoId}/thumbnails`}>
-                            <PlusIcon className="h-4 w-4" />
-                            Add New Thumbnail
-                          </Link>
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-3 gap-3">
-                          {thumbnails.map((thumbnail) => (
-                            <button
-                              key={thumbnail.id}
-                              onClick={() =>
-                                handleSelectThumbnail(thumbnail.id)
-                              }
-                              disabled={selectingThumbnailId !== null}
-                              className={`relative aspect-video rounded-lg overflow-hidden border-2 transition-all ${
-                                thumbnail.selectedForUpload
-                                  ? "border-primary ring-2 ring-primary/30"
-                                  : "border-transparent hover:border-muted-foreground/30"
-                              }`}
-                            >
-                              <img
-                                src={`/api/thumbnails/${thumbnail.id}/image`}
-                                alt="Thumbnail"
-                                className="w-full h-full object-cover"
-                              />
-                              {thumbnail.selectedForUpload && (
-                                <div className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full p-0.5">
-                                  <CheckIcon className="h-3 w-3" />
-                                </div>
-                              )}
-                              {selectingThumbnailId === thumbnail.id && (
-                                <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
-                                  <Loader2Icon className="h-5 w-5 animate-spin" />
-                                </div>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                        <Button variant="outline" size="sm" asChild>
-                          <Link to={`/videos/${videoId}/thumbnails`}>
-                            <PlusIcon className="h-4 w-4" />
-                            Add New Thumbnail
-                          </Link>
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Upload section */}
-                  <div className="space-y-3">
-                    <Button
-                      onClick={handleUpload}
-                      disabled={
-                        !!activeUpload ||
-                        !title.trim() ||
-                        !description.trim() ||
-                        !selectedThumbnail
-                      }
-                      className="w-full"
-                      size="lg"
-                    >
-                      {uploadStatus === "uploading" ? (
-                        <>
-                          <Loader2Icon className="h-4 w-4 animate-spin" />
-                          Uploading...
-                        </>
-                      ) : (
-                        <>
-                          <UploadIcon className="h-4 w-4" />
-                          Post to YouTube
-                        </>
-                      )}
-                    </Button>
-
-                    {!selectedThumbnail && uploadStatus !== "uploading" && (
-                      <p className="text-sm text-muted-foreground text-center">
-                        {thumbnails.length === 0
-                          ? "Create and select a thumbnail before uploading."
-                          : "Select a thumbnail above before uploading."}
-                      </p>
-                    )}
-
-                    {/* Progress bar */}
-                    {uploadStatus === "uploading" && (
-                      <div className="space-y-1">
-                        <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
-                          <div
-                            className="bg-primary h-full rounded-full transition-all duration-300"
-                            style={{ width: `${uploadProgress}%` }}
-                          />
-                        </div>
-                        <p className="text-sm text-muted-foreground text-center">
-                          {uploadProgress}%
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Success state */}
-                    {uploadStatus === "success" && (
-                      <div className="flex flex-col items-center gap-2 text-green-500">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2Icon className="h-4 w-4" />
-                          <span className="text-sm">
-                            Video uploaded successfully as {privacyStatus}
-                          </span>
-                        </div>
-                        {youtubeVideoId && (
-                          <a
-                            href={`https://studio.youtube.com/video/${youtubeVideoId}/edit`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-500 hover:underline"
-                          >
-                            Open in YouTube Studio
-                          </a>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Error state */}
-                    {uploadStatus === "error" && (
-                      <div className="flex items-center gap-2 text-destructive justify-center">
-                        <XCircleIcon className="h-4 w-4" />
-                        <span className="text-sm">{uploadError}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Disconnect YouTube account */}
-                  <div className="pt-4 border-t border-border">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-muted-foreground"
-                      onClick={handleDisconnect}
-                    >
-                      <UnplugIcon className="h-4 w-4" />
-                      Disconnect YouTube Account
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </TabsContent>
-
-            {/* X / LinkedIn Tab */}
-            <TabsContent value="social" className="flex-1">
-              <div className="max-w-2xl mx-auto w-full space-y-6">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="social-caption">Caption</Label>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleGenerateCaption}
-                      disabled={isGeneratingCaption}
-                    >
-                      {isGeneratingCaption ? (
-                        <>
-                          <Loader2Icon className="h-4 w-4 animate-spin" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <SparklesIcon className="h-4 w-4" />
-                          Generate
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                  <Textarea
-                    id="social-caption"
-                    value={socialCaption}
-                    onChange={(e) => setSocialCaption(e.target.value)}
-                    placeholder="Enter caption for X and LinkedIn..."
-                    className="min-h-[200px] resize-y"
-                  />
-                </div>
-
-                {/* Post button */}
-                <div className="space-y-3">
+                      Connect YouTube Account
+                    </a>
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <div className="max-w-2xl mx-auto w-full space-y-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="title">Title</Label>
                   <Button
-                    onClick={handleSocialPost}
-                    disabled={!!activeSocialUpload || !socialCaption.trim()}
-                    className="w-full"
-                    size="lg"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGenerateTitle}
+                    disabled={isGeneratingTitle || isGeneratingDescription}
                   >
-                    {activeSocialUpload &&
-                    activeSocialUpload.status !== "success" &&
-                    activeSocialUpload.status !== "error" ? (
+                    {isGeneratingTitle ? (
                       <>
                         <Loader2Icon className="h-4 w-4 animate-spin" />
-                        Posting...
+                        Generating...
                       </>
                     ) : (
                       <>
-                        <SendIcon className="h-4 w-4" />
-                        Post to X / LinkedIn
+                        <SparklesIcon className="h-4 w-4" />
+                        Generate
                       </>
                     )}
                   </Button>
+                </div>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Enter video title..."
+                  className="text-lg"
+                />
+              </div>
 
-                  {!socialCaption.trim() && !activeSocialUpload && (
-                    <p className="text-sm text-muted-foreground text-center">
-                      Write or generate a caption before posting.
-                    </p>
-                  )}
-
-                  {/* Social upload progress */}
-                  {activeSocialUpload &&
-                    activeSocialUpload.status === "uploading" && (
-                      <div className="space-y-1">
-                        <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
-                          <div
-                            className="bg-primary h-full rounded-full transition-all duration-300"
-                            style={{
-                              width: `${activeSocialUpload.progress}%`,
-                            }}
-                          />
-                        </div>
-                        <p className="text-sm text-muted-foreground text-center">
-                          {activeSocialUpload.bufferStage === "copying"
-                            ? "Copying to Dropbox..."
-                            : activeSocialUpload.bufferStage === "syncing"
-                              ? "Syncing to Dropbox..."
-                              : activeSocialUpload.bufferStage ===
-                                  "sending-webhook"
-                                ? "Sending to Zapier..."
-                                : `${activeSocialUpload.progress}%`}
-                        </p>
-                      </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="description">Description</Label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGenerateDescription}
+                    disabled={isGeneratingTitle || isGeneratingDescription}
+                  >
+                    {isGeneratingDescription ? (
+                      <>
+                        <Loader2Icon className="h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <SparklesIcon className="h-4 w-4" />
+                        Generate
+                      </>
                     )}
+                  </Button>
+                </div>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Enter video description..."
+                  className="min-h-[300px] resize-y"
+                />
+              </div>
 
-                  {/* Social upload success */}
-                  {(activeSocialUpload?.status === "success" ||
-                    bufferPostedInfo) && (
-                    <div className="flex flex-col items-center gap-2 text-green-500">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2Icon className="h-4 w-4" />
-                        <span className="text-sm">Posted to Buffer</span>
-                      </div>
-                      {bufferPostedInfo && (
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(
-                            bufferPostedInfo.timestamp
-                          ).toLocaleString()}
-                        </p>
-                      )}
+              {/* Visibility */}
+              <div className="flex items-center gap-2">
+                <Label htmlFor="visibility">Visibility</Label>
+                <Select
+                  value={privacyStatus}
+                  onValueChange={(value: "public" | "unlisted") =>
+                    setPrivacyStatus(value)
+                  }
+                >
+                  <SelectTrigger id="visibility">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unlisted">Unlisted</SelectItem>
+                    <SelectItem value="public">Public</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Thumbnail selection */}
+              <div className="space-y-2">
+                <Label>Thumbnail</Label>
+                {thumbnails.length === 0 ? (
+                  <div className="border border-dashed rounded-lg p-6 text-center text-muted-foreground">
+                    <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No thumbnails created yet.</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      asChild
+                    >
+                      <Link to={`/videos/${videoId}/thumbnails`}>
+                        <PlusIcon className="h-4 w-4" />
+                        Add New Thumbnail
+                      </Link>
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-3">
+                      {thumbnails.map((thumbnail) => (
+                        <button
+                          key={thumbnail.id}
+                          onClick={() => handleSelectThumbnail(thumbnail.id)}
+                          disabled={selectingThumbnailId !== null}
+                          className={`relative aspect-video rounded-lg overflow-hidden border-2 transition-all ${
+                            thumbnail.selectedForUpload
+                              ? "border-primary ring-2 ring-primary/30"
+                              : "border-transparent hover:border-muted-foreground/30"
+                          }`}
+                        >
+                          <img
+                            src={`/api/thumbnails/${thumbnail.id}/image`}
+                            alt="Thumbnail"
+                            className="w-full h-full object-cover"
+                          />
+                          {thumbnail.selectedForUpload && (
+                            <div className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full p-0.5">
+                              <CheckIcon className="h-3 w-3" />
+                            </div>
+                          )}
+                          {selectingThumbnailId === thumbnail.id && (
+                            <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
+                              <Loader2Icon className="h-5 w-5 animate-spin" />
+                            </div>
+                          )}
+                        </button>
+                      ))}
                     </div>
-                  )}
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to={`/videos/${videoId}/thumbnails`}>
+                        <PlusIcon className="h-4 w-4" />
+                        Add New Thumbnail
+                      </Link>
+                    </Button>
+                  </div>
+                )}
+              </div>
 
-                  {/* Social upload error */}
-                  {activeSocialUpload?.status === "error" && (
-                    <div className="flex items-center gap-2 text-destructive justify-center">
-                      <XCircleIcon className="h-4 w-4" />
+              {/* Upload section */}
+              <div className="space-y-3">
+                <Button
+                  onClick={handleUpload}
+                  disabled={
+                    !!activeUpload ||
+                    !title.trim() ||
+                    !description.trim() ||
+                    !selectedThumbnail
+                  }
+                  className="w-full"
+                  size="lg"
+                >
+                  {uploadStatus === "uploading" ? (
+                    <>
+                      <Loader2Icon className="h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <UploadIcon className="h-4 w-4" />
+                      Post to YouTube
+                    </>
+                  )}
+                </Button>
+
+                {!selectedThumbnail && uploadStatus !== "uploading" && (
+                  <p className="text-sm text-muted-foreground text-center">
+                    {thumbnails.length === 0
+                      ? "Create and select a thumbnail before uploading."
+                      : "Select a thumbnail above before uploading."}
+                  </p>
+                )}
+
+                {/* Progress bar */}
+                {uploadStatus === "uploading" && (
+                  <div className="space-y-1">
+                    <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-primary h-full rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                    <p className="text-sm text-muted-foreground text-center">
+                      {uploadProgress}%
+                    </p>
+                  </div>
+                )}
+
+                {/* Success state */}
+                {uploadStatus === "success" && (
+                  <div className="flex flex-col items-center gap-2 text-green-500">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2Icon className="h-4 w-4" />
                       <span className="text-sm">
-                        {activeSocialUpload.errorMessage}
+                        Video uploaded successfully as {privacyStatus}
                       </span>
                     </div>
-                  )}
-                </div>
+                    {youtubeVideoId && (
+                      <a
+                        href={`https://studio.youtube.com/video/${youtubeVideoId}/edit`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-500 hover:underline"
+                      >
+                        Open in YouTube Studio
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {/* Error state */}
+                {uploadStatus === "error" && (
+                  <div className="flex items-center gap-2 text-destructive justify-center">
+                    <XCircleIcon className="h-4 w-4" />
+                    <span className="text-sm">{uploadError}</span>
+                  </div>
+                )}
               </div>
-            </TabsContent>
-          </Tabs>
+
+              {/* Disconnect YouTube account */}
+              <div className="pt-4 border-t border-border">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  onClick={handleDisconnect}
+                >
+                  <UnplugIcon className="h-4 w-4" />
+                  Disconnect YouTube Account
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1248,30 +981,6 @@ export default function PostPage(props: Route.ComponentProps) {
               Cancel
             </Button>
             <Button onClick={handleConfirmOverwrite}>Replace</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Overwrite confirmation dialog (Social caption) */}
-      <Dialog
-        open={confirmOverwriteCaption}
-        onOpenChange={(open) => {
-          if (!open) handleCancelOverwriteCaption();
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Replace existing caption?</DialogTitle>
-            <DialogDescription>
-              The caption field already has content. Do you want to replace it
-              with the generated text?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={handleCancelOverwriteCaption}>
-              Cancel
-            </Button>
-            <Button onClick={handleConfirmOverwriteCaption}>Replace</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
