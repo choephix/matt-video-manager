@@ -11,6 +11,7 @@ import {
   SendIcon,
   YoutubeIcon,
   NewspaperIcon,
+  MailIcon,
 } from "lucide-react";
 import { data, Link, Outlet, useLocation } from "react-router";
 import type { Route } from "./+types/videos.$videoId";
@@ -65,7 +66,7 @@ export const loader = async (args: Route.LoaderArgs) => {
   );
 };
 
-type Tab = "edit" | "write" | "post" | "social" | "ai-hero";
+type Tab = "edit" | "write" | "post" | "social" | "ai-hero" | "newsletter";
 
 const topTabs: {
   id: "edit" | "write" | "post";
@@ -87,10 +88,14 @@ const postSubTabs: {
   { id: "post", label: "YouTube", path: "post", icon: YoutubeIcon },
   { id: "social", label: "X / LinkedIn", path: "social", icon: SendIcon },
   { id: "ai-hero", label: "AI Hero", path: "ai-hero", icon: NewspaperIcon },
+  { id: "newsletter", label: "Newsletter", path: "newsletter", icon: MailIcon },
 ];
 
 const isPostTab = (tab: Tab): boolean =>
-  tab === "post" || tab === "social" || tab === "ai-hero";
+  tab === "post" ||
+  tab === "social" ||
+  tab === "ai-hero" ||
+  tab === "newsletter";
 
 export default function VideoLayout({ loaderData }: Route.ComponentProps) {
   const {
@@ -116,7 +121,9 @@ export default function VideoLayout({ loaderData }: Route.ComponentProps) {
         ? "social"
         : location.pathname.endsWith("/ai-hero")
           ? "ai-hero"
-          : "edit";
+          : location.pathname.endsWith("/newsletter")
+            ? "newsletter"
+            : "edit";
 
   // Build back button URL
   const backButtonUrl =
