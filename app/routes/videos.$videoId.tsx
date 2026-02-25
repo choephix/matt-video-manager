@@ -67,18 +67,30 @@ export const loader = async (args: Route.LoaderArgs) => {
 
 type Tab = "edit" | "write" | "post" | "social" | "ai-hero";
 
-const tabs: {
-  id: Tab;
+const topTabs: {
+  id: "edit" | "write" | "post";
   label: string;
   path: string;
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
   { id: "edit", label: "Video", path: "edit", icon: VideoIcon },
   { id: "write", label: "Write", path: "write", icon: PenIcon },
+  { id: "post", label: "Post", path: "post", icon: SendIcon },
+];
+
+const postSubTabs: {
+  id: Tab;
+  label: string;
+  path: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
   { id: "post", label: "YouTube", path: "post", icon: YoutubeIcon },
   { id: "social", label: "X / LinkedIn", path: "social", icon: SendIcon },
   { id: "ai-hero", label: "AI Hero", path: "ai-hero", icon: NewspaperIcon },
 ];
+
+const isPostTab = (tab: Tab): boolean =>
+  tab === "post" || tab === "social" || tab === "ai-hero";
 
 export default function VideoLayout({ loaderData }: Route.ComponentProps) {
   const {
@@ -132,23 +144,27 @@ export default function VideoLayout({ loaderData }: Route.ComponentProps) {
         </div>
 
         <div className="flex items-center gap-4">
-          {/* Tab switcher */}
+          {/* Top-level tab switcher */}
           <div className="flex gap-1">
-            {tabs.map((tab) => (
-              <Link
-                key={tab.id}
-                to={`/videos/${videoId}/${tab.path}`}
-                className={cn(
-                  "px-3 py-1.5 text-sm font-medium rounded transition-colors flex items-center gap-1.5",
-                  activeTab === tab.id
-                    ? "bg-gray-700 text-white"
-                    : "text-gray-400 hover:text-gray-200"
-                )}
-              >
-                <tab.icon className="size-4" />
-                {tab.label}
-              </Link>
-            ))}
+            {topTabs.map((tab) => {
+              const isActive =
+                tab.id === "post" ? isPostTab(activeTab) : activeTab === tab.id;
+              return (
+                <Link
+                  key={tab.id}
+                  to={`/videos/${videoId}/${tab.path}`}
+                  className={cn(
+                    "px-3 py-1.5 text-sm font-medium rounded transition-colors flex items-center gap-1.5",
+                    isActive
+                      ? "bg-gray-700 text-white"
+                      : "text-gray-400 hover:text-gray-200"
+                  )}
+                >
+                  <tab.icon className="size-4" />
+                  {tab.label}
+                </Link>
+              );
+            })}
           </div>
 
           {/* Navigation buttons */}
@@ -172,6 +188,27 @@ export default function VideoLayout({ loaderData }: Route.ComponentProps) {
           </div>
         </div>
       </div>
+
+      {/* Post sub-tabs */}
+      {isPostTab(activeTab) && (
+        <div className="flex gap-1 px-4 py-2 border-b">
+          {postSubTabs.map((tab) => (
+            <Link
+              key={tab.id}
+              to={`/videos/${videoId}/${tab.path}`}
+              className={cn(
+                "px-3 py-1.5 text-sm font-medium rounded transition-colors flex items-center gap-1.5",
+                activeTab === tab.id
+                  ? "bg-gray-700 text-white"
+                  : "text-gray-400 hover:text-gray-200"
+              )}
+            >
+              <tab.icon className="size-4" />
+              {tab.label}
+            </Link>
+          ))}
+        </div>
+      )}
 
       {/* Child route content */}
       <div className="flex-1 overflow-y-auto">
