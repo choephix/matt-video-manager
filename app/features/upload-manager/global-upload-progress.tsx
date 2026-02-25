@@ -36,6 +36,19 @@ export function GlobalUploadProgress() {
         )
       : 100;
 
+  // Auto-dismiss all uploads 5 seconds after all finish
+  useEffect(() => {
+    if (!hasUploads || isActive) return;
+
+    const timer = setTimeout(() => {
+      for (const upload of uploadEntries) {
+        dismissUpload(upload.uploadId);
+      }
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [hasUploads, isActive, uploadEntries, dismissUpload]);
+
   // Close dropdown on click outside
   useEffect(() => {
     if (!isOpen) return;
