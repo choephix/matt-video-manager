@@ -395,8 +395,10 @@ export default function AiHeroPostPage(props: Route.ComponentProps) {
     }
   }, [uploads, videoId]);
 
+  const isSeoDescriptionTooLong = seoDescription.length > 160;
+
   const handlePostToAiHero = () => {
-    if (!title.trim()) return;
+    if (!title.trim() || isSeoDescriptionTooLong) return;
     startAiHeroUpload(videoId, title, body, seoDescription);
   };
 
@@ -650,10 +652,11 @@ export default function AiHeroPostPage(props: Route.ComponentProps) {
                       ? "Generating SEO description..."
                       : "SEO description (160 characters max)..."
                   }
-                  className="min-h-[80px] resize-y"
-                  maxLength={160}
+                  className={`min-h-[80px] resize-y ${isSeoDescriptionTooLong ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                 />
-                <p className="text-xs text-muted-foreground text-right">
+                <p
+                  className={`text-xs text-right ${isSeoDescriptionTooLong ? "text-red-500" : "text-muted-foreground"}`}
+                >
                   {seoDescription.length}/160
                 </p>
               </div>
@@ -680,7 +683,11 @@ export default function AiHeroPostPage(props: Route.ComponentProps) {
                     variant="outline"
                     size="sm"
                     onClick={handlePostToAiHero}
-                    disabled={!title.trim() || !!activeAiHeroUpload}
+                    disabled={
+                      !title.trim() ||
+                      !!activeAiHeroUpload ||
+                      isSeoDescriptionTooLong
+                    }
                   >
                     Repost
                   </Button>
@@ -688,7 +695,11 @@ export default function AiHeroPostPage(props: Route.ComponentProps) {
               ) : (
                 <Button
                   onClick={handlePostToAiHero}
-                  disabled={!title.trim() || !!activeAiHeroUpload}
+                  disabled={
+                    !title.trim() ||
+                    !!activeAiHeroUpload ||
+                    isSeoDescriptionTooLong
+                  }
                   className="w-full"
                   size="lg"
                 >
