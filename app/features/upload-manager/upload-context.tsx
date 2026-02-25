@@ -354,6 +354,19 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
               },
             },
           });
+
+          // Fire-and-forget: add AI Hero post URL to global links
+          if (upload.aiHeroSlug) {
+            const formData = new FormData();
+            formData.append("title", upload.title);
+            formData.append("url", `https://aihero.dev/${upload.aiHeroSlug}`);
+            fetch("/api/links", {
+              method: "POST",
+              body: formData,
+            }).catch(() => {
+              // Silently ignore errors (including duplicate URL conflicts)
+            });
+          }
         }
       }
 
