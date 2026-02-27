@@ -38,13 +38,6 @@ If you find that the task is larger than you expected (for instance, requires a 
 
 Then, find a way to break it into a smaller chunk and only do that chunk (i.e. complete the smaller refactor).
 
-# FEEDBACK LOOPS
-
-Before committing, run the feedback loops:
-
-- `npm run test` to run the tests
-- `npm run typecheck` to run the type checker
-
 # COMMIT
 
 Make a git commit. The commit message must:
