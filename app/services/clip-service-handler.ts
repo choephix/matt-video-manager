@@ -278,8 +278,10 @@ const appendFromObsImpl = (
     );
 
     // Filter out clips that already exist (deduplicate by videoFilename + startTime + endTime)
-    // Uses a tolerance of 0.15s to account for floating-point rounding from OBS detection
-    const DEDUP_TOLERANCE_SECONDS = 0.15;
+    // Uses a tolerance of 0.6s to account for ffmpeg silence detection variance across runs.
+    // Silence detection start times can drift by 0.24-0.57s depending on keyframe alignment.
+    // 0.6s is safe because minimum clip length is 1s, so distinct clips can't match.
+    const DEDUP_TOLERANCE_SECONDS = 0.6;
     const clipsToAdd = latestOBSVideoClips.clips.filter(
       (clip) =>
         !allClipsForDedup.some(

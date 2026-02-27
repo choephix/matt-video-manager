@@ -945,6 +945,88 @@ describe("ClipService", () => {
       expect(timeline).toHaveLength(1);
     });
 
+    it("deduplicates clips with drifted startTime from ffmpeg re-detection (0.57s drift)", async () => {
+      const video = await clipService.createVideo("test-video.mp4");
+
+      // First clip inserted correctly
+      await clipService.appendClips({
+        videoId: video.id,
+        insertionPoint: start,
+        items: [],
+        clips: [
+          {
+            inputVideo: "/mnt/c/obs/video.mkv",
+            startTime: 2.05,
+            endTime: 5.33,
+          },
+        ],
+      });
+
+      // Re-detection returns same clip with drifted startTime (0.57s difference)
+      mockVideoProcessing.getLatestOBSVideoClips = vi.fn().mockResolvedValue({
+        clips: [
+          {
+            inputVideo: "/mnt/c/obs/video.mkv",
+            startTime: 1.48,
+            endTime: 5.33,
+          },
+        ],
+      });
+
+      const result = await clipService.appendFromObs({
+        videoId: video.id,
+        insertionPoint: start,
+        items: await getItems(video.id),
+      });
+
+      // Should be skipped as a duplicate — 0.57s drift is within 0.6s tolerance
+      expect(result).toHaveLength(0);
+
+      const timeline = await clipService.getTimeline(video.id);
+      expect(timeline).toHaveLength(1);
+    });
+
+    it("inserts genuinely distinct clips that differ by more than 0.6s", async () => {
+      const video = await clipService.createVideo("test-video.mp4");
+
+      // First clip
+      await clipService.appendClips({
+        videoId: video.id,
+        insertionPoint: start,
+        items: [],
+        clips: [
+          {
+            inputVideo: "/mnt/c/obs/video.mkv",
+            startTime: 2.0,
+            endTime: 5.0,
+          },
+        ],
+      });
+
+      // New clip with start and end both differing by more than 0.6s
+      mockVideoProcessing.getLatestOBSVideoClips = vi.fn().mockResolvedValue({
+        clips: [
+          {
+            inputVideo: "/mnt/c/obs/video.mkv",
+            startTime: 8.0,
+            endTime: 12.0,
+          },
+        ],
+      });
+
+      const result = await clipService.appendFromObs({
+        videoId: video.id,
+        insertionPoint: start,
+        items: await getItems(video.id),
+      });
+
+      // Should be inserted — clearly a different clip
+      expect(result).toHaveLength(1);
+
+      const timeline = await clipService.getTimeline(video.id);
+      expect(timeline).toHaveLength(2);
+    });
+
     it("calculates start time from last clip with same input video", async () => {
       const video = await clipService.createVideo("test-video.mp4");
 

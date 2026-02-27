@@ -116,10 +116,16 @@ export function findSilenceInVideo(
       fps,
     });
 
+    // Add back the startTime offset so timestamps are absolute file positions,
+    // not relative to the ffmpeg seek point (-ss flag)
+    const startTimeAdjustment = opts?.startTime ?? 0;
+
     // Convert frame-based durations to seconds (rounded to 2dp)
     const clips = speakingClips.map((clip, index, array) => {
-      const startTime = Math.round(clip.startTime * 100) / 100;
-      const endTime = Math.round(clip.endTime * 100) / 100;
+      const startTime =
+        Math.round(clip.startTime * 100) / 100 + startTimeAdjustment;
+      const endTime =
+        Math.round(clip.endTime * 100) / 100 + startTimeAdjustment;
       const isFinalClip = index === array.length - 1;
 
       return {
