@@ -2,7 +2,7 @@ import { DBFunctionsService } from "@/services/db-service";
 import { Console, Effect } from "effect";
 import type { Route } from "./+types/clips.$clipId.last-frame";
 import { runtimeLive } from "@/services/layer";
-import { TotalTypeScriptCLIService } from "@/services/tt-cli-service";
+import { VideoProcessingService } from "@/services/video-processing-service";
 import { createReadStream } from "fs";
 import { data } from "react-router";
 
@@ -16,7 +16,7 @@ export const loader = async (args: Route.LoaderArgs) => {
 
     const seekTo = clip.sourceEndTime - 0.1;
 
-    const ttCliService = yield* TotalTypeScriptCLIService;
+    const ttCliService = yield* VideoProcessingService;
 
     const lastFramePath = yield* ttCliService.getLastFrame(inputVideo, seekTo);
 

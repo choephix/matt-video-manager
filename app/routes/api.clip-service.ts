@@ -18,7 +18,7 @@ import { DBFunctionsService } from "@/services/db-service";
 import { DrizzleService } from "@/services/drizzle-service";
 import { withDatabaseDump } from "@/services/dump-service";
 import { runtimeLive } from "@/services/layer";
-import { TotalTypeScriptCLIService } from "@/services/tt-cli-service";
+import { VideoProcessingService } from "@/services/video-processing-service";
 import { VideoEditorLoggerService } from "@/services/video-editor-logger-service";
 import { Console, Effect, Schema } from "effect";
 import { data } from "react-router";
@@ -35,8 +35,8 @@ export const action = async (args: Route.ActionArgs) => {
     // Parse and validate the event
     const event = yield* Schema.decodeUnknown(ClipServiceEventSchema)(json);
 
-    // Get TotalTypeScriptCLIService for OBS operations
-    const ttCliService = yield* TotalTypeScriptCLIService;
+    // Get VideoProcessingService for OBS operations
+    const ttCliService = yield* VideoProcessingService;
 
     // Create adapter that wraps Effect-based CLI service
     const ttCli: TtCliAdapter = {

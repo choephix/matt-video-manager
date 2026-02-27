@@ -1,21 +1,13 @@
 import { Command, FileSystem } from "@effect/platform";
 import { NodeContext } from "@effect/platform-node";
-import { Data, Effect, Schema } from "effect";
+import { Config, Data, Effect, Option, Schema } from "effect";
 import crypto from "node:crypto";
 import path from "node:path";
 import { tmpdir } from "os";
+import { FFmpegCommandsService } from "./ffmpeg-commands";
+import { findSilenceInVideo } from "./silence-detection";
 
 export type BeatType = "none" | "long";
-
-const getLatestOBSVideoClipsSchema = Schema.Struct({
-  clips: Schema.Array(
-    Schema.Struct({
-      inputVideo: Schema.String,
-      startTime: Schema.Number,
-      endTime: Schema.Number,
-    })
-  ),
-});
 
 const transcribeClipsSchema = Schema.Array(
   Schema.Struct({
@@ -44,47 +36,66 @@ class CouldNotParseJsonError extends Data.TaggedError(
   message: string;
 }> {}
 
-export class TotalTypeScriptCLIService extends Effect.Service<TotalTypeScriptCLIService>()(
-  "TotalTypeScriptCLIService",
+export class VideoProcessingService extends Effect.Service<VideoProcessingService>()(
+  "VideoProcessingService",
   {
     effect: Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
+      const ffmpegCommands = yield* FFmpegCommandsService;
 
       const getLatestOBSVideoClips = Effect.fn("getLatestOBSVideoClips")(
         function* (opts: {
           filePath: string | undefined;
           startTime: number | undefined;
         }) {
-          const command = Command.make(
-            "tt",
-            "clips",
-            "detect",
-            ...(opts.filePath ? [opts.filePath] : []),
-            ...(opts.startTime
-              ? ["--startTime", opts.startTime.toString()]
-              : [])
-          );
+          if (!opts.filePath) {
+            // Without a file path, fall back to the most recent OBS recording.
+            const obsDir = yield* Config.string("OBS_RECORDING_DIR").pipe(
+              Effect.orElseSucceed(() =>
+                path.join(require("os").homedir(), "Videos")
+              )
+            );
 
-          const result = yield* Command.string(command);
+            // Find the most recent .mp4 file
+            const files = yield* fs.readDirectory(obsDir);
+            const mp4Files = files.filter((f) => f.endsWith(".mp4"));
+            if (mp4Files.length === 0) {
+              return {
+                clips: [] as {
+                  inputVideo: string;
+                  startTime: number;
+                  endTime: number;
+                }[],
+              };
+            }
 
-          const parseResult = yield* Effect.try({
-            try: () => JSON.parse(result.trim()) as unknown,
-            catch: (e) =>
-              new CouldNotParseJsonError({
-                cause: e,
-                message: `Could not parse JSON from get-clips-from-latest-video: ${result}`,
-              }),
+            // Sort by modification time (most recent first)
+            const filesWithStats = yield* Effect.forEach(mp4Files, (file) =>
+              Effect.gen(function* () {
+                const fullPath = path.join(obsDir, file);
+                const stat = yield* fs.stat(fullPath);
+                const mtimeMs = Option.match(stat.mtime, {
+                  onNone: () => 0,
+                  onSome: (d) => d.getTime(),
+                });
+                return { file: fullPath, mtimeMs };
+              })
+            );
+            filesWithStats.sort((a, b) => b.mtimeMs - a.mtimeMs);
+
+            const latestFile = filesWithStats[0]!.file;
+            return yield* findSilenceInVideo(ffmpegCommands, latestFile, {
+              startTime: opts.startTime,
+            });
+          }
+
+          return yield* findSilenceInVideo(ffmpegCommands, opts.filePath, {
+            startTime: opts.startTime,
           });
-
-          return yield* Schema.decodeUnknown(getLatestOBSVideoClipsSchema)(
-            parseResult
-          );
         }
       );
 
-      const addVideoClipsToExportQueue = Effect.fn(
-        "addVideoClipsToExportQueue"
-      )(function* (opts: {
+      const exportVideoClips = Effect.fn("exportVideoClips")(function* (opts: {
         videoId: string;
         clips: {
           inputVideo: string;
@@ -94,18 +105,35 @@ export class TotalTypeScriptCLIService extends Effect.Service<TotalTypeScriptCLI
         }[];
         shortsDirectoryOutputName: string | undefined;
       }) {
-        const command = Command.make(
-          "tt",
-          "queue",
-          "from-clips",
-          JSON.stringify(opts.clips),
-          opts.videoId,
-          ...(opts.shortsDirectoryOutputName
-            ? [opts.shortsDirectoryOutputName]
-            : [])
+        const FINISHED_VIDEOS_DIRECTORY = yield* Config.string(
+          "FINISHED_VIDEOS_DIRECTORY"
         );
-        const result = yield* Command.string(command);
-        return result;
+
+        // Create concatenated video using native FFmpeg
+        const concatenatedPath =
+          yield* ffmpegCommands.createAndConcatenateVideoClipsSinglePass(
+            opts.clips
+          );
+
+        // Normalize audio
+        const normalizedPath =
+          yield* ffmpegCommands.normalizeAudio(concatenatedPath);
+
+        // Move to final location
+        const outputPath = path.join(
+          FINISHED_VIDEOS_DIRECTORY,
+          `${opts.videoId}.mp4`
+        );
+
+        yield* fs.makeDirectory(path.dirname(outputPath), { recursive: true });
+        yield* fs.rename(normalizedPath, outputPath);
+
+        // Clean up intermediate file
+        yield* fs
+          .remove(concatenatedPath)
+          .pipe(Effect.catchAll(() => Effect.void));
+
+        return outputPath;
       });
 
       const transcribeClips = Effect.fn("transcribeClips")(function* (
@@ -138,7 +166,6 @@ export class TotalTypeScriptCLIService extends Effect.Service<TotalTypeScriptCLI
         inputVideo: string,
         seekTo: number
       ) {
-        // A hash of the input video and seekTo
         const inputHash = crypto
           .createHash("sha256")
           .update(inputVideo + seekTo.toFixed(2))
@@ -175,7 +202,6 @@ export class TotalTypeScriptCLIService extends Effect.Service<TotalTypeScriptCLI
         inputVideo: string,
         seekTo: number
       ) {
-        // A hash of the input video and seekTo with "first" prefix
         const inputHash = crypto
           .createHash("sha256")
           .update("first-" + inputVideo + seekTo.toFixed(2))
@@ -231,13 +257,13 @@ export class TotalTypeScriptCLIService extends Effect.Service<TotalTypeScriptCLI
 
       return {
         getLatestOBSVideoClips,
-        exportVideoClips: addVideoClipsToExportQueue,
+        exportVideoClips,
         transcribeClips,
         getLastFrame,
         getFirstFrame,
         sendClipsToDavinciResolve,
       };
     }),
-    dependencies: [NodeContext.layer],
+    dependencies: [NodeContext.layer, FFmpegCommandsService.Default],
   }
 ) {}

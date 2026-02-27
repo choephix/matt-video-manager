@@ -1,0 +1,301 @@
+import { Command, FileSystem } from "@effect/platform";
+import { NodeContext } from "@effect/platform-node";
+import { Data, Effect } from "effect";
+import crypto from "node:crypto";
+import path from "node:path";
+import { tmpdir } from "os";
+
+const GPU_PERMITS = 6;
+const CPU_PERMITS = 12;
+
+class FFmpegError extends Data.TaggedError("FFmpegError")<{
+  cause: unknown;
+  message: string;
+}> {}
+
+export class FFmpegCommandsService extends Effect.Service<FFmpegCommandsService>()(
+  "FFmpegCommandsService",
+  {
+    effect: Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const gpuSemaphore = yield* Effect.makeSemaphore(GPU_PERMITS);
+      const cpuSemaphore = yield* Effect.makeSemaphore(CPU_PERMITS);
+
+      const detectSilence = Effect.fn("detectSilence")(function* (
+        inputVideo: string,
+        opts: {
+          threshold: number | string;
+          silenceDuration: number | string;
+          startTime?: number;
+        }
+      ) {
+        return yield* cpuSemaphore.withPermits(1)(
+          Effect.async<string, FFmpegError>((resume) => {
+            const { exec } =
+              require("child_process") as typeof import("child_process");
+            const cmdStr = `ffmpeg -hide_banner -vn ${opts.startTime != null ? `-ss ${opts.startTime}` : ""} -i "${inputVideo}" -af "silencedetect=n=${opts.threshold}dB:d=${opts.silenceDuration}" -f null - 2>&1`;
+            exec(
+              cmdStr,
+              { maxBuffer: 50 * 1024 * 1024 },
+              (_error, stdout, _stderr) => {
+                // ffmpeg exits non-zero with -f null, but we still get the output
+                resume(Effect.succeed(stdout.toString()));
+              }
+            );
+          })
+        );
+      });
+
+      const getFPS = Effect.fn("getFPS")(function* (inputVideo: string) {
+        const command = Command.make(
+          "ffprobe",
+          "-v",
+          "error",
+          "-select_streams",
+          "v:0",
+          "-show_entries",
+          "stream=r_frame_rate",
+          "-of",
+          "default=noprint_wrappers=1:nokey=1",
+          inputVideo
+        );
+
+        const result = yield* cpuSemaphore.withPermits(1)(
+          Command.string(command)
+        );
+
+        const trimmed = result.trim();
+        // Parse fraction like "60/1" or "30000/1001"
+        const parts = trimmed.split("/");
+        if (parts.length === 2) {
+          return Number(parts[0]) / Number(parts[1]);
+        }
+        return Number(trimmed);
+      });
+
+      const createAndConcatenateVideoClipsSinglePass = Effect.fn(
+        "createAndConcatenateVideoClipsSinglePass"
+      )(function* (
+        clips: readonly {
+          inputVideo: string;
+          startTime: number;
+          duration: number;
+          beatType: "none" | "long";
+        }[]
+      ) {
+        const LONG_BEAT_DURATION = 0.18;
+
+        const outputDir = path.join(tmpdir(), "video-processing");
+        yield* fs.makeDirectory(outputDir, { recursive: true });
+
+        const outputHash = crypto
+          .createHash("sha256")
+          .update(JSON.stringify(clips) + Date.now())
+          .digest("hex")
+          .slice(0, 12);
+        const outputFile = path.join(outputDir, `${outputHash}.mp4`);
+
+        // Build input args
+        const inputArgs: string[] = [];
+        for (const clip of clips) {
+          const duration =
+            clip.beatType === "long"
+              ? clip.duration + LONG_BEAT_DURATION
+              : clip.duration;
+          inputArgs.push(
+            "-ss",
+            clip.startTime.toString(),
+            "-t",
+            duration.toString(),
+            "-i",
+            clip.inputVideo
+          );
+        }
+
+        // Build filter complex
+        const filterParts: string[] = [];
+        const concatInputs: string[] = [];
+        for (let i = 0; i < clips.length; i++) {
+          filterParts.push(
+            `[${i}:v]setpts=PTS-STARTPTS[v${i}]`,
+            `[${i}:a]asetpts=PTS-STARTPTS[a${i}]`
+          );
+          concatInputs.push(`[v${i}][a${i}]`);
+        }
+        filterParts.push(
+          `${concatInputs.join("")}concat=n=${clips.length}:v=1:a=1[outv][outa]`
+        );
+
+        const filterComplex = filterParts.join(";");
+
+        const args = [
+          "-y",
+          "-hide_banner",
+          ...inputArgs,
+          "-filter_complex",
+          filterComplex,
+          "-map",
+          "[outv]",
+          "-map",
+          "[outa]",
+          "-c:v",
+          "h264_nvenc",
+          "-preset",
+          "slow",
+          "-rc:v",
+          "vbr",
+          "-cq:v",
+          "19",
+          "-b:v",
+          "15387k",
+          "-maxrate",
+          "20000k",
+          "-bufsize",
+          "30000k",
+          "-fps_mode",
+          "cfr",
+          "-r",
+          "60",
+          "-c:a",
+          "aac",
+          "-ar",
+          "48000",
+          "-b:a",
+          "320k",
+          "-async",
+          "1",
+          "-movflags",
+          "+faststart",
+          outputFile,
+        ];
+
+        yield* gpuSemaphore.withPermits(1)(
+          Effect.async<void, FFmpegError>((resume) => {
+            const { exec } =
+              require("child_process") as typeof import("child_process");
+            const cmdStr = `ffmpeg ${args.map((a) => (a.includes(" ") || a.includes("[") || a.includes(";") ? `"${a}"` : a)).join(" ")}`;
+            exec(
+              cmdStr,
+              { maxBuffer: 50 * 1024 * 1024 },
+              (error, _stdout, _stderr) => {
+                if (error) {
+                  resume(
+                    Effect.fail(
+                      new FFmpegError({
+                        cause: error,
+                        message: `Failed to create concatenated video: ${error.message}`,
+                      })
+                    )
+                  );
+                } else {
+                  resume(Effect.succeed(undefined));
+                }
+              }
+            );
+          })
+        );
+
+        return outputFile;
+      });
+
+      const normalizeAudio = Effect.fn("normalizeAudio")(function* (
+        inputVideo: string
+      ) {
+        const outputDir = path.join(tmpdir(), "video-processing");
+        yield* fs.makeDirectory(outputDir, { recursive: true });
+
+        const outputHash = crypto
+          .createHash("sha256")
+          .update(inputVideo + "-normalized-" + Date.now())
+          .digest("hex")
+          .slice(0, 12);
+        const outputFile = path.join(outputDir, `${outputHash}.mp4`);
+
+        // Get video and audio durations
+        const getStreamDuration = (streamType: string) =>
+          Effect.gen(function* () {
+            const command = Command.make(
+              "ffprobe",
+              "-v",
+              "error",
+              "-select_streams",
+              `${streamType}:0`,
+              "-show_entries",
+              "stream=duration",
+              "-of",
+              "default=noprint_wrappers=1:nokey=1",
+              inputVideo
+            );
+            const result = yield* Command.string(command);
+            return Number(result.trim());
+          });
+
+        const videoDuration = yield* getStreamDuration("v");
+        const audioDuration = yield* getStreamDuration("a");
+
+        const stretchFactor = videoDuration / audioDuration;
+        const needsStretching = Math.abs(stretchFactor - 1) > 0.001; // >10ms drift
+
+        const audioFilters: string[] = [];
+        if (needsStretching) {
+          audioFilters.push(`atempo=${stretchFactor}`);
+        }
+        audioFilters.push("loudnorm=I=-16:TP=-1.5:LRA=11");
+
+        const args = [
+          "-y",
+          "-hide_banner",
+          "-i",
+          inputVideo,
+          "-c:v",
+          "copy",
+          "-af",
+          audioFilters.join(","),
+          "-c:a",
+          "aac",
+          "-ar",
+          "48000",
+          "-b:a",
+          "320k",
+          outputFile,
+        ];
+
+        yield* cpuSemaphore.withPermits(1)(
+          Effect.async<void, FFmpegError>((resume) => {
+            const { exec } =
+              require("child_process") as typeof import("child_process");
+            const cmdStr = `ffmpeg ${args.map((a) => (a.includes(" ") || a.includes("=") ? `"${a}"` : a)).join(" ")}`;
+            exec(
+              cmdStr,
+              { maxBuffer: 50 * 1024 * 1024 },
+              (error, _stdout, _stderr) => {
+                if (error) {
+                  resume(
+                    Effect.fail(
+                      new FFmpegError({
+                        cause: error,
+                        message: `Failed to normalize audio: ${error.message}`,
+                      })
+                    )
+                  );
+                } else {
+                  resume(Effect.succeed(undefined));
+                }
+              }
+            );
+          })
+        );
+
+        return outputFile;
+      });
+
+      return {
+        detectSilence,
+        getFPS,
+        createAndConcatenateVideoClipsSinglePass,
+        normalizeAudio,
+      };
+    }),
+    dependencies: [NodeContext.layer],
+  }
+) {}

@@ -1,5 +1,5 @@
 import type { DB } from "@/db/schema";
-import type { BeatType } from "@/services/tt-cli-service";
+import type { BeatType } from "@/services/video-processing-service";
 import type { EffectReducer } from "use-effect-reducer";
 import type { Brand } from "./utils";
 

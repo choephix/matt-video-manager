@@ -4,9 +4,9 @@ import { DBFunctionsService } from "@/services/db-service";
 import { runtimeLive } from "@/services/layer";
 import type { Route } from "./+types/api.repoVersions.$versionId.export-unexported";
 import {
-  TotalTypeScriptCLIService,
+  VideoProcessingService,
   type BeatType,
-} from "@/services/tt-cli-service";
+} from "@/services/video-processing-service";
 import {
   FINAL_VIDEO_PADDING,
   BEAT_DURATION,
@@ -20,7 +20,7 @@ export const action = async (args: Route.ActionArgs) => {
 
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
-    const ttCliService = yield* TotalTypeScriptCLIService;
+    const ttCliService = yield* VideoProcessingService;
     const fs = yield* FileSystem.FileSystem;
     const FINISHED_VIDEOS_DIRECTORY = yield* Config.string(
       "FINISHED_VIDEOS_DIRECTORY"

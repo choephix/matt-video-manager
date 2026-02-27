@@ -27,7 +27,7 @@ import type { LogEvent } from "./video-editor-logger-service";
 // ============================================================================
 
 /**
- * Adapter for TotalTypeScriptCLIService functionality.
+ * Adapter for VideoProcessingService functionality.
  * In production, this wraps the Effect-based service.
  * In tests, this is mocked.
  */

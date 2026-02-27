@@ -10,7 +10,7 @@ import {
   clipStateReducer,
   createFrontendId,
 } from "@/features/video-editor/clip-state-reducer";
-import type { BeatType } from "@/services/tt-cli-service";
+import type { BeatType } from "@/services/video-processing-service";
 import { useOBSConnector } from "@/features/video-editor/obs-connector";
 import { VideoEditor } from "@/features/video-editor/video-editor";
 import { DBFunctionsService } from "@/services/db-service";

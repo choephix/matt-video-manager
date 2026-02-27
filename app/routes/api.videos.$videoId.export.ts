@@ -3,9 +3,9 @@ import { DBFunctionsService } from "@/services/db-service";
 import { runtimeLive } from "@/services/layer";
 import type { Route } from "./+types/api.videos.$videoId.export";
 import {
-  TotalTypeScriptCLIService,
+  VideoProcessingService,
   type BeatType,
-} from "@/services/tt-cli-service";
+} from "@/services/video-processing-service";
 import { FINAL_VIDEO_PADDING } from "@/features/video-editor/constants";
 import { withDatabaseDump } from "@/services/dump-service";
 import { data } from "react-router";
@@ -21,7 +21,7 @@ export const action = async (args: Route.ActionArgs) => {
 
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
-    const ttCliService = yield* TotalTypeScriptCLIService;
+    const ttCliService = yield* VideoProcessingService;
 
     const { shortsDirectoryOutputName } =
       yield* Schema.decodeUnknown(exportVideoSchema)(formDataObject);
