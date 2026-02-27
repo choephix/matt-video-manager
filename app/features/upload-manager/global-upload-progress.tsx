@@ -200,6 +200,7 @@ const BUFFER_STAGE_LABELS: Record<uploadReducer.BufferStage, string> = {
 };
 
 const EXPORT_STAGE_LABELS: Record<uploadReducer.ExportStage, string> = {
+  queued: "Queued",
   "concatenating-clips": "Concatenating clips",
   "normalizing-audio": "Normalizing audio",
 };

@@ -7,7 +7,10 @@ export namespace uploadReducer {
     | "error";
   export type UploadType = "youtube" | "buffer" | "ai-hero" | "export";
   export type BufferStage = "copying" | "syncing" | "sending-webhook";
-  export type ExportStage = "concatenating-clips" | "normalizing-audio";
+  export type ExportStage =
+    | "queued"
+    | "concatenating-clips"
+    | "normalizing-audio";
 
   interface BaseUploadEntry {
     uploadId: string;

@@ -346,6 +346,28 @@ describe("uploadReducer", () => {
       );
     });
 
+    it("should update export stage to queued", () => {
+      const state = reduce(
+        createState({
+          uploads: {
+            "upload-1": createExportEntry({
+              exportStage: "concatenating-clips",
+            }),
+          },
+        }),
+        {
+          type: "UPDATE_EXPORT_STAGE",
+          uploadId: "upload-1",
+          stage: "queued",
+        }
+      );
+
+      const upload = state.uploads["upload-1"]!;
+      expect(upload.uploadType === "export" && upload.exportStage).toBe(
+        "queued"
+      );
+    });
+
     it("should not modify state for non-existent upload", () => {
       const initial = createState();
       const state = reduce(initial, {
@@ -1562,6 +1584,62 @@ describe("uploadReducer", () => {
       expect(started.uploadType === "export" && started.exportStage).toBe(
         "concatenating-clips"
       );
+
+      // Transition to normalizing-audio
+      state = reduce(state, {
+        type: "UPDATE_EXPORT_STAGE",
+        uploadId: "exp-1",
+        stage: "normalizing-audio",
+      });
+      const normalizing = state.uploads["exp-1"]!;
+      expect(
+        normalizing.uploadType === "export" && normalizing.exportStage
+      ).toBe("normalizing-audio");
+
+      // Success
+      state = reduce(state, {
+        type: "UPLOAD_SUCCESS",
+        uploadId: "exp-1",
+      });
+      const success = state.uploads["exp-1"]!;
+      expect(success.status).toBe("success");
+      expect(success.uploadType === "export" && success.exportStage).toBeNull();
+      expect(success.progress).toBe(100);
+    });
+
+    it("should progress through queued → concatenating-clips → normalizing-audio → success", () => {
+      let state = createState();
+
+      // Start export with queued stage
+      state = reduce(state, {
+        type: "START_UPLOAD",
+        uploadId: "exp-1",
+        videoId: "video-1",
+        title: "Export Video",
+        uploadType: "export",
+      });
+
+      // Set to queued (batch export waiting for GPU semaphore)
+      state = reduce(state, {
+        type: "UPDATE_EXPORT_STAGE",
+        uploadId: "exp-1",
+        stage: "queued",
+      });
+      const queued = state.uploads["exp-1"]!;
+      expect(queued.uploadType === "export" && queued.exportStage).toBe(
+        "queued"
+      );
+
+      // Transition to concatenating-clips (GPU semaphore acquired)
+      state = reduce(state, {
+        type: "UPDATE_EXPORT_STAGE",
+        uploadId: "exp-1",
+        stage: "concatenating-clips",
+      });
+      const concatenating = state.uploads["exp-1"]!;
+      expect(
+        concatenating.uploadType === "export" && concatenating.exportStage
+      ).toBe("concatenating-clips");
 
       // Transition to normalizing-audio
       state = reduce(state, {
