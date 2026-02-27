@@ -113,7 +113,8 @@ const getOrderedItems = Effect.fn("getOrderedItems")(function* (
 const appendClipsAtInsertionPoint = Effect.fn("appendClipsAtInsertionPoint")(
   function* (
     db: DrizzleService,
-    input: Extract<ClipServiceEvent, { type: "append-clips" }>["input"]
+    input: Extract<ClipServiceEvent, { type: "append-clips" }>["input"],
+    options: { skipConflicts?: boolean } = {}
   ) {
     const { videoId, insertionPoint, clips: inputClips } = input;
     const allItems = yield* getOrderedItems(db, videoId);
@@ -167,26 +168,184 @@ const appendClipsAtInsertionPoint = Effect.fn("appendClipsAtInsertionPoint")(
       inputClips.length
     );
 
-    const clipsResult = yield* Effect.promise(() =>
-      db
-        .insert(clips)
-        .values(
-          inputClips.map((clip, index) => ({
-            videoId,
-            videoFilename: clip.inputVideo,
-            sourceStartTime: clip.startTime,
-            sourceEndTime: clip.endTime,
-            order: orders[index]!,
-            archived: false,
-            text: "",
-          }))
-        )
-        .returning()
-    );
+    const insertValues = inputClips.map((clip, index) => ({
+      videoId,
+      videoFilename: clip.inputVideo,
+      sourceStartTime: clip.startTime,
+      sourceEndTime: clip.endTime,
+      order: orders[index]!,
+      archived: false,
+      text: "",
+    }));
+
+    const clipsResult = yield* Effect.promise(() => {
+      const query = db.insert(clips).values(insertValues);
+      return options.skipConflicts
+        ? query
+            .onConflictDoNothing({
+              target: [
+                clips.videoId,
+                clips.videoFilename,
+                clips.sourceStartTime,
+                clips.sourceEndTime,
+              ],
+            })
+            .returning()
+        : query.returning();
+    });
 
     return clipsResult;
   }
 );
+
+// ============================================================================
+// Mutex: Serialize append-from-obs calls per videoId
+// ============================================================================
+
+const videoMutexes = new Map<string, Promise<void>>();
+
+async function withVideoMutex<T>(
+  videoId: string,
+  fn: () => Promise<T>
+): Promise<T> {
+  const prior = videoMutexes.get(videoId) ?? Promise.resolve();
+
+  let releaseMutex: () => void;
+  const gate = new Promise<void>((resolve) => {
+    releaseMutex = resolve;
+  });
+  videoMutexes.set(videoId, gate);
+
+  try {
+    await prior;
+    return await fn();
+  } finally {
+    releaseMutex!();
+    if (videoMutexes.get(videoId) === gate) {
+      videoMutexes.delete(videoId);
+    }
+  }
+}
+
+// ============================================================================
+// Helper: append-from-obs implementation (runs inside mutex)
+// ============================================================================
+
+const appendFromObsImpl = (
+  db: DrizzleService,
+  event: Extract<ClipServiceEvent, { type: "append-from-obs" }>,
+  ttCli: TtCliAdapter,
+  logger: LoggerAdapter
+) =>
+  Effect.gen(function* () {
+    const { videoId, filePath, insertionPoint } = event.input;
+
+    // Convert Windows path to WSL path if provided
+    const resolvedFilePath = filePath ? windowsToWSL(filePath) : undefined;
+
+    // Get all clips (including archived) to find the last clip with this input video
+    const allClipsIncludingArchived = yield* Effect.promise(() =>
+      db.query.clips.findMany({
+        where: eq(clips.videoId, videoId),
+      })
+    );
+
+    // Find clips with this input video and get the one with the latest end time
+    const clipsWithThisInputVideo = allClipsIncludingArchived
+      .filter((clip) => clip.videoFilename === resolvedFilePath)
+      .sort((a, b) => b.sourceStartTime - a.sourceStartTime);
+
+    const lastClipWithThisInputVideo = clipsWithThisInputVideo[0];
+
+    // Calculate start time: end time of last clip - 1 second for silence gap
+    const resolvedStartTime =
+      typeof lastClipWithThisInputVideo?.sourceEndTime === "number"
+        ? Math.max(lastClipWithThisInputVideo.sourceEndTime - 1, 0)
+        : undefined;
+
+    // Call CLI to detect clips
+    const latestOBSVideoClips = yield* Effect.promise(() =>
+      ttCli.getLatestOBSVideoClips({
+        filePath: resolvedFilePath,
+        startTime: resolvedStartTime,
+      })
+    );
+
+    if (latestOBSVideoClips.clips.length === 0) {
+      logger.log(videoId, {
+        type: "clips-appended-from-obs",
+        videoId,
+        detected: 0,
+        duplicatesSkipped: 0,
+        inserted: 0,
+        clips: [],
+      });
+      return [];
+    }
+
+    // Re-fetch clips for deduplication (in case they changed during CLI detection)
+    const allClipsForDedup = yield* Effect.promise(() =>
+      db.query.clips.findMany({
+        where: eq(clips.videoId, videoId),
+      })
+    );
+
+    // Filter out clips that already exist (deduplicate by videoFilename + startTime + endTime)
+    // Uses a tolerance of 0.15s to account for floating-point rounding from OBS detection
+    const DEDUP_TOLERANCE_SECONDS = 0.15;
+    const clipsToAdd = latestOBSVideoClips.clips.filter(
+      (clip) =>
+        !allClipsForDedup.some(
+          (existingClip) =>
+            existingClip.videoFilename === clip.inputVideo &&
+            Math.abs(existingClip.sourceStartTime - clip.startTime) <
+              DEDUP_TOLERANCE_SECONDS &&
+            Math.abs(existingClip.sourceEndTime - clip.endTime) <
+              DEDUP_TOLERANCE_SECONDS
+        )
+    );
+
+    if (clipsToAdd.length === 0) {
+      logger.log(videoId, {
+        type: "clips-appended-from-obs",
+        videoId,
+        detected: latestOBSVideoClips.clips.length,
+        duplicatesSkipped: latestOBSVideoClips.clips.length,
+        inserted: 0,
+        clips: [],
+      });
+      return [];
+    }
+
+    // Insert with skipConflicts as a safety net for when mutex is bypassed (e.g. HMR)
+    const result = yield* appendClipsAtInsertionPoint(
+      db,
+      {
+        videoId,
+        insertionPoint,
+        clips: clipsToAdd,
+      },
+      { skipConflicts: true }
+    );
+
+    const totalDuplicatesSkipped =
+      latestOBSVideoClips.clips.length - result.length;
+
+    logger.log(videoId, {
+      type: "clips-appended-from-obs",
+      videoId,
+      detected: latestOBSVideoClips.clips.length,
+      duplicatesSkipped: totalDuplicatesSkipped,
+      inserted: result.length,
+      clips: result.map((c) => ({
+        inputVideo: c.videoFilename,
+        startTime: c.sourceStartTime,
+        endTime: c.sourceEndTime,
+      })),
+    });
+
+    return result;
+  });
 
 // ============================================================================
 // Handler
@@ -266,108 +425,13 @@ export const handleClipServiceEvent = Effect.fn("handleClipServiceEvent")(
           throw new Error("TtCliAdapter is required for append-from-obs");
         }
 
-        const { videoId, filePath, insertionPoint } = event.input;
-
-        // Convert Windows path to WSL path if provided
-        const resolvedFilePath = filePath ? windowsToWSL(filePath) : undefined;
-
-        // Get all clips (including archived) to find the last clip with this input video
-        const allClipsIncludingArchived = yield* Effect.promise(() =>
-          db.query.clips.findMany({
-            where: eq(clips.videoId, videoId),
-          })
+        // Serialize concurrent append-from-obs calls for the same video
+        // via an in-memory mutex to prevent duplicate clip inserts
+        return yield* Effect.promise(() =>
+          withVideoMutex(event.input.videoId, () =>
+            Effect.runPromise(appendFromObsImpl(db, event, ttCli, logger))
+          )
         );
-
-        // Find clips with this input video and get the one with the latest end time
-        const clipsWithThisInputVideo = allClipsIncludingArchived
-          .filter((clip) => clip.videoFilename === resolvedFilePath)
-          .sort((a, b) => b.sourceStartTime - a.sourceStartTime);
-
-        const lastClipWithThisInputVideo = clipsWithThisInputVideo[0];
-
-        // Calculate start time: end time of last clip - 1 second for silence gap
-        const resolvedStartTime =
-          typeof lastClipWithThisInputVideo?.sourceEndTime === "number"
-            ? Math.max(lastClipWithThisInputVideo.sourceEndTime - 1, 0)
-            : undefined;
-
-        // Call CLI to detect clips
-        const latestOBSVideoClips = yield* Effect.promise(() =>
-          ttCli.getLatestOBSVideoClips({
-            filePath: resolvedFilePath,
-            startTime: resolvedStartTime,
-          })
-        );
-
-        if (latestOBSVideoClips.clips.length === 0) {
-          logger.log(videoId, {
-            type: "clips-appended-from-obs",
-            videoId,
-            detected: 0,
-            duplicatesSkipped: 0,
-            inserted: 0,
-            clips: [],
-          });
-          return [];
-        }
-
-        // Re-fetch clips for deduplication (in case they changed during CLI detection)
-        const allClipsForDedup = yield* Effect.promise(() =>
-          db.query.clips.findMany({
-            where: eq(clips.videoId, videoId),
-          })
-        );
-
-        // Filter out clips that already exist (deduplicate by videoFilename + startTime + endTime)
-        // Uses a tolerance of 0.15s to account for floating-point rounding from OBS detection
-        const DEDUP_TOLERANCE_SECONDS = 0.15;
-        const clipsToAdd = latestOBSVideoClips.clips.filter(
-          (clip) =>
-            !allClipsForDedup.some(
-              (existingClip) =>
-                existingClip.videoFilename === clip.inputVideo &&
-                Math.abs(existingClip.sourceStartTime - clip.startTime) <
-                  DEDUP_TOLERANCE_SECONDS &&
-                Math.abs(existingClip.sourceEndTime - clip.endTime) <
-                  DEDUP_TOLERANCE_SECONDS
-            )
-        );
-
-        const duplicatesSkipped =
-          latestOBSVideoClips.clips.length - clipsToAdd.length;
-
-        if (clipsToAdd.length === 0) {
-          logger.log(videoId, {
-            type: "clips-appended-from-obs",
-            videoId,
-            detected: latestOBSVideoClips.clips.length,
-            duplicatesSkipped,
-            inserted: 0,
-            clips: [],
-          });
-          return [];
-        }
-
-        const result = yield* appendClipsAtInsertionPoint(db, {
-          videoId,
-          insertionPoint,
-          clips: clipsToAdd,
-        });
-
-        logger.log(videoId, {
-          type: "clips-appended-from-obs",
-          videoId,
-          detected: latestOBSVideoClips.clips.length,
-          duplicatesSkipped,
-          inserted: clipsToAdd.length,
-          clips: clipsToAdd.map((c) => ({
-            inputVideo: c.inputVideo,
-            startTime: c.startTime,
-            endTime: c.endTime,
-          })),
-        });
-
-        return result;
       }
 
       case "archive-clips": {

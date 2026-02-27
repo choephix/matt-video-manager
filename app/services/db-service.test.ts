@@ -20,17 +20,20 @@ type InsertionPoint =
 
 describe("appendClips", () => {
   let videoId: string;
+  let clipCounter = 0;
 
   const appendClips = (insertionPoint: InsertionPoint, clipCount = 1) =>
     Effect.gen(function* () {
       const db = yield* DBFunctionsService;
+      const offset = clipCounter;
+      clipCounter += clipCount;
       return yield* db.appendClips({
         videoId,
         insertionPoint,
         clips: Array.from({ length: clipCount }, (_, i) => ({
           inputVideo: "test.mp4",
-          startTime: i * 10,
-          endTime: (i + 1) * 10,
+          startTime: (offset + i) * 10,
+          endTime: (offset + i + 1) * 10,
         })),
       });
     });
@@ -64,6 +67,7 @@ describe("appendClips", () => {
     });
 
   beforeEach(async () => {
+    clipCounter = 0;
     pglite = new PGlite();
     testDb = drizzle(pglite, { schema });
     const { apply } = await pushSchema(schema, testDb as any);
@@ -432,17 +436,20 @@ describe("appendClips", () => {
 
 describe("reorderClip", () => {
   let videoId: string;
+  let clipCounter = 0;
 
   const appendClips = (insertionPoint: InsertionPoint, clipCount = 1) =>
     Effect.gen(function* () {
       const db = yield* DBFunctionsService;
+      const offset = clipCounter;
+      clipCounter += clipCount;
       return yield* db.appendClips({
         videoId,
         insertionPoint,
         clips: Array.from({ length: clipCount }, (_, i) => ({
           inputVideo: "test.mp4",
-          startTime: i * 10,
-          endTime: (i + 1) * 10,
+          startTime: (offset + i) * 10,
+          endTime: (offset + i + 1) * 10,
         })),
       });
     });
@@ -482,6 +489,7 @@ describe("reorderClip", () => {
     });
 
   beforeEach(async () => {
+    clipCounter = 0;
     pglite = new PGlite();
     testDb = drizzle(pglite, { schema });
     const { apply } = await pushSchema(schema, testDb as any);
@@ -551,17 +559,20 @@ describe("reorderClip", () => {
 
 describe("reorderClipSection", () => {
   let videoId: string;
+  let clipCounter = 0;
 
   const appendClips = (insertionPoint: InsertionPoint, clipCount = 1) =>
     Effect.gen(function* () {
       const db = yield* DBFunctionsService;
+      const offset = clipCounter;
+      clipCounter += clipCount;
       return yield* db.appendClips({
         videoId,
         insertionPoint,
         clips: Array.from({ length: clipCount }, (_, i) => ({
           inputVideo: "test.mp4",
-          startTime: i * 10,
-          endTime: (i + 1) * 10,
+          startTime: (offset + i) * 10,
+          endTime: (offset + i + 1) * 10,
         })),
       });
     });
@@ -602,6 +613,7 @@ describe("reorderClipSection", () => {
     });
 
   beforeEach(async () => {
+    clipCounter = 0;
     pglite = new PGlite();
     testDb = drizzle(pglite, { schema });
     const { apply } = await pushSchema(schema, testDb as any);
@@ -689,17 +701,20 @@ describe("reorderClipSection", () => {
 
 describe("createClipSectionAtPosition", () => {
   let videoId: string;
+  let clipCounter = 0;
 
   const appendClips = (insertionPoint: InsertionPoint, clipCount = 1) =>
     Effect.gen(function* () {
       const db = yield* DBFunctionsService;
+      const offset = clipCounter;
+      clipCounter += clipCount;
       return yield* db.appendClips({
         videoId,
         insertionPoint,
         clips: Array.from({ length: clipCount }, (_, i) => ({
           inputVideo: "test.mp4",
-          startTime: i * 10,
-          endTime: (i + 1) * 10,
+          startTime: (offset + i) * 10,
+          endTime: (offset + i + 1) * 10,
         })),
       });
     });
@@ -751,6 +766,7 @@ describe("createClipSectionAtPosition", () => {
     });
 
   beforeEach(async () => {
+    clipCounter = 0;
     pglite = new PGlite();
     testDb = drizzle(pglite, { schema });
     const { apply } = await pushSchema(schema, testDb as any);

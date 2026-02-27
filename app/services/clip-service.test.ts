@@ -1007,6 +1007,97 @@ describe("ClipService", () => {
         result[0]!.id,
       ]);
     });
+
+    it("serializes concurrent append-from-obs calls via mutex", async () => {
+      const video = await clipService.createVideo("test-video.mp4");
+
+      mockTtCli.getLatestOBSVideoClips = vi.fn().mockResolvedValue({
+        clips: [
+          { inputVideo: "/mnt/c/obs/video.mkv", startTime: 0, endTime: 10 },
+          { inputVideo: "/mnt/c/obs/video.mkv", startTime: 15, endTime: 25 },
+        ],
+      });
+
+      // Fire two concurrent appendFromObs calls — mutex serializes them
+      const [result1, result2] = await Promise.all([
+        clipService.appendFromObs({
+          videoId: video.id,
+          insertionPoint: start,
+          items: [],
+        }),
+        clipService.appendFromObs({
+          videoId: video.id,
+          insertionPoint: start,
+          items: [],
+        }),
+      ]);
+
+      // One call inserts clips, the other finds them as duplicates
+      const totalInserted = result1.length + result2.length;
+      expect(totalInserted).toBe(2);
+
+      const timeline = await clipService.getTimeline(video.id);
+      expect(timeline).toHaveLength(2);
+    });
+
+    it("enforces unique constraint on exact duplicate clip inserts", async () => {
+      const video = await clipService.createVideo("test-video.mp4");
+
+      await testDb.insert(schema.clips).values({
+        videoId: video.id,
+        videoFilename: "/mnt/c/obs/video.mkv",
+        sourceStartTime: 0,
+        sourceEndTime: 10,
+        order: "a0",
+        archived: false,
+        text: "",
+      });
+
+      // Exact duplicate should be rejected by unique constraint
+      await expect(
+        testDb.insert(schema.clips).values({
+          videoId: video.id,
+          videoFilename: "/mnt/c/obs/video.mkv",
+          sourceStartTime: 0,
+          sourceEndTime: 10,
+          order: "a1",
+          archived: false,
+          text: "",
+        })
+      ).rejects.toThrow();
+    });
+
+    it("mutex releases on error allowing subsequent calls", async () => {
+      const video = await clipService.createVideo("test-video.mp4");
+
+      // First call: mock throws
+      mockTtCli.getLatestOBSVideoClips = vi
+        .fn()
+        .mockRejectedValueOnce(new Error("CLI failed"))
+        .mockResolvedValueOnce({
+          clips: [
+            { inputVideo: "/mnt/c/obs/video.mkv", startTime: 0, endTime: 10 },
+          ],
+        });
+
+      // First call should fail
+      await expect(
+        clipService.appendFromObs({
+          videoId: video.id,
+          insertionPoint: start,
+          items: [],
+        })
+      ).rejects.toThrow();
+
+      // Second call should succeed — mutex was released
+      const result = await clipService.appendFromObs({
+        videoId: video.id,
+        insertionPoint: start,
+        items: [],
+      });
+
+      expect(result).toHaveLength(1);
+    });
   });
 
   // ==========================================================================
