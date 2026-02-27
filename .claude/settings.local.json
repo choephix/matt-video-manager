@@ -16,7 +16,7 @@
       "WebFetch(domain:medium.com)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(grep:*)",
+      "Bash(grep *)",
       "Bash(find *)",
       "Bash(pnpm test:*)",
       "Bash(ls:*)",
@@ -60,7 +60,8 @@
       "WebFetch(domain:developers.buffer.com)",
       "WebFetch(domain:community.zapier.com)",
       "Read(/home/mattpocock/repos/ai/course-builder/**)",
-      "WebFetch(domain:developers.kit.com)"
+      "WebFetch(domain:developers.kit.com)",
+      "Bash(git remote:*)"
     ],
     "deny": [],
     "ask": []
