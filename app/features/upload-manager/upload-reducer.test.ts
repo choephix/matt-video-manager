@@ -23,6 +23,7 @@ const createYouTubeEntry = (
   youtubeVideoId: null,
   errorMessage: null,
   retryCount: 0,
+  dependsOn: null,
   ...overrides,
 });
 
@@ -38,6 +39,7 @@ const createBufferEntry = (
   bufferStage: "copying",
   errorMessage: null,
   retryCount: 0,
+  dependsOn: null,
   ...overrides,
 });
 
@@ -53,6 +55,7 @@ const createAiHeroEntry = (
   aiHeroSlug: null,
   errorMessage: null,
   retryCount: 0,
+  dependsOn: null,
   ...overrides,
 });
 
@@ -68,6 +71,7 @@ const createExportEntry = (
   exportStage: "concatenating-clips",
   errorMessage: null,
   retryCount: 0,
+  dependsOn: null,
   ...overrides,
 });
 
@@ -91,6 +95,7 @@ describe("uploadReducer", () => {
         youtubeVideoId: null,
         errorMessage: null,
         retryCount: 0,
+        dependsOn: null,
       });
     });
 
@@ -134,6 +139,7 @@ describe("uploadReducer", () => {
         youtubeVideoId: null,
         errorMessage: null,
         retryCount: 0,
+        dependsOn: null,
       });
     });
 
@@ -183,6 +189,7 @@ describe("uploadReducer", () => {
         aiHeroSlug: null,
         errorMessage: null,
         retryCount: 0,
+        dependsOn: null,
       });
     });
 
@@ -205,6 +212,7 @@ describe("uploadReducer", () => {
         exportStage: "concatenating-clips",
         errorMessage: null,
         retryCount: 0,
+        dependsOn: null,
       });
     });
   });
@@ -1308,6 +1316,7 @@ describe("uploadReducer", () => {
         aiHeroSlug: null,
         errorMessage: null,
         retryCount: 0,
+        dependsOn: null,
       });
     });
 
@@ -1618,6 +1627,236 @@ describe("uploadReducer", () => {
 
       state = reduce(state, { type: "DISMISS", uploadId: "exp-1" });
       expect(state.uploads["exp-1"]).toBeUndefined();
+    });
+  });
+
+  describe("job dependencies", () => {
+    it("should start job in waiting status when dependsOn is set", () => {
+      let state = createState();
+
+      // Start export job
+      state = reduce(state, {
+        type: "START_UPLOAD",
+        uploadId: "export-1",
+        videoId: "video-1",
+        title: "Export Video",
+        uploadType: "export",
+      });
+
+      // Start YouTube upload with dependency on export
+      state = reduce(state, {
+        type: "START_UPLOAD",
+        uploadId: "yt-1",
+        videoId: "video-1",
+        title: "Upload to YouTube",
+        uploadType: "youtube",
+        dependsOn: "export-1",
+      });
+
+      expect(state.uploads["yt-1"]!.status).toBe("waiting");
+      expect(state.uploads["yt-1"]!.dependsOn).toBe("export-1");
+    });
+
+    it("should activate waiting job when dependency succeeds", () => {
+      let state = createState();
+
+      // Start export
+      state = reduce(state, {
+        type: "START_UPLOAD",
+        uploadId: "export-1",
+        videoId: "video-1",
+        title: "Export Video",
+        uploadType: "export",
+      });
+
+      // Start upload depending on export
+      state = reduce(state, {
+        type: "START_UPLOAD",
+        uploadId: "yt-1",
+        videoId: "video-1",
+        title: "Upload to YouTube",
+        dependsOn: "export-1",
+      });
+      expect(state.uploads["yt-1"]!.status).toBe("waiting");
+
+      // Complete export
+      state = reduce(state, {
+        type: "UPLOAD_SUCCESS",
+        uploadId: "export-1",
+      });
+
+      expect(state.uploads["export-1"]!.status).toBe("success");
+      expect(state.uploads["yt-1"]!.status).toBe("uploading");
+    });
+
+    it("should fail waiting job when dependency fails permanently", () => {
+      let state = createState();
+
+      // Start export
+      state = reduce(state, {
+        type: "START_UPLOAD",
+        uploadId: "export-1",
+        videoId: "video-1",
+        title: "Export Video",
+        uploadType: "export",
+      });
+
+      // Start upload depending on export
+      state = reduce(state, {
+        type: "START_UPLOAD",
+        uploadId: "yt-1",
+        videoId: "video-1",
+        title: "Upload to YouTube",
+        dependsOn: "export-1",
+      });
+
+      // Exhaust retries (3 errors)
+      state = reduce(state, {
+        type: "UPLOAD_ERROR",
+        uploadId: "export-1",
+        errorMessage: "Error 1",
+      });
+      state = reduce(state, { type: "RETRY", uploadId: "export-1" });
+      state = reduce(state, {
+        type: "UPLOAD_ERROR",
+        uploadId: "export-1",
+        errorMessage: "Error 2",
+      });
+      state = reduce(state, { type: "RETRY", uploadId: "export-1" });
+      state = reduce(state, {
+        type: "UPLOAD_ERROR",
+        uploadId: "export-1",
+        errorMessage: "Error 3",
+      });
+
+      expect(state.uploads["export-1"]!.status).toBe("error");
+      expect(state.uploads["yt-1"]!.status).toBe("error");
+      expect(state.uploads["yt-1"]!.errorMessage).toBe(
+        'Dependency "Export Video" failed'
+      );
+    });
+
+    it("should not affect waiting job when dependency is retrying", () => {
+      let state = createState();
+
+      state = reduce(state, {
+        type: "START_UPLOAD",
+        uploadId: "export-1",
+        videoId: "video-1",
+        title: "Export Video",
+        uploadType: "export",
+      });
+
+      state = reduce(state, {
+        type: "START_UPLOAD",
+        uploadId: "yt-1",
+        videoId: "video-1",
+        title: "Upload to YouTube",
+        dependsOn: "export-1",
+      });
+
+      // First error triggers retry, not final failure
+      state = reduce(state, {
+        type: "UPLOAD_ERROR",
+        uploadId: "export-1",
+        errorMessage: "Transient error",
+      });
+
+      expect(state.uploads["export-1"]!.status).toBe("retrying");
+      expect(state.uploads["yt-1"]!.status).toBe("waiting");
+    });
+
+    it("should activate multiple waiting jobs when dependency succeeds", () => {
+      let state = createState();
+
+      state = reduce(state, {
+        type: "START_UPLOAD",
+        uploadId: "export-1",
+        videoId: "video-1",
+        title: "Export Video",
+        uploadType: "export",
+      });
+
+      state = reduce(state, {
+        type: "START_UPLOAD",
+        uploadId: "yt-1",
+        videoId: "video-1",
+        title: "Upload to YouTube",
+        dependsOn: "export-1",
+      });
+
+      state = reduce(state, {
+        type: "START_UPLOAD",
+        uploadId: "ah-1",
+        videoId: "video-1",
+        title: "Post to AI Hero",
+        uploadType: "ai-hero",
+        dependsOn: "export-1",
+      });
+
+      expect(state.uploads["yt-1"]!.status).toBe("waiting");
+      expect(state.uploads["ah-1"]!.status).toBe("waiting");
+
+      state = reduce(state, {
+        type: "UPLOAD_SUCCESS",
+        uploadId: "export-1",
+      });
+
+      expect(state.uploads["yt-1"]!.status).toBe("uploading");
+      expect(state.uploads["ah-1"]!.status).toBe("uploading");
+    });
+
+    it("should preserve dependsOn through retry", () => {
+      let state = createState();
+
+      state = reduce(state, {
+        type: "START_UPLOAD",
+        uploadId: "export-1",
+        videoId: "video-1",
+        title: "Export Video",
+        uploadType: "export",
+      });
+
+      // Complete export
+      state = reduce(state, {
+        type: "UPLOAD_SUCCESS",
+        uploadId: "export-1",
+      });
+
+      // Start dependent upload (it goes straight to uploading since dep is done)
+      // But if we create it before success with dependsOn, then it becomes uploading
+      // Let's test that dependsOn is preserved through retry cycle
+      let stateWithDep = createState({
+        uploads: {
+          "yt-1": createYouTubeEntry({
+            uploadId: "yt-1",
+            status: "uploading",
+            dependsOn: "export-1",
+          }),
+        },
+      });
+
+      // Error then retry
+      stateWithDep = reduce(stateWithDep, {
+        type: "UPLOAD_ERROR",
+        uploadId: "yt-1",
+        errorMessage: "Timeout",
+      });
+      stateWithDep = reduce(stateWithDep, { type: "RETRY", uploadId: "yt-1" });
+
+      expect(stateWithDep.uploads["yt-1"]!.dependsOn).toBe("export-1");
+    });
+
+    it("should start job in uploading status when no dependsOn is set", () => {
+      const state = reduce(createState(), {
+        type: "START_UPLOAD",
+        uploadId: "yt-1",
+        videoId: "video-1",
+        title: "Upload to YouTube",
+      });
+
+      expect(state.uploads["yt-1"]!.status).toBe("uploading");
+      expect(state.uploads["yt-1"]!.dependsOn).toBeNull();
     });
   });
 });

@@ -10,6 +10,7 @@ import {
   Send,
   Copy,
   Film,
+  Clock,
 } from "lucide-react";
 import { Link } from "react-router";
 import { UploadContext } from "./upload-context";
@@ -25,7 +26,10 @@ export function GlobalUploadProgress() {
   const hasUploads = uploadEntries.length > 0;
 
   const activeUploads = uploadEntries.filter(
-    (u) => u.status === "uploading" || u.status === "retrying"
+    (u) =>
+      u.status === "uploading" ||
+      u.status === "retrying" ||
+      u.status === "waiting"
   );
   const isActive = activeUploads.length > 0;
 
@@ -161,6 +165,8 @@ function UploadRow({
 
 function StatusIcon({ upload }: { upload: uploadReducer.UploadEntry }) {
   switch (upload.status) {
+    case "waiting":
+      return <Clock className="size-4 text-muted-foreground shrink-0" />;
     case "uploading":
       if (upload.uploadType === "buffer") {
         switch (upload.bufferStage) {
@@ -200,6 +206,12 @@ const EXPORT_STAGE_LABELS: Record<uploadReducer.ExportStage, string> = {
 
 function UploadStatusDetail({ upload }: { upload: uploadReducer.UploadEntry }) {
   switch (upload.status) {
+    case "waiting":
+      return (
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Waiting for export...
+        </p>
+      );
     case "uploading":
       if (upload.uploadType === "buffer" && upload.bufferStage) {
         const stageLabel = BUFFER_STAGE_LABELS[upload.bufferStage];

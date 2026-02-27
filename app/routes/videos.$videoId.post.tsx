@@ -440,7 +440,7 @@ export default function PostPage(props: Route.ComponentProps) {
 
   // Derive upload display state
   const uploadStatus: "idle" | "uploading" | "success" | "error" = activeUpload
-    ? activeUpload.status === "retrying"
+    ? activeUpload.status === "retrying" || activeUpload.status === "waiting"
       ? "uploading"
       : activeUpload.status
     : storedYoutubeVideoId

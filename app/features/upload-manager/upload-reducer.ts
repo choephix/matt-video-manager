@@ -1,5 +1,10 @@
 export namespace uploadReducer {
-  export type UploadStatus = "uploading" | "retrying" | "success" | "error";
+  export type UploadStatus =
+    | "waiting"
+    | "uploading"
+    | "retrying"
+    | "success"
+    | "error";
   export type UploadType = "youtube" | "buffer" | "ai-hero" | "export";
   export type BufferStage = "copying" | "syncing" | "sending-webhook";
   export type ExportStage = "concatenating-clips" | "normalizing-audio";
@@ -12,6 +17,7 @@ export namespace uploadReducer {
     status: UploadStatus;
     errorMessage: string | null;
     retryCount: number;
+    dependsOn: string | null;
   }
 
   export interface YouTubeUploadEntry extends BaseUploadEntry {
@@ -51,6 +57,7 @@ export namespace uploadReducer {
         videoId: string;
         title: string;
         uploadType?: UploadType;
+        dependsOn?: string;
       }
     | { type: "UPDATE_PROGRESS"; uploadId: string; progress: number }
     | {
@@ -85,14 +92,17 @@ export const uploadReducer = (
   switch (action.type) {
     case "START_UPLOAD": {
       const uploadType = action.uploadType ?? "youtube";
+      const dependsOn = action.dependsOn ?? null;
+      const status = dependsOn ? ("waiting" as const) : ("uploading" as const);
       const base = {
         uploadId: action.uploadId,
         videoId: action.videoId,
         title: action.title,
         progress: 0,
-        status: "uploading" as const,
+        status,
         errorMessage: null,
         retryCount: 0,
+        dependsOn,
       };
 
       let entry: uploadReducer.UploadEntry;
@@ -207,12 +217,17 @@ export const uploadReducer = (
           break;
       }
 
+      // Activate any jobs waiting on this upload
+      const updatedUploads = { ...state.uploads, [action.uploadId]: entry };
+      for (const [id, u] of Object.entries(updatedUploads)) {
+        if (u.dependsOn === action.uploadId && u.status === "waiting") {
+          updatedUploads[id] = { ...u, status: "uploading" };
+        }
+      }
+
       return {
         ...state,
-        uploads: {
-          ...state.uploads,
-          [action.uploadId]: entry,
-        },
+        uploads: updatedUploads,
       };
     }
 
@@ -237,17 +252,29 @@ export const uploadReducer = (
         };
       }
 
+      // Final failure — also fail any jobs waiting on this upload
+      const updatedUploads = {
+        ...state.uploads,
+        [action.uploadId]: {
+          ...upload,
+          status: "error" as const,
+          retryCount: nextRetryCount,
+          errorMessage: action.errorMessage,
+        },
+      };
+      for (const [id, u] of Object.entries(updatedUploads)) {
+        if (u.dependsOn === action.uploadId && u.status === "waiting") {
+          updatedUploads[id] = {
+            ...u,
+            status: "error" as const,
+            errorMessage: `Dependency "${upload.title}" failed`,
+          };
+        }
+      }
+
       return {
         ...state,
-        uploads: {
-          ...state.uploads,
-          [action.uploadId]: {
-            ...upload,
-            status: "error",
-            retryCount: nextRetryCount,
-            errorMessage: action.errorMessage,
-          },
-        },
+        uploads: updatedUploads,
       };
     }
 
@@ -263,6 +290,7 @@ export const uploadReducer = (
         status: "uploading" as const,
         errorMessage: upload.errorMessage,
         retryCount: upload.retryCount,
+        dependsOn: upload.dependsOn,
       };
 
       let entry: uploadReducer.UploadEntry;
