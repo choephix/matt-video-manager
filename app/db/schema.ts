@@ -121,7 +121,9 @@ export const videos = createTable("video", {
   createdAt: timestamp("created_at", {
     mode: "date",
     withTimezone: true,
-  }),
+  })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const clips = createTable("clip", {
@@ -138,7 +140,9 @@ export const clips = createTable("clip", {
   createdAt: timestamp("created_at", {
     mode: "date",
     withTimezone: true,
-  }),
+  })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
   order: varcharCollateC("order").notNull(),
   archived: boolean("archived").notNull().default(false),
   text: text("text").notNull(),
