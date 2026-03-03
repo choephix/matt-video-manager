@@ -43,35 +43,58 @@ export type SessionPanelData = {
   displayNumber: number;
   isRecording: boolean;
   pendingClips: ClipOptimisticallyAdded[];
+  archivedClips: (ClipOptimisticallyAdded | ClipOnDatabase)[];
 };
 
 /**
  * Derives session panel data from sessions and items.
- * Groups pending (non-archived) optimistic clips by session ID.
- * Only includes sessions that have at least one pending clip.
+ * Groups pending (non-archived) optimistic clips and archived clips by session ID.
+ * Only includes sessions that have at least one pending or archived clip.
  * Sorted by display number (oldest first).
  */
 export const getSessionPanels = (
   items: TimelineItem[],
   sessions: RecordingSession[]
 ): SessionPanelData[] => {
-  const clipsBySession = new Map<SessionId, ClipOptimisticallyAdded[]>();
+  const pendingBySession = new Map<SessionId, ClipOptimisticallyAdded[]>();
+  const archivedBySession = new Map<
+    SessionId,
+    (ClipOptimisticallyAdded | ClipOnDatabase)[]
+  >();
 
   for (const item of items) {
-    if (item.type === "optimistically-added" && !item.shouldArchive) {
-      const clips = clipsBySession.get(item.sessionId) ?? [];
+    if (item.type === "optimistically-added") {
+      if (item.shouldArchive) {
+        const clips = archivedBySession.get(item.sessionId) ?? [];
+        clips.push(item);
+        archivedBySession.set(item.sessionId, clips);
+      } else {
+        const clips = pendingBySession.get(item.sessionId) ?? [];
+        clips.push(item);
+        pendingBySession.set(item.sessionId, clips);
+      }
+    } else if (
+      item.type === "on-database" &&
+      item.shouldArchive &&
+      item.sessionId
+    ) {
+      const clips = archivedBySession.get(item.sessionId) ?? [];
       clips.push(item);
-      clipsBySession.set(item.sessionId, clips);
+      archivedBySession.set(item.sessionId, clips);
     }
   }
 
   return sessions
-    .filter((session) => clipsBySession.has(session.id))
+    .filter(
+      (session) =>
+        pendingBySession.has(session.id) || archivedBySession.has(session.id)
+    )
     .map((session) => ({
       sessionId: session.id,
       displayNumber: session.displayNumber,
       isRecording: session.isRecording,
-      pendingClips: clipsBySession.get(session.id)!,
+      pendingClips: pendingBySession.get(session.id) ?? [],
+      archivedClips: archivedBySession.get(session.id) ?? [],
     }))
     .sort((a, b) => a.displayNumber - b.displayNumber);
 };

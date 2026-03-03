@@ -999,7 +999,7 @@ describe("getSessionPanels", () => {
     expect(getSessionPanels(items, [])).toEqual([]);
   });
 
-  it("returns empty array when all optimistic clips are archived", () => {
+  it("includes archived optimistic clips in archivedClips", () => {
     const sessions: RecordingSession[] = [
       makeSession({ id: sid("s1"), displayNumber: 1 }),
     ];
@@ -1010,7 +1010,84 @@ describe("getSessionPanels", () => {
         shouldArchive: true,
       }),
     ];
-    expect(getSessionPanels(items, sessions)).toEqual([]);
+    const panels = getSessionPanels(items, sessions);
+    expect(panels).toHaveLength(1);
+    expect(panels[0]!.pendingClips).toHaveLength(0);
+    expect(panels[0]!.archivedClips).toHaveLength(1);
+    expect(panels[0]!.archivedClips[0]!.frontendId).toBe(id("c1"));
+  });
+
+  it("includes archived ClipOnDatabase clips in archivedClips", () => {
+    const sessions: RecordingSession[] = [
+      makeSession({ id: sid("s1"), displayNumber: 1 }),
+    ];
+    const items: TimelineItem[] = [
+      makeClipOnDatabase({
+        frontendId: id("c1"),
+        shouldArchive: true,
+        sessionId: sid("s1"),
+      }),
+    ];
+    const panels = getSessionPanels(items, sessions);
+    expect(panels).toHaveLength(1);
+    expect(panels[0]!.pendingClips).toHaveLength(0);
+    expect(panels[0]!.archivedClips).toHaveLength(1);
+    expect(panels[0]!.archivedClips[0]!.frontendId).toBe(id("c1"));
+  });
+
+  it("shows session with both pending and archived clips", () => {
+    const sessions: RecordingSession[] = [
+      makeSession({ id: sid("s1"), displayNumber: 1 }),
+    ];
+    const items: TimelineItem[] = [
+      makeOptimisticClip({ frontendId: id("c1"), sessionId: sid("s1") }),
+      makeOptimisticClip({
+        frontendId: id("c2"),
+        sessionId: sid("s1"),
+        shouldArchive: true,
+      }),
+      makeClipOnDatabase({
+        frontendId: id("c3"),
+        shouldArchive: true,
+        sessionId: sid("s1"),
+      }),
+    ];
+    const panels = getSessionPanels(items, sessions);
+    expect(panels).toHaveLength(1);
+    expect(panels[0]!.pendingClips).toHaveLength(1);
+    expect(panels[0]!.pendingClips[0]!.frontendId).toBe(id("c1"));
+    expect(panels[0]!.archivedClips).toHaveLength(2);
+    expect(panels[0]!.archivedClips.map((c) => c.frontendId)).toEqual([
+      id("c2"),
+      id("c3"),
+    ]);
+  });
+
+  it("excludes sessions with no pending or archived clips", () => {
+    const sessions: RecordingSession[] = [
+      makeSession({ id: sid("s1"), displayNumber: 1 }),
+      makeSession({ id: sid("s2"), displayNumber: 2 }),
+    ];
+    const items: TimelineItem[] = [
+      makeOptimisticClip({ frontendId: id("c1"), sessionId: sid("s1") }),
+    ];
+    const panels = getSessionPanels(items, sessions);
+    expect(panels).toHaveLength(1);
+    expect(panels[0]!.sessionId).toBe(sid("s1"));
+  });
+
+  it("ignores ClipOnDatabase without shouldArchive (main timeline clips)", () => {
+    const sessions: RecordingSession[] = [
+      makeSession({ id: sid("s1"), displayNumber: 1 }),
+    ];
+    const items: TimelineItem[] = [
+      makeClipOnDatabase({ frontendId: id("c1") }),
+      makeOptimisticClip({ frontendId: id("c2"), sessionId: sid("s1") }),
+    ];
+    const panels = getSessionPanels(items, sessions);
+    expect(panels).toHaveLength(1);
+    expect(panels[0]!.archivedClips).toHaveLength(0);
+    expect(panels[0]!.pendingClips).toHaveLength(1);
   });
 
   it("sorts panels by display number (oldest first)", () => {

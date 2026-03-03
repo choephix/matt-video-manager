@@ -40,6 +40,12 @@ export type ClipOnDatabase = {
    * session panel, showing its transcript text.
    */
   shouldArchive?: boolean;
+  /**
+   * The recording session this clip belongs to. Only set when the clip was
+   * created from an archived optimistic clip, so it can be grouped in the
+   * correct session panel's archived sub-section.
+   */
+  sessionId?: SessionId;
 };
 
 export type ClipOptimisticallyAdded = {
@@ -509,6 +515,7 @@ export const clipStateReducer: EffectReducer<
               insertionOrder: frontendClip.insertionOrder,
               beatType: frontendClip.beatType,
               shouldArchive: true,
+              sessionId: frontendClip.sessionId,
             };
             newClipsState[index] = archivedDatabaseClip;
             clipsToArchive.add(databaseClip.id);
