@@ -1841,6 +1841,190 @@ describe("clipStateReducer", () => {
       });
     });
 
+    describe("mark-orphans", () => {
+      it("Should mark unresolved optimistic clips in the session as orphaned", () => {
+        const tester = new ReducerTester(
+          clipStateReducer,
+          createInitialState()
+        );
+
+        tester
+          .send({ type: "recording-started" })
+          .send(
+            fromPartial({
+              type: "new-optimistic-clip-detected",
+              soundDetectionId: "sound-1",
+            })
+          )
+          .send(
+            fromPartial({
+              type: "new-optimistic-clip-detected",
+              soundDetectionId: "sound-2",
+            })
+          )
+          .send({ type: "recording-stopped" });
+
+        const sessionId = tester.getState().sessions[0]!.id;
+
+        tester.send({ type: "mark-orphans", sessionId });
+
+        const state = tester.getState();
+        const clip1 = state.items[0] as ClipOptimisticallyAdded;
+        const clip2 = state.items[1] as ClipOptimisticallyAdded;
+        expect(clip1.isOrphaned).toBe(true);
+        expect(clip2.isOrphaned).toBe(true);
+      });
+
+      it("Should not affect optimistic clips in other sessions", () => {
+        const tester = new ReducerTester(
+          clipStateReducer,
+          createInitialState()
+        );
+
+        // Session 1 with a clip
+        tester
+          .send({ type: "recording-started" })
+          .send(
+            fromPartial({
+              type: "new-optimistic-clip-detected",
+              soundDetectionId: "sound-1",
+            })
+          )
+          .send({ type: "recording-stopped" });
+
+        const session1Id = tester.getState().sessions[0]!.id;
+
+        // Session 2 with a clip
+        tester
+          .send({ type: "recording-started" })
+          .send(
+            fromPartial({
+              type: "new-optimistic-clip-detected",
+              soundDetectionId: "sound-2",
+            })
+          )
+          .send({ type: "recording-stopped" });
+
+        // Mark orphans only for session 1
+        tester.send({ type: "mark-orphans", sessionId: session1Id });
+
+        const state = tester.getState();
+        const clip1 = state.items[0] as ClipOptimisticallyAdded;
+        const clip2 = state.items[1] as ClipOptimisticallyAdded;
+        expect(clip1.isOrphaned).toBe(true);
+        expect(clip2.isOrphaned).toBeUndefined();
+      });
+
+      it("Should not affect already-archived clips (shouldArchive: true)", () => {
+        const tester = new ReducerTester(
+          clipStateReducer,
+          createInitialState()
+        );
+
+        tester
+          .send({ type: "recording-started" })
+          .send(
+            fromPartial({
+              type: "new-optimistic-clip-detected",
+              soundDetectionId: "sound-1",
+            })
+          )
+          .send(
+            fromPartial({
+              type: "new-optimistic-clip-detected",
+              soundDetectionId: "sound-2",
+            })
+          )
+          .send({ type: "recording-stopped" });
+
+        const sessionId = tester.getState().sessions[0]!.id;
+
+        // Archive the first clip by marking shouldArchive
+        const clip1Id = tester.getState().items[0]!.frontendId;
+        tester.send({ type: "clips-deleted", clipIds: [clip1Id] });
+
+        tester.send({ type: "mark-orphans", sessionId });
+
+        const state = tester.getState();
+        const archivedClip = state.items.find(
+          (c) => c.frontendId === clip1Id
+        ) as ClipOptimisticallyAdded;
+        // Archived clip should still have shouldArchive but NOT be marked orphaned
+        expect(archivedClip.shouldArchive).toBe(true);
+        expect(archivedClip.isOrphaned).toBeUndefined();
+
+        // Non-archived clip should be orphaned
+        const otherClip = state.items.find(
+          (c) => c.frontendId !== clip1Id
+        ) as ClipOptimisticallyAdded;
+        expect(otherClip.isOrphaned).toBe(true);
+      });
+
+      it("Should no-op if no unresolved clips exist in the session", () => {
+        const tester = new ReducerTester(
+          clipStateReducer,
+          createInitialState()
+        );
+
+        tester
+          .send({ type: "recording-started" })
+          .send({ type: "recording-stopped" });
+
+        const sessionId = tester.getState().sessions[0]!.id;
+        const stateBefore = tester.getState();
+
+        tester.send({ type: "mark-orphans", sessionId });
+
+        const stateAfter = tester.getState();
+        expect(stateAfter).toEqual(stateBefore);
+      });
+
+      it("Should not affect already-resolved (database) clips", () => {
+        const tester = new ReducerTester(
+          clipStateReducer,
+          createInitialState()
+        );
+
+        tester
+          .send({ type: "recording-started" })
+          .send(
+            fromPartial({
+              type: "new-optimistic-clip-detected",
+              soundDetectionId: "sound-1",
+            })
+          )
+          .send(
+            fromPartial({
+              type: "new-optimistic-clip-detected",
+              soundDetectionId: "sound-2",
+            })
+          )
+          .send({ type: "recording-stopped" });
+
+        const sessionId = tester.getState().sessions[0]!.id;
+
+        // Resolve the first clip by pairing with a database clip
+        tester.send({
+          type: "new-database-clips",
+          clips: [
+            fromPartial({
+              id: "db-1" as DatabaseId,
+              text: "",
+            }),
+          ],
+        });
+
+        tester.send({ type: "mark-orphans", sessionId });
+
+        const state = tester.getState();
+        // The first item should be the resolved database clip, unchanged
+        expect(state.items[0]!.type).toBe("on-database");
+        // The second item (still optimistic) should be orphaned
+        const clip2 = state.items[1] as ClipOptimisticallyAdded;
+        expect(clip2.isOrphaned).toBe(true);
+      });
+    });
+
     describe("new-optimistic-clip-detected with sessions", () => {
       it("Should associate optimistic clip with active recording session", () => {
         const tester = new ReducerTester(

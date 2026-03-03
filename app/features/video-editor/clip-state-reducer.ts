@@ -63,6 +63,11 @@ export type ClipOptimisticallyAdded = {
    * Used to group optimistic clips in per-session UI panels.
    */
   sessionId: SessionId;
+  /**
+   * If true, this clip has been marked as orphaned — no matching DB clip
+   * will arrive. Set by the mark-orphans action after the orphan timer fires.
+   */
+  isOrphaned?: boolean;
 };
 
 export const createFrontendId = (): FrontendId => {
@@ -135,6 +140,10 @@ export namespace clipStateReducer {
       }
     | {
         type: "recording-stopped";
+      }
+    | {
+        type: "mark-orphans";
+        sessionId: SessionId;
       }
     | {
         type: "new-optimistic-clip-detected";
@@ -312,6 +321,32 @@ export const clipStateReducer: EffectReducer<
         sessions: state.sessions.map((s) =>
           s.id === activeSession.id ? { ...s, isRecording: false } : s
         ),
+      };
+    }
+    case "mark-orphans": {
+      const hasUnresolvedClips = state.items.some(
+        (item) =>
+          item.type === "optimistically-added" &&
+          item.sessionId === action.sessionId &&
+          !item.shouldArchive
+      );
+
+      if (!hasUnresolvedClips) {
+        return state;
+      }
+
+      return {
+        ...state,
+        items: state.items.map((item) => {
+          if (
+            item.type === "optimistically-added" &&
+            item.sessionId === action.sessionId &&
+            !item.shouldArchive
+          ) {
+            return { ...item, isOrphaned: true };
+          }
+          return item;
+        }),
       };
     }
     case "new-optimistic-clip-detected": {
