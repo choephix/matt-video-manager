@@ -720,6 +720,25 @@ export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
         }
       );
 
+      const getAllStandaloneVideos = Effect.fn("getAllStandaloneVideos")(
+        function* () {
+          const standaloneVideos = yield* makeDbCall(() =>
+            db.query.videos.findMany({
+              where: and(isNull(videos.lessonId), eq(videos.archived, false)),
+              orderBy: desc(videos.updatedAt),
+              with: {
+                clips: {
+                  orderBy: asc(clips.order),
+                  where: eq(clips.archived, false),
+                },
+              },
+            })
+          );
+
+          return standaloneVideos;
+        }
+      );
+
       const getArchivedStandaloneVideos = Effect.fn(
         "getArchivedStandaloneVideos"
       )(function* () {
@@ -1091,6 +1110,7 @@ export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
         getVideoById: getVideoDeepById,
         getVideoWithClipsById: getVideoWithClipsById,
         getStandaloneVideos,
+        getAllStandaloneVideos,
         getArchivedStandaloneVideos,
         createRepo: Effect.fn("createRepo")(function* (input: {
           filePath: string;
@@ -2035,7 +2055,7 @@ export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
         getPlans: Effect.fn("getPlans")(function* () {
           const allPlans = yield* makeDbCall(() =>
             db.query.plans.findMany({
-              orderBy: desc(plans.createdAt),
+              orderBy: desc(plans.updatedAt),
               with: {
                 sections: {
                   orderBy: asc(planSections.order),
