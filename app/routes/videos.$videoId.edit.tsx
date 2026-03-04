@@ -445,11 +445,30 @@ export const ComponentInner = (props: Route.ComponentProps) => {
           clearTimeout(timeout);
         };
       },
+      "start-session-timeout": (_state, effect, dispatch) => {
+        const timeout = setTimeout(() => {
+          dispatch({
+            type: "session-polling-complete",
+            sessionId: effect.sessionId,
+          });
+        }, 10_000);
+
+        return () => {
+          clearTimeout(timeout);
+        };
+      },
       "start-session-polling": (_state, effect, dispatch) => {
         let unmounted = false;
 
         (async () => {
           while (!unmounted) {
+            // Stop polling when session is done
+            const session = clipStateRef.current.sessions.find(
+              (s) => s.id === effect.sessionId
+            );
+            if (session?.status === "done") {
+              break;
+            }
             try {
               const { insertionPoint, items } = clipStateRef.current;
               const clips = await clipService.appendFromObs({

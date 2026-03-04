@@ -2008,7 +2008,7 @@ describe("clipStateReducer", () => {
         expect(state.sessions[1]).toMatchObject({ status: "polling" });
       });
 
-      it("Should fire start-orphan-timer effect with the session id", () => {
+      it("Should fire start-session-timeout effect with the session id", () => {
         const tester = new ReducerTester(
           clipStateReducer,
           createInitialState()
@@ -2023,7 +2023,7 @@ describe("clipStateReducer", () => {
         tester.resetExec().send({ type: "recording-stopped" });
 
         expect(tester.getExec()).toHaveBeenCalledWith({
-          type: "start-orphan-timer",
+          type: "start-session-timeout",
           sessionId,
         });
       });
@@ -2224,6 +2224,184 @@ describe("clipStateReducer", () => {
         // The second item (still optimistic) should be orphaned
         const clip2 = state.items[1] as ClipOptimisticallyAdded;
         expect(clip2.isOrphaned).toBe(true);
+      });
+    });
+
+    describe("session-polling-complete", () => {
+      it("Should atomically set session status to done and mark orphans", () => {
+        const tester = new ReducerTester(
+          clipStateReducer,
+          createInitialState()
+        );
+
+        tester
+          .send({ type: "recording-started", outputPath: "/tmp/recording.mkv" })
+          .send(
+            fromPartial({
+              type: "new-optimistic-clip-detected",
+              soundDetectionId: "sound-1",
+            })
+          )
+          .send(
+            fromPartial({
+              type: "new-optimistic-clip-detected",
+              soundDetectionId: "sound-2",
+            })
+          )
+          .send({ type: "recording-stopped" });
+
+        const sessionId = tester.getState().sessions[0]!.id;
+
+        tester.send({ type: "session-polling-complete", sessionId });
+
+        const state = tester.getState();
+        expect(state.sessions[0]).toMatchObject({ status: "done" });
+        const clip1 = state.items[0] as ClipOptimisticallyAdded;
+        const clip2 = state.items[1] as ClipOptimisticallyAdded;
+        expect(clip1.isOrphaned).toBe(true);
+        expect(clip2.isOrphaned).toBe(true);
+      });
+
+      it("Should only affect the targeted session", () => {
+        const tester = new ReducerTester(
+          clipStateReducer,
+          createInitialState()
+        );
+
+        // Session 1 with a clip
+        tester
+          .send({
+            type: "recording-started",
+            outputPath: "/tmp/recording1.mkv",
+          })
+          .send(
+            fromPartial({
+              type: "new-optimistic-clip-detected",
+              soundDetectionId: "sound-1",
+            })
+          )
+          .send({ type: "recording-stopped" });
+
+        const session1Id = tester.getState().sessions[0]!.id;
+
+        // Session 2 with a clip
+        tester
+          .send({
+            type: "recording-started",
+            outputPath: "/tmp/recording2.mkv",
+          })
+          .send(
+            fromPartial({
+              type: "new-optimistic-clip-detected",
+              soundDetectionId: "sound-2",
+            })
+          )
+          .send({ type: "recording-stopped" });
+
+        // Complete only session 1
+        tester.send({
+          type: "session-polling-complete",
+          sessionId: session1Id,
+        });
+
+        const state = tester.getState();
+        expect(state.sessions[0]).toMatchObject({ status: "done" });
+        expect(state.sessions[1]).toMatchObject({ status: "polling" });
+
+        const clip1 = state.items[0] as ClipOptimisticallyAdded;
+        const clip2 = state.items[1] as ClipOptimisticallyAdded;
+        expect(clip1.isOrphaned).toBe(true);
+        expect(clip2.isOrphaned).toBeUndefined();
+      });
+
+      it("Should not mark archived clips as orphaned", () => {
+        const tester = new ReducerTester(
+          clipStateReducer,
+          createInitialState()
+        );
+
+        tester
+          .send({ type: "recording-started", outputPath: "/tmp/recording.mkv" })
+          .send(
+            fromPartial({
+              type: "new-optimistic-clip-detected",
+              soundDetectionId: "sound-1",
+            })
+          )
+          .send(
+            fromPartial({
+              type: "new-optimistic-clip-detected",
+              soundDetectionId: "sound-2",
+            })
+          )
+          .send({ type: "recording-stopped" });
+
+        const sessionId = tester.getState().sessions[0]!.id;
+
+        // Archive the first clip
+        const clip1Id = tester.getState().items[0]!.frontendId;
+        tester.send({ type: "clips-deleted", clipIds: [clip1Id] });
+
+        tester.send({ type: "session-polling-complete", sessionId });
+
+        const state = tester.getState();
+        expect(state.sessions[0]).toMatchObject({ status: "done" });
+
+        const archivedClip = state.items.find(
+          (c) => c.frontendId === clip1Id
+        ) as ClipOptimisticallyAdded;
+        expect(archivedClip.shouldArchive).toBe(true);
+        expect(archivedClip.isOrphaned).toBeUndefined();
+
+        const otherClip = state.items.find(
+          (c) => c.frontendId !== clip1Id
+        ) as ClipOptimisticallyAdded;
+        expect(otherClip.isOrphaned).toBe(true);
+      });
+
+      it("Should no-op if session is already done", () => {
+        const tester = new ReducerTester(
+          clipStateReducer,
+          createInitialState()
+        );
+
+        tester
+          .send({ type: "recording-started", outputPath: "/tmp/recording.mkv" })
+          .send(
+            fromPartial({
+              type: "new-optimistic-clip-detected",
+              soundDetectionId: "sound-1",
+            })
+          )
+          .send({ type: "recording-stopped" });
+
+        const sessionId = tester.getState().sessions[0]!.id;
+
+        tester.send({ type: "session-polling-complete", sessionId });
+        const stateAfterFirst = tester.getState();
+
+        tester.send({ type: "session-polling-complete", sessionId });
+        const stateAfterSecond = tester.getState();
+
+        expect(stateAfterSecond).toBe(stateAfterFirst);
+      });
+
+      it("Should set status to done even if no unresolved clips exist", () => {
+        const tester = new ReducerTester(
+          clipStateReducer,
+          createInitialState()
+        );
+
+        tester
+          .send({ type: "recording-started", outputPath: "/tmp/recording.mkv" })
+          .send({ type: "recording-stopped" });
+
+        const sessionId = tester.getState().sessions[0]!.id;
+
+        tester.send({ type: "session-polling-complete", sessionId });
+
+        const state = tester.getState();
+        expect(state.sessions[0]).toMatchObject({ status: "done" });
       });
     });
 

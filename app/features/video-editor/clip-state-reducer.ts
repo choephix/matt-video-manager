@@ -162,6 +162,10 @@ export namespace clipStateReducer {
         sessionId: SessionId;
       }
     | {
+        type: "session-polling-complete";
+        sessionId: SessionId;
+      }
+    | {
         type: "new-optimistic-clip-detected";
         scene: string;
         profile: string;
@@ -302,6 +306,10 @@ export namespace clipStateReducer {
         sessionId: SessionId;
       }
     | {
+        type: "start-session-timeout";
+        sessionId: SessionId;
+      }
+    | {
         type: "unarchive-clips";
         clipIds: DatabaseId[];
       }
@@ -355,7 +363,7 @@ export const clipStateReducer: EffectReducer<
       }
 
       exec({
-        type: "start-orphan-timer",
+        type: "start-session-timeout",
         sessionId: activeSession.id,
       });
 
@@ -380,6 +388,29 @@ export const clipStateReducer: EffectReducer<
 
       return {
         ...state,
+        items: state.items.map((item) => {
+          if (
+            item.type === "optimistically-added" &&
+            item.sessionId === action.sessionId &&
+            !item.shouldArchive
+          ) {
+            return { ...item, isOrphaned: true };
+          }
+          return item;
+        }),
+      };
+    }
+    case "session-polling-complete": {
+      const session = state.sessions.find((s) => s.id === action.sessionId);
+      if (!session || session.status === "done") {
+        return state;
+      }
+
+      return {
+        ...state,
+        sessions: state.sessions.map((s) =>
+          s.id === action.sessionId ? { ...s, status: "done" } : s
+        ),
         items: state.items.map((item) => {
           if (
             item.type === "optimistically-added" &&
