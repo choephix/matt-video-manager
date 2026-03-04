@@ -3,6 +3,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -16,6 +20,7 @@ import {
   ChevronDown,
   ClipboardIcon,
   CopyIcon,
+  DownloadIcon,
   FilmIcon,
   FolderOpen,
   Loader2,
@@ -115,89 +120,111 @@ export const ActionsDropdown = (props: {
           </div>
         </DropdownMenuItem>
 
-        <DropdownMenuItem onSelect={props.copyLogPathToClipboard}>
-          {props.isLogPathCopied ? (
-            <CheckIcon className="w-4 h-4 mr-2" />
-          ) : (
-            <ScrollTextIcon className="w-4 h-4 mr-2" />
-          )}
-          <div className="flex flex-col">
-            <span className="font-medium">Copy Log Path</span>
-            <span className="text-xs text-muted-foreground">
-              Copy operation log file path
-            </span>
-          </div>
-        </DropdownMenuItem>
+        <DropdownMenuSeparator />
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div>
-              <DropdownMenuItem
-                disabled={!props.allClipsHaveText}
-                onSelect={props.copyTranscriptToClipboard}
-              >
-                {props.isCopied ? (
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <CopyIcon className="w-4 h-4 mr-2" />
+            Copy
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="w-64">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <DropdownMenuItem
+                    disabled={!props.allClipsHaveText}
+                    onSelect={props.copyTranscriptToClipboard}
+                  >
+                    {props.isCopied ? (
+                      <CheckIcon className="w-4 h-4 mr-2" />
+                    ) : (
+                      <CopyIcon className="w-4 h-4 mr-2" />
+                    )}
+                    <div className="flex flex-col">
+                      <span className="font-medium">Copy Transcript</span>
+                      <span className="text-xs text-muted-foreground">
+                        Copy all transcript to clipboard
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                </div>
+              </TooltipTrigger>
+              {!props.allClipsHaveText && (
+                <TooltipContent side="left">
+                  <p>Waiting for transcription to complete</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+
+            {props.youtubeChapters.length > 0 && (
+              <DropdownMenuItem onSelect={props.copyYoutubeChaptersToClipboard}>
+                {props.isChaptersCopied ? (
                   <CheckIcon className="w-4 h-4 mr-2" />
                 ) : (
                   <CopyIcon className="w-4 h-4 mr-2" />
                 )}
                 <div className="flex flex-col">
-                  <span className="font-medium">Copy Transcript</span>
+                  <span className="font-medium">Copy YouTube Chapters</span>
                   <span className="text-xs text-muted-foreground">
-                    Copy all transcript to clipboard
+                    Copy chapter timestamps to clipboard
                   </span>
                 </div>
               </DropdownMenuItem>
-            </div>
-          </TooltipTrigger>
-          {!props.allClipsHaveText && (
-            <TooltipContent side="left">
-              <p>Waiting for transcription to complete</p>
-            </TooltipContent>
-          )}
-        </Tooltip>
-
-        {props.youtubeChapters.length > 0 && (
-          <DropdownMenuItem onSelect={props.copyYoutubeChaptersToClipboard}>
-            {props.isChaptersCopied ? (
-              <CheckIcon className="w-4 h-4 mr-2" />
-            ) : (
-              <CopyIcon className="w-4 h-4 mr-2" />
             )}
-            <div className="flex flex-col">
-              <span className="font-medium">Copy YouTube Chapters</span>
-              <span className="text-xs text-muted-foreground">
-                Copy chapter timestamps to clipboard
-              </span>
-            </div>
-          </DropdownMenuItem>
-        )}
 
-        <ExportModal
-          isOpen={props.isExportModalOpen}
-          setIsOpen={props.setIsExportModalOpen}
-          onExport={props.onExport}
-          youtubeChapters={props.youtubeChapters}
-          isChaptersCopied={props.isChaptersCopied}
-          copyYoutubeChaptersToClipboard={props.copyYoutubeChaptersToClipboard}
-        />
+            <DropdownMenuItem onSelect={props.copyLogPathToClipboard}>
+              {props.isLogPathCopied ? (
+                <CheckIcon className="w-4 h-4 mr-2" />
+              ) : (
+                <ScrollTextIcon className="w-4 h-4 mr-2" />
+              )}
+              <div className="flex flex-col">
+                <span className="font-medium">Copy Log Path</span>
+                <span className="text-xs text-muted-foreground">
+                  Copy operation log file path
+                </span>
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
 
-        <DropdownMenuItem
-          onSelect={() => {
-            props.exportToDavinciResolveFetcher.submit(null, {
-              method: "post",
-              action: `/videos/${props.videoId}/export-to-davinci-resolve`,
-            });
-          }}
-        >
-          <FilmIcon className="w-4 h-4 mr-2" />
-          <div className="flex flex-col">
-            <span className="font-medium">DaVinci Resolve</span>
-            <span className="text-xs text-muted-foreground">
-              Create a new timeline with clips
-            </span>
-          </div>
-        </DropdownMenuItem>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <DownloadIcon className="w-4 h-4 mr-2" />
+            Export
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="w-64">
+            <ExportModal
+              isOpen={props.isExportModalOpen}
+              setIsOpen={props.setIsExportModalOpen}
+              onExport={props.onExport}
+              youtubeChapters={props.youtubeChapters}
+              isChaptersCopied={props.isChaptersCopied}
+              copyYoutubeChaptersToClipboard={
+                props.copyYoutubeChaptersToClipboard
+              }
+            />
+
+            <DropdownMenuItem
+              onSelect={() => {
+                props.exportToDavinciResolveFetcher.submit(null, {
+                  method: "post",
+                  action: `/videos/${props.videoId}/export-to-davinci-resolve`,
+                });
+              }}
+            >
+              <FilmIcon className="w-4 h-4 mr-2" />
+              <div className="flex flex-col">
+                <span className="font-medium">DaVinci Resolve</span>
+                <span className="text-xs text-muted-foreground">
+                  Create a new timeline with clips
+                </span>
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+
+        <DropdownMenuSeparator />
 
         {props.lessonId && (
           <DropdownMenuItem onSelect={props.onAddVideoClick}>
