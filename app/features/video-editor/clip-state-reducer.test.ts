@@ -1994,6 +1994,22 @@ describe("clipStateReducer", () => {
 
         expect(session1Id).not.toEqual(session2Id);
       });
+
+      it("Should fire scroll-to-insertion-point effect", () => {
+        const tester = new ReducerTester(
+          clipStateReducer,
+          createInitialState()
+        );
+
+        tester.send({
+          type: "recording-started",
+          outputPath: "/videos/recording.mkv",
+        });
+
+        expect(tester.getExec()).toHaveBeenCalledWith({
+          type: "scroll-to-insertion-point",
+        });
+      });
     });
 
     describe("recording-stopped", () => {

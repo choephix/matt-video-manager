@@ -341,6 +341,10 @@ export const clipStateReducer: EffectReducer<
         outputPath: action.outputPath,
       });
 
+      exec({
+        type: "scroll-to-insertion-point",
+      });
+
       return {
         ...state,
         sessions: [...state.sessions, newSession],
