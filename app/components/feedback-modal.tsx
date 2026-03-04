@@ -6,7 +6,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
@@ -50,21 +49,13 @@ export function FeedbackModal(props: {
           className="space-y-4"
         >
           <div className="space-y-2">
-            <Label htmlFor="feedback-title">Title</Label>
-            <Input
-              id="feedback-title"
-              name="title"
-              placeholder="Brief summary"
-              required
-            />
-          </div>
-          <div className="space-y-2">
             <Label htmlFor="feedback-description">Description</Label>
             <Textarea
               id="feedback-description"
               name="description"
               placeholder="Describe your feedback in detail..."
               rows={4}
+              required
             />
           </div>
           <div className="flex justify-end gap-2">

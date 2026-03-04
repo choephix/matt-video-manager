@@ -2,22 +2,36 @@ import { data } from "react-router";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { Route } from "./+types/api.feedback";
+import { anthropic } from "@ai-sdk/anthropic";
+import { generateText } from "ai";
 
 const execFileAsync = promisify(execFile);
 
 export const action = async (args: Route.ActionArgs) => {
   const formData = await args.request.formData();
-  const title = formData.get("title");
   const description = formData.get("description");
 
-  if (typeof title !== "string" || !title.trim()) {
-    throw data("Title is required", { status: 400 });
+  if (typeof description !== "string" || !description.trim()) {
+    throw data("Description is required", { status: 400 });
   }
 
-  const body =
-    typeof description === "string" && description.trim()
-      ? description.trim()
-      : "";
+  const body = description.trim();
+
+  // Auto-generate a short title from the description using Haiku
+  let title: string;
+  try {
+    const result = await generateText({
+      model: anthropic("claude-haiku-4-5-20251001"),
+      system:
+        "Generate a short GitHub issue title (under 80 characters) from the user's feedback description. Output ONLY the title, nothing else.",
+      messages: [{ role: "user", content: body }],
+    });
+    title = result.text.trim();
+  } catch (error) {
+    console.error("Failed to generate title, using fallback:", error);
+    // Fallback: use the first line/sentence of the description, truncated
+    title = body.split(/[.\n]/)[0]!.slice(0, 80);
+  }
 
   try {
     await execFileAsync("gh", [
@@ -26,8 +40,9 @@ export const action = async (args: Route.ActionArgs) => {
       "--repo",
       "mattpocock/course-video-manager",
       "--title",
-      title.trim(),
-      ...(body ? ["--body", body] : []),
+      title,
+      "--body",
+      body,
     ]);
 
     return { success: true };
