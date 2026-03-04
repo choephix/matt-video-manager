@@ -244,6 +244,7 @@ export const ComponentInner = (props: Route.ComponentProps) => {
   };
 
   const clipStateRef = useRef(initialState);
+  const revalidator = useRevalidator();
 
   const [clipState, dispatch] = useEffectReducer(
     clipStateReducer,
@@ -517,6 +518,9 @@ export const ComponentInner = (props: Route.ComponentProps) => {
             });
           });
       },
+      "revalidate-loader": () => {
+        revalidator.revalidate();
+      },
     }
   );
 
@@ -552,22 +556,6 @@ export const ComponentInner = (props: Route.ComponentProps) => {
       dispatch({ type: "recording-stopped" });
     }
   }, [obsConnector.state.type]);
-
-  // Revalidate loader data when editor becomes idle (all sessions done)
-  const revalidator = useRevalidator();
-  const hasRevalidatedRef = useRef(false);
-  const isEditorIdle =
-    clipState.sessions.length > 0 &&
-    clipState.sessions.every((s) => s.status === "done");
-
-  useEffect(() => {
-    if (isEditorIdle && !hasRevalidatedRef.current) {
-      hasRevalidatedRef.current = true;
-      revalidator.revalidate();
-    } else if (!isEditorIdle) {
-      hasRevalidatedRef.current = false;
-    }
-  }, [isEditorIdle]);
 
   return (
     <VideoEditor

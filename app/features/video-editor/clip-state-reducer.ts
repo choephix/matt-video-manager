@@ -309,6 +309,9 @@ export namespace clipStateReducer {
         type: "start-session-polling";
         sessionId: SessionId;
         outputPath: string;
+      }
+    | {
+        type: "revalidate-loader";
       };
 }
 
@@ -374,6 +377,14 @@ export const clipStateReducer: EffectReducer<
       const session = state.sessions.find((s) => s.id === action.sessionId);
       if (!session || session.status === "done") {
         return state;
+      }
+
+      const allSessionsDone = state.sessions.every((s) =>
+        s.id === action.sessionId ? true : s.status === "done"
+      );
+
+      if (allSessionsDone) {
+        exec({ type: "revalidate-loader" });
       }
 
       return {

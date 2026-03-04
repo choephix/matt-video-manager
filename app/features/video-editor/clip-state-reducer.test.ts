@@ -2252,6 +2252,98 @@ describe("clipStateReducer", () => {
         expect(stateAfterSecond).toBe(stateAfterFirst);
       });
 
+      it("Should emit revalidate-loader when all sessions become done", () => {
+        const tester = new ReducerTester(
+          clipStateReducer,
+          createInitialState()
+        );
+
+        tester
+          .send({ type: "recording-started", outputPath: "/tmp/recording.mkv" })
+          .send({ type: "recording-stopped" });
+
+        const sessionId = tester.getState().sessions[0]!.id;
+
+        tester.resetExec();
+        tester.send({ type: "session-polling-complete", sessionId });
+
+        expect(tester.getExec()).toHaveBeenCalledWith({
+          type: "revalidate-loader",
+        });
+      });
+
+      it("Should emit revalidate-loader only when the last session becomes done", () => {
+        const tester = new ReducerTester(
+          clipStateReducer,
+          createInitialState()
+        );
+
+        // Session 1
+        tester
+          .send({
+            type: "recording-started",
+            outputPath: "/tmp/recording1.mkv",
+          })
+          .send({ type: "recording-stopped" });
+
+        const session1Id = tester.getState().sessions[0]!.id;
+
+        // Session 2
+        tester
+          .send({
+            type: "recording-started",
+            outputPath: "/tmp/recording2.mkv",
+          })
+          .send({ type: "recording-stopped" });
+
+        const session2Id = tester.getState().sessions[1]!.id;
+
+        // Complete session 1 — not all done yet
+        tester.resetExec();
+        tester.send({
+          type: "session-polling-complete",
+          sessionId: session1Id,
+        });
+
+        expect(tester.getExec()).not.toHaveBeenCalledWith({
+          type: "revalidate-loader",
+        });
+
+        // Complete session 2 — now all done
+        tester.resetExec();
+        tester.send({
+          type: "session-polling-complete",
+          sessionId: session2Id,
+        });
+
+        expect(tester.getExec()).toHaveBeenCalledWith({
+          type: "revalidate-loader",
+        });
+      });
+
+      it("Should not emit revalidate-loader when session is already done", () => {
+        const tester = new ReducerTester(
+          clipStateReducer,
+          createInitialState()
+        );
+
+        tester
+          .send({ type: "recording-started", outputPath: "/tmp/recording.mkv" })
+          .send({ type: "recording-stopped" });
+
+        const sessionId = tester.getState().sessions[0]!.id;
+
+        tester.send({ type: "session-polling-complete", sessionId });
+
+        // Second dispatch — should no-op, no revalidate
+        tester.resetExec();
+        tester.send({ type: "session-polling-complete", sessionId });
+
+        expect(tester.getExec()).not.toHaveBeenCalledWith({
+          type: "revalidate-loader",
+        });
+      });
+
       it("Should set status to done even if no unresolved clips exist", () => {
         const tester = new ReducerTester(
           clipStateReducer,
