@@ -1,7 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import * as schema from "@/db/schema";
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { pushSchema } from "drizzle-kit/api";
 import {
   createDirectClipService,
@@ -15,17 +15,38 @@ import type {
   FrontendInsertionPoint,
 } from "./clip-service";
 
-let pglite: PGlite;
-let testDb: ReturnType<typeof drizzle<typeof schema>>;
-let clipService: ClipService;
-let mockVideoProcessing: VideoProcessingAdapter;
+/**
+ * Creates an isolated test environment with its own PGlite instance,
+ * drizzle database, mock video processing adapter, and clip service.
+ * Each test gets its own setup so tests can run concurrently.
+ */
+const setup = async () => {
+  const pglite = new PGlite();
+  const testDb = drizzle(pglite, { schema });
+  const { apply } = await pushSchema(schema, testDb as any);
+  await apply();
+
+  const mockVideoProcessing: VideoProcessingAdapter = {
+    getLatestOBSVideoClips: vi.fn().mockResolvedValue({ clips: [] }),
+  };
+
+  const clipService = createDirectClipService(
+    testDb as any,
+    mockVideoProcessing
+  );
+
+  return { pglite, testDb, clipService, mockVideoProcessing };
+};
 
 /**
  * Builds FrontendTimelineItem[] from the current database timeline.
  * Uses database IDs as frontend IDs for simplicity in tests
  * (all items are persisted, no optimistic state).
  */
-const getItems = async (videoId: string): Promise<FrontendTimelineItem[]> => {
+const getItems = async (
+  clipService: ClipService,
+  videoId: string
+): Promise<FrontendTimelineItem[]> => {
   const timeline = await clipService.getTimeline(videoId);
   return timeline.map((item): FrontendTimelineItem => {
     if (item.type === "clip") {
@@ -59,23 +80,10 @@ const afterSection = (id: string): FrontendInsertionPoint => ({
 const start: FrontendInsertionPoint = { type: "start" };
 const end: FrontendInsertionPoint = { type: "end" };
 
-describe("ClipService", () => {
-  beforeEach(async () => {
-    pglite = new PGlite();
-    testDb = drizzle(pglite, { schema });
-    const { apply } = await pushSchema(schema, testDb as any);
-    await apply();
-
-    // Default mock that returns no clips
-    mockVideoProcessing = {
-      getLatestOBSVideoClips: vi.fn().mockResolvedValue({ clips: [] }),
-    };
-
-    clipService = createDirectClipService(testDb as any, mockVideoProcessing);
-  });
-
+describe("ClipService", { concurrent: true, timeout: 30_000 }, () => {
   describe("createVideo", () => {
     it("creates a standalone video", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       expect(video).toMatchObject({
@@ -88,6 +96,7 @@ describe("ClipService", () => {
 
   describe("getTimeline", () => {
     it("returns an empty timeline for a video with no clips", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
       const timeline = await clipService.getTimeline(video.id);
 
@@ -95,6 +104,7 @@ describe("ClipService", () => {
     });
 
     it("returns clips sorted by order", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const clips = await clipService.appendClips({
@@ -117,6 +127,7 @@ describe("ClipService", () => {
     });
 
     it("returns clips and sections interleaved and sorted", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const [clipA] = await clipService.appendClips({
@@ -130,13 +141,13 @@ describe("ClipService", () => {
         videoId: video.id,
         name: "Section 1",
         insertionPoint: afterClip(clipA!.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       const [clipB] = await clipService.appendClips({
         videoId: video.id,
         insertionPoint: afterSection(section.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
         clips: [{ inputVideo: "test.mp4", startTime: 10, endTime: 20 }],
       });
 
@@ -153,6 +164,7 @@ describe("ClipService", () => {
 
   describe("appendClips", () => {
     it("inserts clips at start", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const clips = await clipService.appendClips({
@@ -173,6 +185,7 @@ describe("ClipService", () => {
     });
 
     it("inserts clips after an existing clip", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const [clipA] = await clipService.appendClips({
@@ -185,7 +198,7 @@ describe("ClipService", () => {
       await clipService.appendClips({
         videoId: video.id,
         insertionPoint: afterClip(clipA!.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
         clips: [{ inputVideo: "test.mp4", startTime: 10, endTime: 20 }],
       });
 
@@ -196,6 +209,7 @@ describe("ClipService", () => {
     });
 
     it("inserts clips after a clip section", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const section = await clipService.createClipSectionAtInsertionPoint({
@@ -208,7 +222,7 @@ describe("ClipService", () => {
       const clips = await clipService.appendClips({
         videoId: video.id,
         insertionPoint: afterSection(section.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
         clips: [{ inputVideo: "test.mp4", startTime: 0, endTime: 10 }],
       });
 
@@ -221,6 +235,7 @@ describe("ClipService", () => {
     });
 
     it("inserts clips at end when last item is a clip", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const [clipA] = await clipService.appendClips({
@@ -233,7 +248,7 @@ describe("ClipService", () => {
       await clipService.appendClips({
         videoId: video.id,
         insertionPoint: end,
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
         clips: [{ inputVideo: "test.mp4", startTime: 10, endTime: 20 }],
       });
 
@@ -243,6 +258,7 @@ describe("ClipService", () => {
     });
 
     it("inserts clips at end when last item is a section", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const [clipA] = await clipService.appendClips({
@@ -256,13 +272,13 @@ describe("ClipService", () => {
         videoId: video.id,
         name: "Section 1",
         insertionPoint: afterClip(clipA!.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       await clipService.appendClips({
         videoId: video.id,
         insertionPoint: end,
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
         clips: [{ inputVideo: "test.mp4", startTime: 10, endTime: 20 }],
       });
 
@@ -276,6 +292,7 @@ describe("ClipService", () => {
     });
 
     it("inserts at start when end is used with empty timeline", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const clips = await clipService.appendClips({
@@ -293,6 +310,7 @@ describe("ClipService", () => {
 
   describe("archiveClips", () => {
     it("archives a single clip", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const [clip] = await clipService.appendClips({
@@ -309,6 +327,7 @@ describe("ClipService", () => {
     });
 
     it("archives multiple clips", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const clips = await clipService.appendClips({
@@ -330,6 +349,7 @@ describe("ClipService", () => {
 
   describe("updateClips", () => {
     it("updates scene, profile, and beatType for a clip", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const [clip] = await clipService.appendClips({
@@ -362,6 +382,7 @@ describe("ClipService", () => {
 
   describe("updateBeat", () => {
     it("updates beat type for a single clip", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const [clip] = await clipService.appendClips({
@@ -385,6 +406,7 @@ describe("ClipService", () => {
 
   describe("reorderClip", () => {
     it("moves a clip up past another clip", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const clips = await clipService.appendClips({
@@ -407,6 +429,7 @@ describe("ClipService", () => {
     });
 
     it("moves a clip down past another clip", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const clips = await clipService.appendClips({
@@ -431,6 +454,7 @@ describe("ClipService", () => {
 
   describe("createClipSectionAtInsertionPoint", () => {
     it("creates a section at the start", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const section = await clipService.createClipSectionAtInsertionPoint({
@@ -452,6 +476,7 @@ describe("ClipService", () => {
     });
 
     it("creates a section after a clip", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const [clip] = await clipService.appendClips({
@@ -465,7 +490,7 @@ describe("ClipService", () => {
         videoId: video.id,
         name: "After Clip Section",
         insertionPoint: afterClip(clip!.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       const timeline = await clipService.getTimeline(video.id);
@@ -478,6 +503,7 @@ describe("ClipService", () => {
 
   describe("createClipSectionAtPosition", () => {
     it("creates a section before a clip", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const [clip] = await clipService.appendClips({
@@ -503,6 +529,7 @@ describe("ClipService", () => {
     });
 
     it("creates a section after a clip", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const [clip] = await clipService.appendClips({
@@ -530,6 +557,7 @@ describe("ClipService", () => {
 
   describe("updateClipSection", () => {
     it("updates the name of a clip section", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const section = await clipService.createClipSectionAtInsertionPoint({
@@ -549,6 +577,7 @@ describe("ClipService", () => {
 
   describe("archiveClipSections", () => {
     it("archives a clip section", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const section = await clipService.createClipSectionAtInsertionPoint({
@@ -567,6 +596,7 @@ describe("ClipService", () => {
 
   describe("reorderClipSection", () => {
     it("moves a section up past a clip", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       const [clip] = await clipService.appendClips({
@@ -580,7 +610,7 @@ describe("ClipService", () => {
         videoId: video.id,
         name: "Section",
         insertionPoint: afterClip(clip!.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       // Move section up (before the clip)
@@ -594,6 +624,7 @@ describe("ClipService", () => {
     });
 
     it("preserves ordering when moving a section up past another section", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       // Build timeline: [SectionA, Clip1, SectionB, Clip2, SectionC]
@@ -607,7 +638,7 @@ describe("ClipService", () => {
       const [clip1] = await clipService.appendClips({
         videoId: video.id,
         insertionPoint: afterSection(sectionA.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
         clips: [{ inputVideo: "test.mp4", startTime: 0, endTime: 10 }],
       });
 
@@ -615,13 +646,13 @@ describe("ClipService", () => {
         videoId: video.id,
         name: "Section B",
         insertionPoint: afterClip(clip1!.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       const [clip2] = await clipService.appendClips({
         videoId: video.id,
         insertionPoint: afterSection(sectionB.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
         clips: [{ inputVideo: "test.mp4", startTime: 10, endTime: 20 }],
       });
 
@@ -629,7 +660,7 @@ describe("ClipService", () => {
         videoId: video.id,
         name: "Section C",
         insertionPoint: afterClip(clip2!.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       // Move SectionB up (past Clip1, which puts it next to SectionA)
@@ -660,6 +691,7 @@ describe("ClipService", () => {
     });
 
     it("moves a section up past an adjacent section (no clips between)", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       // Build timeline: [Clip1, SectionA, SectionB, Clip2]
@@ -674,20 +706,20 @@ describe("ClipService", () => {
         videoId: video.id,
         name: "Section A",
         insertionPoint: afterClip(clip1!.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       const sectionB = await clipService.createClipSectionAtInsertionPoint({
         videoId: video.id,
         name: "Section B",
         insertionPoint: afterSection(sectionA.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       const [clip2] = await clipService.appendClips({
         videoId: video.id,
         insertionPoint: afterSection(sectionB.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
         clips: [{ inputVideo: "test.mp4", startTime: 10, endTime: 20 }],
       });
 
@@ -705,6 +737,7 @@ describe("ClipService", () => {
     });
 
     it("preserves ordering when sections created via createClipSectionAtPosition are moved", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       // Create clips first: [Clip1, Clip2, Clip3, Clip4]
@@ -800,6 +833,7 @@ describe("ClipService", () => {
 
   describe("appendFromObs", () => {
     it("returns empty array when CLI detects no clips", async () => {
+      const { clipService, mockVideoProcessing } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       mockVideoProcessing.getLatestOBSVideoClips = vi
@@ -820,6 +854,7 @@ describe("ClipService", () => {
     });
 
     it("inserts clips detected by CLI", async () => {
+      const { clipService, mockVideoProcessing } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       mockVideoProcessing.getLatestOBSVideoClips = vi.fn().mockResolvedValue({
@@ -847,6 +882,7 @@ describe("ClipService", () => {
     });
 
     it("converts Windows path to WSL path", async () => {
+      const { clipService, mockVideoProcessing } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       mockVideoProcessing.getLatestOBSVideoClips = vi
@@ -867,6 +903,7 @@ describe("ClipService", () => {
     });
 
     it("deduplicates clips that already exist", async () => {
+      const { clipService, mockVideoProcessing } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       // First, add a clip directly
@@ -890,7 +927,7 @@ describe("ClipService", () => {
       const result = await clipService.appendFromObs({
         videoId: video.id,
         insertionPoint: start,
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       // Should only add the new clip
@@ -905,6 +942,7 @@ describe("ClipService", () => {
     });
 
     it("deduplicates clips with nearly identical start/end times (rounding tolerance)", async () => {
+      const { clipService, mockVideoProcessing } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       // First, add a clip directly
@@ -935,7 +973,7 @@ describe("ClipService", () => {
       const result = await clipService.appendFromObs({
         videoId: video.id,
         insertionPoint: start,
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       // Should be skipped as a duplicate — times differ by only 0.01s
@@ -946,6 +984,7 @@ describe("ClipService", () => {
     });
 
     it("deduplicates clips with drifted startTime from ffmpeg re-detection (0.57s drift)", async () => {
+      const { clipService, mockVideoProcessing } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       // First clip inserted correctly
@@ -976,7 +1015,7 @@ describe("ClipService", () => {
       const result = await clipService.appendFromObs({
         videoId: video.id,
         insertionPoint: start,
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       // Should be skipped as a duplicate — 0.57s drift is within 0.6s tolerance
@@ -987,6 +1026,7 @@ describe("ClipService", () => {
     });
 
     it("inserts genuinely distinct clips that differ by more than 0.6s", async () => {
+      const { clipService, mockVideoProcessing } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       // First clip
@@ -1017,7 +1057,7 @@ describe("ClipService", () => {
       const result = await clipService.appendFromObs({
         videoId: video.id,
         insertionPoint: start,
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       // Should be inserted — clearly a different clip
@@ -1028,6 +1068,7 @@ describe("ClipService", () => {
     });
 
     it("calculates start time from last clip with same input video", async () => {
+      const { clipService, mockVideoProcessing } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       // Add existing clip
@@ -1050,7 +1091,7 @@ describe("ClipService", () => {
         videoId: video.id,
         filePath: "C:\\obs\\video.mkv",
         insertionPoint: start,
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       // Should pass startTime = endTime of last clip - 1 = 99
@@ -1061,6 +1102,7 @@ describe("ClipService", () => {
     });
 
     it("inserts clips at specified insertion point", async () => {
+      const { clipService, mockVideoProcessing } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       // Add existing clip
@@ -1080,7 +1122,7 @@ describe("ClipService", () => {
       const result = await clipService.appendFromObs({
         videoId: video.id,
         insertionPoint: afterClip(existingClip!.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       const timeline = await clipService.getTimeline(video.id);
@@ -1091,6 +1133,7 @@ describe("ClipService", () => {
     });
 
     it("serializes concurrent append-from-obs calls via mutex", async () => {
+      const { clipService, mockVideoProcessing } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       mockVideoProcessing.getLatestOBSVideoClips = vi.fn().mockResolvedValue({
@@ -1123,6 +1166,7 @@ describe("ClipService", () => {
     });
 
     it("mutex releases on error allowing subsequent calls", async () => {
+      const { clipService, mockVideoProcessing } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       // First call: mock throws
@@ -1165,6 +1209,7 @@ describe("ClipService", () => {
 
   describe("optimistic insertion point resolution", () => {
     it("resolves after-clip on optimistic item to nearest persisted section", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       // Seed: [ClipA, Section1] in DB
@@ -1178,7 +1223,7 @@ describe("ClipService", () => {
         videoId: video.id,
         name: "Section 1",
         insertionPoint: afterClip(clipA!.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       // Frontend items: [ClipA (db), Section1 (db), OptClip1 (optimistic)]
@@ -1219,6 +1264,7 @@ describe("ClipService", () => {
     });
 
     it("resolves after-clip on optimistic item to nearest persisted clip", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       // Seed: [Section1, ClipA] in DB
@@ -1231,7 +1277,7 @@ describe("ClipService", () => {
       const [clipA] = await clipService.appendClips({
         videoId: video.id,
         insertionPoint: afterSection(section.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
         clips: [{ inputVideo: "test.mp4", startTime: 0, endTime: 10 }],
       });
 
@@ -1273,6 +1319,7 @@ describe("ClipService", () => {
     });
 
     it("resolves after-clip-section on optimistic section to nearest persisted item", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       // Seed: [Section1, ClipA] in DB
@@ -1285,7 +1332,7 @@ describe("ClipService", () => {
       const [clipA] = await clipService.appendClips({
         videoId: video.id,
         insertionPoint: afterSection(section.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
         clips: [{ inputVideo: "test.mp4", startTime: 0, endTime: 10 }],
       });
 
@@ -1327,6 +1374,7 @@ describe("ClipService", () => {
     });
 
     it("resolves to start when no persisted items exist before optimistic item", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       // Frontend items: [OptClip (optimistic)] — no persisted items
@@ -1353,6 +1401,7 @@ describe("ClipService", () => {
     });
 
     it("resolves end with only optimistic items to start", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       // Frontend items: [OptClip (optimistic)] — no persisted items
@@ -1375,6 +1424,7 @@ describe("ClipService", () => {
     });
 
     it("skips shouldArchive clips when resolving end insertion point", async () => {
+      const { clipService, mockVideoProcessing } = await setup();
       const video = await clipService.createVideo("test-video.mp4");
 
       // Create clipA in DB then archive it (simulates optimistic delete -> DB pairing -> archive)
@@ -1420,6 +1470,7 @@ describe("ClipService", () => {
 
   describe("createVideoFromSelection", () => {
     it("copy mode creates a new video with selected clips, originals remain in source", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("source-video.mp4");
 
       const [clipA, clipB] = await clipService.appendClips({
@@ -1461,6 +1512,7 @@ describe("ClipService", () => {
     });
 
     it("copy mode creates a new video with selected clip sections, originals remain", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("source-video.mp4");
 
       const sectionA = await clipService.createClipSectionAtInsertionPoint({
@@ -1474,7 +1526,7 @@ describe("ClipService", () => {
         videoId: video.id,
         name: "Section B",
         insertionPoint: afterSection(sectionA.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       // Copy only sectionA to a new video
@@ -1498,6 +1550,7 @@ describe("ClipService", () => {
     });
 
     it("mixed selection creates a new video with all selected items", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("source-video.mp4");
 
       const sectionA = await clipService.createClipSectionAtInsertionPoint({
@@ -1510,7 +1563,7 @@ describe("ClipService", () => {
       const [clipA] = await clipService.appendClips({
         videoId: video.id,
         insertionPoint: afterSection(sectionA.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
         clips: [{ inputVideo: "footage.mp4", startTime: 0, endTime: 10 }],
       });
 
@@ -1518,7 +1571,7 @@ describe("ClipService", () => {
         videoId: video.id,
         name: "Section B",
         insertionPoint: afterClip(clipA!.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       // Copy sectionA and clipA (mixed selection)
@@ -1536,6 +1589,7 @@ describe("ClipService", () => {
     });
 
     it("items in new video preserve their relative order from source timeline", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("source-video.mp4");
 
       // Create timeline: [ClipA, SectionX, ClipB, ClipC]
@@ -1550,13 +1604,13 @@ describe("ClipService", () => {
         videoId: video.id,
         name: "Section X",
         insertionPoint: afterClip(clipA!.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       const [, clipC] = await clipService.appendClips({
         videoId: video.id,
         insertionPoint: afterSection(sectionX.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
         clips: [
           { inputVideo: "footage.mp4", startTime: 10, endTime: 20 },
           { inputVideo: "footage.mp4", startTime: 20, endTime: 30 },
@@ -1583,6 +1637,7 @@ describe("ClipService", () => {
     });
 
     it("copied clips retain all metadata", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("source-video.mp4");
 
       const [clip] = await clipService.appendClips({
@@ -1627,6 +1682,7 @@ describe("ClipService", () => {
     });
 
     it("copied clip sections retain their names", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("source-video.mp4");
 
       const section = await clipService.createClipSectionAtInsertionPoint({
@@ -1654,6 +1710,7 @@ describe("ClipService", () => {
     });
 
     it("new video inherits lessonId from source video", async () => {
+      const { clipService, testDb } = await setup();
       // First create a video with a lesson association
       // We need to create the lesson structure first
       const repoVersionId = crypto.randomUUID();
@@ -1718,6 +1775,7 @@ describe("ClipService", () => {
     });
 
     it("selecting a single clip creates a valid new video", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("source-video.mp4");
 
       const [clip] = await clipService.appendClips({
@@ -1741,6 +1799,7 @@ describe("ClipService", () => {
     });
 
     it("selecting all items creates a new video with everything", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("source-video.mp4");
 
       const sectionA = await clipService.createClipSectionAtInsertionPoint({
@@ -1753,7 +1812,7 @@ describe("ClipService", () => {
       const [clipA, clipB] = await clipService.appendClips({
         videoId: video.id,
         insertionPoint: afterSection(sectionA.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
         clips: [
           { inputVideo: "footage.mp4", startTime: 0, endTime: 10 },
           { inputVideo: "footage.mp4", startTime: 10, endTime: 20 },
@@ -1787,6 +1846,7 @@ describe("ClipService", () => {
     // ==========================================================================
 
     it("move mode creates a new video AND archives originals from source", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("source-video.mp4");
 
       const [clipA, clipB] = await clipService.appendClips({
@@ -1820,6 +1880,7 @@ describe("ClipService", () => {
     });
 
     it("move mode archives original clip sections from source", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("source-video.mp4");
 
       const sectionA = await clipService.createClipSectionAtInsertionPoint({
@@ -1833,7 +1894,7 @@ describe("ClipService", () => {
         videoId: video.id,
         name: "Section B",
         insertionPoint: afterSection(sectionA.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       // Move sectionA to a new video
@@ -1857,6 +1918,7 @@ describe("ClipService", () => {
     });
 
     it("move mode with mixed selection archives all selected originals", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("source-video.mp4");
 
       const sectionA = await clipService.createClipSectionAtInsertionPoint({
@@ -1869,7 +1931,7 @@ describe("ClipService", () => {
       const [clipA, clipB] = await clipService.appendClips({
         videoId: video.id,
         insertionPoint: afterSection(sectionA.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
         clips: [
           { inputVideo: "footage.mp4", startTime: 0, endTime: 10 },
           { inputVideo: "footage.mp4", startTime: 10, endTime: 20 },
@@ -1880,7 +1942,7 @@ describe("ClipService", () => {
         videoId: video.id,
         name: "Section B",
         insertionPoint: afterClip(clipB!.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       // Move sectionA and clipA (leave clipB and sectionB)
@@ -1907,6 +1969,7 @@ describe("ClipService", () => {
     });
 
     it("move mode preserves metadata on moved clips", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("source-video.mp4");
 
       const [clip] = await clipService.appendClips({
@@ -1953,6 +2016,7 @@ describe("ClipService", () => {
     });
 
     it("move mode preserves correct ordering in new video", async () => {
+      const { clipService } = await setup();
       const video = await clipService.createVideo("source-video.mp4");
 
       // Create timeline: [ClipA, SectionX, ClipB, ClipC]
@@ -1967,13 +2031,13 @@ describe("ClipService", () => {
         videoId: video.id,
         name: "Section X",
         insertionPoint: afterClip(clipA!.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
       });
 
       const [clipB, clipC] = await clipService.appendClips({
         videoId: video.id,
         insertionPoint: afterSection(sectionX.id),
-        items: await getItems(video.id),
+        items: await getItems(clipService, video.id),
         clips: [
           { inputVideo: "footage.mp4", startTime: 10, endTime: 20 },
           { inputVideo: "footage.mp4", startTime: 20, endTime: 30 },
