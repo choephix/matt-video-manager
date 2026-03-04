@@ -18,7 +18,7 @@ import type { FrontendId } from "../clip-state-reducer";
  * - edit: Renames an existing section
  * - add-at: Creates a new section before/after a specific item
  *
- * When dismissed or cancelled in create/add-at mode, uses the default name.
+ * When dismissed or cancelled, no section is created.
  *
  * @example
  * <ClipSectionNamingModal
@@ -47,16 +47,6 @@ export function ClipSectionNamingModal({
   ) => void;
 }) {
   const handleDismiss = () => {
-    // On dismiss, create with default name if in create mode
-    if (modalState?.mode === "create") {
-      onAddClipSection(modalState.defaultName);
-    } else if (modalState?.mode === "add-at") {
-      onAddClipSectionAt(
-        modalState.defaultName,
-        modalState.position,
-        modalState.itemId
-      );
-    }
     onClose();
   };
 
@@ -75,16 +65,6 @@ export function ClipSectionNamingModal({
   };
 
   const handleCancel = () => {
-    // On cancel in create or add-at mode, create with default name
-    if (modalState?.mode === "create") {
-      onAddClipSection(modalState.defaultName);
-    } else if (modalState?.mode === "add-at") {
-      onAddClipSectionAt(
-        modalState.defaultName,
-        modalState.position,
-        modalState.itemId
-      );
-    }
     onClose();
   };
 
@@ -122,9 +102,7 @@ export function ClipSectionNamingModal({
           </div>
           <div className="flex justify-end space-x-2">
             <Button variant="outline" onClick={handleCancel} type="button">
-              {modalState?.mode === "create" || modalState?.mode === "add-at"
-                ? "Skip"
-                : "Cancel"}
+              Cancel
             </Button>
             <Button type="submit">Save</Button>
           </div>
