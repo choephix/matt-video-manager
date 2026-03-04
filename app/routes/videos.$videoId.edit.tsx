@@ -440,18 +440,6 @@ export const ComponentInner = (props: Route.ComponentProps) => {
             });
           });
       },
-      "start-orphan-timer": (_state, effect, dispatch) => {
-        const timeout = setTimeout(() => {
-          dispatch({
-            type: "mark-orphans",
-            sessionId: effect.sessionId,
-          });
-        }, 10_000);
-
-        return () => {
-          clearTimeout(timeout);
-        };
-      },
       "start-session-timeout": (_state, effect, dispatch) => {
         const timeout = setTimeout(() => {
           dispatch({

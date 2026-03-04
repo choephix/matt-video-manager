@@ -77,7 +77,7 @@ export type ClipOptimisticallyAdded = {
   sessionId: SessionId;
   /**
    * If true, this clip has been marked as orphaned — no matching DB clip
-   * will arrive. Set by the mark-orphans action after the orphan timer fires.
+   * will arrive. Set by the session-polling-complete action after the session timeout fires.
    */
   isOrphaned?: boolean;
 };
@@ -156,10 +156,6 @@ export namespace clipStateReducer {
       }
     | {
         type: "recording-stopped";
-      }
-    | {
-        type: "mark-orphans";
-        sessionId: SessionId;
       }
     | {
         type: "session-polling-complete";
@@ -302,10 +298,6 @@ export namespace clipStateReducer {
         targetItemType: "clip" | "clip-section";
       }
     | {
-        type: "start-orphan-timer";
-        sessionId: SessionId;
-      }
-    | {
         type: "start-session-timeout";
         sessionId: SessionId;
       }
@@ -372,32 +364,6 @@ export const clipStateReducer: EffectReducer<
         sessions: state.sessions.map((s) =>
           s.id === activeSession.id ? { ...s, status: "polling" } : s
         ),
-      };
-    }
-    case "mark-orphans": {
-      const hasUnresolvedClips = state.items.some(
-        (item) =>
-          item.type === "optimistically-added" &&
-          item.sessionId === action.sessionId &&
-          !item.shouldArchive
-      );
-
-      if (!hasUnresolvedClips) {
-        return state;
-      }
-
-      return {
-        ...state,
-        items: state.items.map((item) => {
-          if (
-            item.type === "optimistically-added" &&
-            item.sessionId === action.sessionId &&
-            !item.shouldArchive
-          ) {
-            return { ...item, isOrphaned: true };
-          }
-          return item;
-        }),
       };
     }
     case "session-polling-complete": {
