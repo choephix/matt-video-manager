@@ -280,7 +280,8 @@ export const VideoPlayerPanel = () => {
                     showCenterLine={showCenterLine}
                   />
                 )}
-                {shouldShowLastFrameOverlay &&
+                {!showVideoPlayer &&
+                  shouldShowLastFrameOverlay &&
                   databaseClipToShowLastFrameOf && (
                     <div
                       className={cn(
