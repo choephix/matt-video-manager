@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
 import { useFetcher, useLocation } from "react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -45,6 +44,7 @@ export function FeedbackModal(props: {
   const addMoreRef = useRef(addMore);
   addMoreRef.current = addMore;
 
+  // Show toast when the response comes back in the background
   useEffect(() => {
     if (prevState.current === "loading" && fetcher.state === "idle") {
       if (fetcher.data && "success" in fetcher.data) {
@@ -52,16 +52,20 @@ export function FeedbackModal(props: {
           .openIssueCount;
         const countMsg = openCount != null ? ` ${openCount} open issues.` : "";
         toast(`Feedback submitted! Thank you.${countMsg}`);
-        formRef.current?.reset();
-        if (addMoreRef.current) {
-          focusTextarea();
-        } else {
-          props.onOpenChange(false);
-        }
       }
     }
     prevState.current = fetcher.state;
-  }, [fetcher.state, fetcher.data, focusTextarea, props]);
+  }, [fetcher.state, fetcher.data]);
+
+  // Close modal (or reset form) immediately on submit
+  const handleSubmit = useCallback(() => {
+    if (addMoreRef.current) {
+      formRef.current?.reset();
+      focusTextarea();
+    } else {
+      props.onOpenChange(false);
+    }
+  }, [focusTextarea, props]);
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -78,6 +82,7 @@ export function FeedbackModal(props: {
           method="post"
           action="/api/feedback"
           className="space-y-4"
+          onSubmit={handleSubmit}
         >
           <input type="hidden" name="url" value={location.pathname} />
           <div className="space-y-2">
@@ -121,16 +126,7 @@ export function FeedbackModal(props: {
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={fetcher.state !== "idle"}>
-              {fetcher.state !== "idle" ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                "Submit"
-              )}
-            </Button>
+            <Button type="submit">Submit</Button>
           </div>
         </fetcher.Form>
       </DialogContent>
