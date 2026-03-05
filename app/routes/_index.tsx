@@ -734,7 +734,7 @@ export default function Component(props: Route.ComponentProps) {
                                     onSelect={() => setEditLessonId(lesson.id)}
                                   >
                                     <PencilIcon className="w-4 h-4" />
-                                    Edit Lesson
+                                    Rename Lesson
                                   </ContextMenuItem>
                                   <ContextMenuItem
                                     variant="destructive"
