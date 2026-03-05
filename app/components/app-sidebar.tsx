@@ -17,7 +17,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { Plan } from "@/features/course-planner/types";
-import { cn } from "@/lib/utils";
+import { cn, isLeftClick } from "@/lib/utils";
 import {
   Archive,
   ClipboardList,
@@ -137,7 +137,8 @@ export function AppSidebar({
                     "w-full text-left text-sm px-2 py-1.5 rounded-md hover:bg-accent transition-colors",
                     selectedRepoId === repo.id && "bg-muted text-foreground/90"
                   )}
-                  onMouseDown={() => {
+                  onMouseDown={(e) => {
+                    if (!isLeftClick(e)) return;
                     navigate(`/?repoId=${repo.id}`, {
                       preventScrollReset: true,
                     });
@@ -206,7 +207,8 @@ export function AppSidebar({
               <ContextMenuTrigger asChild>
                 <button
                   className="w-full text-left text-sm px-2 py-1.5 rounded-md hover:bg-accent transition-colors"
-                  onMouseDown={() => {
+                  onMouseDown={(e) => {
+                    if (!isLeftClick(e)) return;
                     navigate(`/videos/${video.id}/edit`, {
                       preventScrollReset: true,
                     });
@@ -305,7 +307,8 @@ export function AppSidebar({
                 <ContextMenuTrigger asChild>
                   <button
                     className="w-full text-left text-sm px-2 py-1.5 rounded-md hover:bg-accent transition-colors"
-                    onMouseDown={() => {
+                    onMouseDown={(e) => {
+                      if (!isLeftClick(e)) return;
                       navigate(`/plans/${plan.id}`, {
                         preventScrollReset: true,
                       });

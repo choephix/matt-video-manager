@@ -5,6 +5,7 @@ import { runtimeLive } from "@/services/layer.server";
 import { Console, Effect } from "effect";
 import { ArchiveRestore } from "lucide-react";
 import { useState } from "react";
+import { isLeftClick } from "@/lib/utils";
 import { useFetcher, useNavigate, useSearchParams } from "react-router";
 import type { Route } from "./+types/archived-repos";
 
@@ -77,7 +78,8 @@ export default function ArchivedRepos(props: Route.ComponentProps) {
                     <Button
                       variant="link"
                       className="h-auto p-0 font-medium text-base"
-                      onMouseDown={() => {
+                      onMouseDown={(e) => {
+                        if (!isLeftClick(e)) return;
                         navigate(`/?repoId=${repo.id}`, {
                           preventScrollReset: true,
                         });

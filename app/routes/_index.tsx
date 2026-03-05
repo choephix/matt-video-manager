@@ -36,7 +36,7 @@ import { useFocusRevalidate } from "@/hooks/use-focus-revalidate";
 import { getVideoPath } from "@/lib/get-video";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
+import { cn, isLeftClick } from "@/lib/utils";
 import { DBFunctionsService } from "@/services/db-service.server";
 import { FeatureFlagService } from "@/services/feature-flag-service";
 import { runtimeLive } from "@/services/layer.server";
@@ -738,7 +738,8 @@ export default function Component(props: Route.ComponentProps) {
                                       <ContextMenuTrigger asChild>
                                         <button
                                           className="flex items-center justify-between text-xs py-1 px-2 rounded hover:bg-muted/50 transition-colors cursor-context-menu w-full text-left"
-                                          onMouseDown={() => {
+                                          onMouseDown={(e) => {
+                                            if (!isLeftClick(e)) return;
                                             navigate(
                                               `/videos/${video.id}/edit`
                                             );
