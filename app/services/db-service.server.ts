@@ -636,6 +636,17 @@ export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
         return lesson;
       });
 
+      const getLessonsBySectionId = Effect.fn("getLessonsBySectionId")(
+        function* (sectionId: string) {
+          return yield* makeDbCall(() =>
+            db.query.lessons.findMany({
+              where: eq(lessons.sectionId, sectionId),
+              orderBy: asc(lessons.order),
+            })
+          );
+        }
+      );
+
       const getLessonWithHierarchyById = Effect.fn(
         "getLessonWithHierarchyById"
       )(function* (id: string) {
@@ -896,6 +907,7 @@ export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
         reorderClipSection,
         getLessonById,
         getLessonWithHierarchyById,
+        getLessonsBySectionId,
         getSectionWithHierarchyById,
         appendClips: Effect.fn("addClips")(function* (opts: {
           videoId: string;
