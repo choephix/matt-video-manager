@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -10,8 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { useFetcher, useLocation } from "react-router";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+
+const ADD_MORE_STORAGE_KEY = "feedback-modal-add-more";
 
 export function FeedbackModal(props: {
   open: boolean;
@@ -22,6 +25,12 @@ export function FeedbackModal(props: {
   const formRef = useRef<HTMLFormElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const prevState = useRef(fetcher.state);
+  const [addMore, setAddMore] = useState(() => {
+    if (typeof localStorage !== "undefined") {
+      return localStorage.getItem(ADD_MORE_STORAGE_KEY) === "true";
+    }
+    return false;
+  });
 
   const focusTextarea = useCallback(() => {
     setTimeout(() => textareaRef.current?.focus(), 0);
@@ -33,6 +42,9 @@ export function FeedbackModal(props: {
     }
   }, [props.open, focusTextarea]);
 
+  const addMoreRef = useRef(addMore);
+  addMoreRef.current = addMore;
+
   useEffect(() => {
     if (prevState.current === "loading" && fetcher.state === "idle") {
       if (fetcher.data && "success" in fetcher.data) {
@@ -41,11 +53,15 @@ export function FeedbackModal(props: {
         const countMsg = openCount != null ? ` ${openCount} open issues.` : "";
         toast(`Feedback submitted! Thank you.${countMsg}`);
         formRef.current?.reset();
-        focusTextarea();
+        if (addMoreRef.current) {
+          focusTextarea();
+        } else {
+          props.onOpenChange(false);
+        }
       }
     }
     prevState.current = fetcher.state;
-  }, [fetcher.state, fetcher.data, focusTextarea]);
+  }, [fetcher.state, fetcher.data, focusTextarea, props]);
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -80,6 +96,22 @@ export function FeedbackModal(props: {
                 }
               }}
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="feedback-add-more"
+              checked={addMore}
+              onCheckedChange={(checked) => {
+                const value = checked === true;
+                setAddMore(value);
+                if (typeof localStorage !== "undefined") {
+                  localStorage.setItem(ADD_MORE_STORAGE_KEY, String(value));
+                }
+              }}
+            />
+            <Label htmlFor="feedback-add-more" className="text-sm font-normal">
+              Add more
+            </Label>
           </div>
           <div className="flex justify-end gap-2">
             <Button
