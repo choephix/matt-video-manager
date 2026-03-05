@@ -3,6 +3,7 @@ import {
   toSlug,
   buildLessonPath,
   parseLessonPath,
+  computeRenumberingPlan,
 } from "./lesson-path-service";
 
 describe("toSlug", () => {
@@ -146,5 +147,127 @@ describe("parseLessonPath", () => {
         slug: "my-lesson",
       });
     });
+  });
+});
+
+describe("computeRenumberingPlan", () => {
+  const makeLessons = (slugs: string[], sectionNumber = 1) =>
+    slugs.map((slug, i) => ({
+      id: `lesson-${i + 1}`,
+      path: buildLessonPath(sectionNumber, i + 1, slug),
+    }));
+
+  it("returns empty array for empty lessons", () => {
+    expect(computeRenumberingPlan([], 0, 1)).toEqual([]);
+  });
+
+  it("returns empty array when fromIndex equals toIndex (no-op)", () => {
+    const lessons = makeLessons(["alpha", "beta", "gamma"]);
+    expect(computeRenumberingPlan(lessons, 1, 1)).toEqual([]);
+  });
+
+  it("returns empty array for out-of-bounds fromIndex", () => {
+    const lessons = makeLessons(["alpha", "beta"]);
+    expect(computeRenumberingPlan(lessons, -1, 0)).toEqual([]);
+    expect(computeRenumberingPlan(lessons, 5, 0)).toEqual([]);
+  });
+
+  it("returns empty array for out-of-bounds toIndex", () => {
+    const lessons = makeLessons(["alpha", "beta"]);
+    expect(computeRenumberingPlan(lessons, 0, -1)).toEqual([]);
+    expect(computeRenumberingPlan(lessons, 0, 5)).toEqual([]);
+  });
+
+  it("moves last lesson to first position", () => {
+    const lessons = makeLessons(["alpha", "beta", "gamma"]);
+    const plan = computeRenumberingPlan(lessons, 2, 0);
+
+    // New order: gamma, alpha, beta
+    // gamma: 01.03 → 01.01, alpha: 01.01 → 01.02, beta: 01.02 → 01.03
+    expect(plan).toEqual([
+      { id: "lesson-3", oldPath: "01.03-gamma", newPath: "01.01-gamma" },
+      { id: "lesson-1", oldPath: "01.01-alpha", newPath: "01.02-alpha" },
+      { id: "lesson-2", oldPath: "01.02-beta", newPath: "01.03-beta" },
+    ]);
+  });
+
+  it("moves first lesson to last position", () => {
+    const lessons = makeLessons(["alpha", "beta", "gamma"]);
+    const plan = computeRenumberingPlan(lessons, 0, 2);
+
+    // New order: beta, gamma, alpha
+    // beta: 01.02 → 01.01, gamma: 01.03 → 01.02, alpha: 01.01 → 01.03
+    expect(plan).toEqual([
+      { id: "lesson-2", oldPath: "01.02-beta", newPath: "01.01-beta" },
+      { id: "lesson-3", oldPath: "01.03-gamma", newPath: "01.02-gamma" },
+      { id: "lesson-1", oldPath: "01.01-alpha", newPath: "01.03-alpha" },
+    ]);
+  });
+
+  it("moves a middle lesson down one position", () => {
+    const lessons = makeLessons(["alpha", "beta", "gamma", "delta"]);
+    const plan = computeRenumberingPlan(lessons, 1, 2);
+
+    // New order: alpha, gamma, beta, delta
+    // alpha stays 01.01 (no change), gamma: 01.03→01.02, beta: 01.02→01.03, delta stays 01.04
+    expect(plan).toEqual([
+      { id: "lesson-3", oldPath: "01.03-gamma", newPath: "01.02-gamma" },
+      { id: "lesson-2", oldPath: "01.02-beta", newPath: "01.03-beta" },
+    ]);
+  });
+
+  it("moves a middle lesson up one position", () => {
+    const lessons = makeLessons(["alpha", "beta", "gamma", "delta"]);
+    const plan = computeRenumberingPlan(lessons, 2, 1);
+
+    // New order: alpha, gamma, beta, delta
+    // Same result as above
+    expect(plan).toEqual([
+      { id: "lesson-3", oldPath: "01.03-gamma", newPath: "01.02-gamma" },
+      { id: "lesson-2", oldPath: "01.02-beta", newPath: "01.03-beta" },
+    ]);
+  });
+
+  it("handles single lesson (no-op since fromIndex must equal toIndex)", () => {
+    const lessons = makeLessons(["only-lesson"]);
+    expect(computeRenumberingPlan(lessons, 0, 0)).toEqual([]);
+  });
+
+  it("preserves section number from existing paths", () => {
+    const lessons = [
+      { id: "a", path: "03.01-intro" },
+      { id: "b", path: "03.02-basics" },
+      { id: "c", path: "03.03-advanced" },
+    ];
+    const plan = computeRenumberingPlan(lessons, 2, 0);
+
+    expect(plan).toEqual([
+      { id: "c", oldPath: "03.03-advanced", newPath: "03.01-advanced" },
+      { id: "a", oldPath: "03.01-intro", newPath: "03.02-intro" },
+      { id: "b", oldPath: "03.02-basics", newPath: "03.03-basics" },
+    ]);
+  });
+
+  it("only includes lessons whose path actually changes", () => {
+    const lessons = makeLessons(["alpha", "beta", "gamma", "delta", "epsilon"]);
+    // Move lesson at index 3 to index 1
+    const plan = computeRenumberingPlan(lessons, 3, 1);
+
+    // New order: alpha, delta, beta, gamma, epsilon
+    // alpha stays 01.01, epsilon stays 01.05
+    expect(plan).toHaveLength(3);
+    expect(plan.find((r) => r.id === "lesson-1")).toBeUndefined();
+    expect(plan.find((r) => r.id === "lesson-5")).toBeUndefined();
+  });
+
+  it("handles two lessons swapping positions", () => {
+    const lessons = makeLessons(["first", "second"]);
+    const plan = computeRenumberingPlan(lessons, 0, 1);
+
+    // New order: second, first
+    expect(plan).toEqual([
+      { id: "lesson-2", oldPath: "01.02-second", newPath: "01.01-second" },
+      { id: "lesson-1", oldPath: "01.01-first", newPath: "01.02-first" },
+    ]);
   });
 });
