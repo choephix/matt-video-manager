@@ -758,38 +758,18 @@ describe("getShouldShowLastFrameOverlay", () => {
     );
   });
 
-  it("returns true when OBS is not running (defaults to showing)", () => {
-    expect(getShouldShowLastFrameOverlay(clip, true, obsNotRunning)).toBe(true);
-  });
-
-  it("returns true when clip scene matches OBS scene", () => {
-    const state: OBSConnectionOuterState = {
-      ...obsRecording,
-      scene: "Camera",
-    };
-    expect(getShouldShowLastFrameOverlay(clip, true, state)).toBe(true);
-  });
-
-  it("returns false when clip scene does not match OBS scene", () => {
-    const state: OBSConnectionOuterState = {
+  it("returns true regardless of scene match", () => {
+    const differentScene: OBSConnectionOuterState = {
       ...obsRecording,
       scene: "Screen",
     };
-    expect(getShouldShowLastFrameOverlay(clip, true, state)).toBe(false);
-  });
-
-  it("returns true when clip has no scene (null)", () => {
-    const clipNoScene = makeClipOnDatabase({
-      frontendId: id("b"),
-      scene: null,
-    });
-    expect(getShouldShowLastFrameOverlay(clipNoScene, true, obsRecording)).toBe(
+    expect(getShouldShowLastFrameOverlay(clip, true, differentScene)).toBe(
       true
     );
   });
 
-  it("returns true when OBS is connected (not recording) and scenes match", () => {
-    expect(getShouldShowLastFrameOverlay(clip, true, obsConnected)).toBe(true);
+  it("returns true when clip and showLastFrame are truthy", () => {
+    expect(getShouldShowLastFrameOverlay(clip, true, obsRecording)).toBe(true);
   });
 });
 

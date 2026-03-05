@@ -349,23 +349,13 @@ export const getIsLiveStreamPortrait = (
 export const getShouldShowLastFrameOverlay = (
   databaseClipToShowLastFrameOf: ClipOnDatabase | undefined,
   showLastFrame: boolean,
-  obsConnectorState: OBSConnectionOuterState
+  _obsConnectorState: OBSConnectionOuterState
 ): boolean => {
   if (!databaseClipToShowLastFrameOf || !showLastFrame) {
     return false;
   }
 
-  // Show overlay if OBS is not active (default to showing)
-  if (!getIsOBSActive(obsConnectorState)) {
-    return true;
-  }
-
-  // Show if clip has no scene, or if scenes match
-  return (
-    databaseClipToShowLastFrameOf.scene === null ||
-    (obsConnectorState.type !== "obs-not-running" &&
-      databaseClipToShowLastFrameOf.scene === obsConnectorState.scene)
-  );
+  return true;
 };
 
 export const getBackButtonUrl = (
