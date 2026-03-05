@@ -53,7 +53,12 @@ export const ClipTimeline = () => {
 
         {items.length > 0 && (
           <>
-            {insertionPoint.type === "start" && <InsertionPointIndicator />}
+            {insertionPoint.type === "start" && (
+              <>
+                <InsertionPointIndicator />
+                <RecordingSessionPanels />
+              </>
+            )}
             {items.map((item, itemIndex) => {
               const isFirstItem = itemIndex === 0;
               const isLastItem = itemIndex === items.length - 1;
@@ -116,7 +121,10 @@ export const ClipTimeline = () => {
                   {clip.beatType === "long" && <BeatIndicator />}
                   {insertionPoint.type === "after-clip" &&
                     insertionPoint.frontendClipId === clip.frontendId && (
-                      <InsertionPointIndicator />
+                      <>
+                        <InsertionPointIndicator />
+                        <RecordingSessionPanels />
+                      </>
                     )}
                 </div>
               );
@@ -126,17 +134,24 @@ export const ClipTimeline = () => {
             {insertionPoint.type === "after-clip" &&
               !items.some(
                 (item) => item.frontendId === insertionPoint.frontendClipId
-              ) && <InsertionPointIndicator />}
+              ) && (
+                <>
+                  <InsertionPointIndicator />
+                  <RecordingSessionPanels />
+                </>
+              )}
 
-            {insertionPoint.type === "end" && <InsertionPointIndicator />}
+            {insertionPoint.type === "end" && (
+              <>
+                <InsertionPointIndicator />
+                <RecordingSessionPanels />
+              </>
+            )}
           </>
         )}
 
         {/* Inline suggestion display at the bottom of the timeline */}
         <InlineSuggestion />
-
-        {/* Recording session panels below the timeline */}
-        <RecordingSessionPanels />
       </div>
     </div>
   );
