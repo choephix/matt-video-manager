@@ -30,7 +30,7 @@ import { useState } from "react";
 import { UploadProvider } from "@/features/upload-manager/upload-context";
 import { GlobalUploadProgress } from "@/features/upload-manager/global-upload-progress";
 import { FeedbackModal } from "@/components/feedback-modal";
-import { MessageSquarePlus } from "lucide-react";
+import { Loader2, MessageSquarePlus } from "lucide-react";
 import "./app.css";
 
 export const links: Route.LinksFunction = () => [
@@ -71,6 +71,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
 
   return (
     <UploadProvider>
@@ -81,11 +82,20 @@ export default function App() {
         variant="outline"
         className="fixed bottom-4 right-4 z-40 rounded-full size-10 shadow-lg"
         onClick={() => setFeedbackOpen(true)}
+        disabled={feedbackSubmitting}
         aria-label="Send feedback"
       >
-        <MessageSquarePlus className="size-5" />
+        {feedbackSubmitting ? (
+          <Loader2 className="size-5 animate-spin" />
+        ) : (
+          <MessageSquarePlus className="size-5" />
+        )}
       </Button>
-      <FeedbackModal open={feedbackOpen} onOpenChange={setFeedbackOpen} />
+      <FeedbackModal
+        open={feedbackOpen}
+        onOpenChange={setFeedbackOpen}
+        onSubmittingChange={setFeedbackSubmitting}
+      />
     </UploadProvider>
   );
 }

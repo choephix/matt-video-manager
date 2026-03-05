@@ -18,6 +18,7 @@ const ADD_MORE_STORAGE_KEY = "feedback-modal-add-more";
 export function FeedbackModal(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSubmittingChange?: (submitting: boolean) => void;
 }) {
   const fetcher = useFetcher();
   const location = useLocation();
@@ -43,6 +44,11 @@ export function FeedbackModal(props: {
 
   const addMoreRef = useRef(addMore);
   addMoreRef.current = addMore;
+
+  // Notify parent of submitting state changes
+  useEffect(() => {
+    props.onSubmittingChange?.(fetcher.state !== "idle");
+  }, [fetcher.state, props.onSubmittingChange]);
 
   // Show toast when the response comes back in the background
   useEffect(() => {
