@@ -22,16 +22,25 @@ const wslPathToWindows = (wslPath: string): Effect.Effect<string, Error> => {
 };
 
 /**
- * Opens Windows Explorer with the file selected
+ * Opens Windows Explorer with the file selected.
+ * explorer.exe commonly returns non-zero exit codes even on success,
+ * so we ignore exit code errors and only fail on actual execution errors.
  */
 const revealInExplorer = (windowsPath: string): Effect.Effect<void, Error> => {
-  return Effect.tryPromise({
-    try: async () => {
-      // Use powershell.exe to run explorer.exe with /select flag
-      const command = `powershell.exe -c "explorer.exe '/select,\\"${windowsPath}\\"'"`;
-      await execAsync(command);
-    },
-    catch: (e) => new Error(`Failed to reveal file: ${e}`),
+  return Effect.async<void, Error>((resume) => {
+    const command = `powershell.exe -c "explorer.exe '/select,\\"${windowsPath}\\"'"`;
+    exec(command, (error) => {
+      // explorer.exe returns non-zero exit codes even on success,
+      // so only treat spawn/permission errors (string error codes like ENOENT)
+      // as real failures, not numeric exit codes
+      if (error && typeof error.code === "string") {
+        resume(
+          Effect.fail(new Error(`Failed to reveal file: ${error.message}`))
+        );
+      } else {
+        resume(Effect.succeed(undefined));
+      }
+    });
   });
 };
 
