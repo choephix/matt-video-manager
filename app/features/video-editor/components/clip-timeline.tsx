@@ -34,10 +34,6 @@ export const ClipTimeline = () => {
     VideoEditorContext,
     (ctx) => ctx.generateDefaultClipSectionName
   );
-  const onAddIntroSection = useContextSelector(
-    VideoEditorContext,
-    (ctx) => ctx.onAddIntroSection
-  );
   const onEditSection = useContextSelector(
     VideoEditorContext,
     (ctx) => ctx.onEditSection
@@ -53,9 +49,7 @@ export const ClipTimeline = () => {
   return (
     <div className="lg:flex-1 flex gap-2 h-full order-2 lg:order-1 overflow-y-auto">
       <div className="grid gap-4 w-full p-2">
-        {clips.length === 0 && (
-          <PreRecordingChecklist onAddIntroSection={onAddIntroSection} />
-        )}
+        {clips.length === 0 && <PreRecordingChecklist />}
 
         {items.length > 0 && (
           <>
