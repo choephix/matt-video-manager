@@ -515,7 +515,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           toast.success(`"${upload.title}" exported successfully`, {
             duration: Infinity,
             cancel: {
-              label: "Reveal in File System",
+              label: "Open",
               onClick: () => {
                 fetch(`/api/videos/${upload.videoId}/reveal`, {
                   method: "POST",
