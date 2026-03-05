@@ -8,7 +8,7 @@ import { RenameVideoModal } from "@/components/rename-video-modal";
 import { useKeyboardShortcuts } from "./hooks/use-keyboard-shortcuts";
 import { useWebSocket } from "./hooks/use-websocket";
 import { useClipboardOperations } from "./hooks/use-clipboard-operations";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFetcher, useRevalidator } from "react-router";
 import { StandaloneFilePasteModal } from "@/components/standalone-file-paste-modal";
 import { LessonFilePasteModal } from "@/components/lesson-file-paste-modal";
@@ -313,6 +313,38 @@ export const VideoEditor = (props: {
   const onAddIntroSection = useCallback(() => {
     props.onAddClipSection("Intro");
   }, [props]);
+
+  // F2 to rename selected section
+  const selectedClipsSet = state.selectedClipsSet;
+  useEffect(() => {
+    const handleF2 = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target instanceof HTMLButtonElement &&
+          !e.target.classList.contains("allow-keydown"))
+      ) {
+        return;
+      }
+      if (e.key === "F2") {
+        e.preventDefault();
+        if (selectedClipsSet.size !== 1) return;
+        const selectedId = Array.from(selectedClipsSet)[0]!;
+        const selectedItem = timelineItems.find(
+          (item) => item.frontendId === selectedId
+        );
+        if (
+          selectedItem &&
+          (selectedItem.type === "clip-section-on-database" ||
+            selectedItem.type === "clip-section-optimistically-added")
+        ) {
+          onEditSection(selectedId, selectedItem.name);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleF2);
+    return () => window.removeEventListener("keydown", handleF2);
+  }, [selectedClipsSet, timelineItems, onEditSection]);
 
   const handlePasteModalClose = (open: boolean) => {
     setIsPasteModalOpen(open);

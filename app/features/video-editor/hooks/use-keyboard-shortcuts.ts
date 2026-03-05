@@ -14,6 +14,7 @@ import type { videoStateReducer } from "../video-state-reducer";
  * - k: Mark clip end
  * - Home/End: Navigate to first/last clip
  * - b/B: Toggle beat between clips
+ * - F2: Rename selected section (handled in VideoEditor component)
  *
  * Ignores keyboard events when focus is on input fields, textareas,
  * or buttons (unless they have the "allow-keydown" class).
