@@ -851,12 +851,12 @@ function SortableLessonItem({
                       />
                     </div>
                   ) : lesson.description ? (
-                    <p
-                      className="text-xs text-muted-foreground mt-1 cursor-pointer hover:text-foreground/70 transition-colors line-clamp-2"
+                    <div
+                      className="text-xs text-muted-foreground mt-1 cursor-pointer hover:text-foreground/70 transition-colors line-clamp-2 whitespace-pre-line"
                       onClick={() => setEditingDesc(true)}
                     >
                       {lesson.description}
-                    </p>
+                    </div>
                   ) : (
                     <button
                       className="text-xs text-muted-foreground/50 mt-1 hover:text-muted-foreground transition-colors"
