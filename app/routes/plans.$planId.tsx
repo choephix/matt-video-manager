@@ -524,7 +524,10 @@ function SortableLesson({
                 onKeyDown={(e) => {
                   if (e.key === "Escape")
                     dispatch({ type: "lesson-description-cancel-requested" });
-                  if (e.key === " " && e.ctrlKey) {
+                  if (
+                    (e.key === " " && e.ctrlKey) ||
+                    (e.key === "Enter" && (e.ctrlKey || e.metaKey))
+                  ) {
                     e.preventDefault();
                     dispatch({ type: "lesson-description-save-requested" });
                   }
