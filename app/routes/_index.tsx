@@ -3,6 +3,7 @@
 import { AppSidebar } from "@/components/app-sidebar";
 import { AddGhostLessonModal } from "@/components/add-ghost-lesson-modal";
 import { ConvertToGhostModal } from "@/components/convert-to-ghost-modal";
+import { CreateSectionModal } from "@/components/create-section-modal";
 import { AddVideoModal } from "@/components/add-video-modal";
 import { ClearVideoFilesModal } from "@/components/clear-video-files-modal";
 import { CreateVersionModal } from "@/components/create-version-modal";
@@ -284,6 +285,8 @@ export default function Component(props: Route.ComponentProps) {
   const [addGhostLessonSectionId, setAddGhostLessonSectionId] = useState<
     string | null
   >(null);
+  const [isCreateSectionModalOpen, setIsCreateSectionModalOpen] =
+    useState(false);
   const [addVideoToLessonId, setAddVideoToLessonId] = useState<string | null>(
     null
   );
@@ -1214,10 +1217,28 @@ export default function Component(props: Route.ComponentProps) {
                           );
                         })}
                       </div>
+                      <div className="mt-6 flex justify-center">
+                        <Button
+                          variant="outline"
+                          className="border-dashed"
+                          onClick={() => setIsCreateSectionModalOpen(true)}
+                        >
+                          <Plus className="w-4 h-4" />
+                          Add Section
+                        </Button>
+                      </div>
                     </SortableContext>
                   </DndContext>
                 );
               })()}
+              {data.selectedVersion && (
+                <CreateSectionModal
+                  repoVersionId={data.selectedVersion.id}
+                  maxOrder={currentRepo.sections.length}
+                  open={isCreateSectionModalOpen}
+                  onOpenChange={setIsCreateSectionModalOpen}
+                />
+              )}
             </>
           ) : (
             <div className="max-w-4xl mx-auto">
