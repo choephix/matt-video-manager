@@ -9,6 +9,7 @@ import { FileTree } from "@/components/FileTree";
 import { StandaloneFileTree } from "@/components/StandaloneFileTree";
 import {
   ClipboardIcon,
+  CheckIcon,
   LinkIcon,
   ExternalLinkIcon,
   Trash2Icon,
@@ -79,6 +80,9 @@ export type VideoContextPanelProps = {
   // Reveal video file in file system
   onRevealInFileSystem?: () => void;
 
+  // Copy transcript
+  onCopyTranscript?: () => void;
+
   // Memory
   memory?: string;
   onMemoryChange?: (memory: string) => void;
@@ -111,11 +115,13 @@ export function VideoContextPanel({
   onDeleteLink,
   videoSlot,
   onRevealInFileSystem,
+  onCopyTranscript,
   memory,
   onMemoryChange,
   memoryEnabled,
   onMemoryEnabledChange,
 }: VideoContextPanelProps) {
+  const [transcriptCopied, setTranscriptCopied] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<"context" | "links" | "memory">(
     "context"
   );
@@ -215,6 +221,24 @@ export function VideoContextPanel({
               <span className="text-xs text-muted-foreground">
                 ({transcriptWordCount.toLocaleString()} words)
               </span>
+              {onCopyTranscript && (
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground p-0.5"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onCopyTranscript();
+                    setTranscriptCopied(true);
+                    setTimeout(() => setTranscriptCopied(false), 2000);
+                  }}
+                >
+                  {transcriptCopied ? (
+                    <CheckIcon className="h-3.5 w-3.5" />
+                  ) : (
+                    <ClipboardIcon className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              )}
             </div>
             {/* Section checkboxes */}
             {clipSections.length > 0 && (

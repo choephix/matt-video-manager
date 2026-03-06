@@ -252,6 +252,7 @@ export const loader = async (args: Route.LoaderArgs) => {
         nextVideoId,
         previousVideoId,
         isStandalone: true,
+        transcript,
         transcriptWordCount,
         clipSections: sectionsWithWordCount,
         links: globalLinks,
@@ -365,6 +366,7 @@ export const loader = async (args: Route.LoaderArgs) => {
       nextVideoId,
       previousVideoId,
       isStandalone: false,
+      transcript,
       transcriptWordCount,
       clipSections: sectionsWithWordCount,
       links: globalLinks,
@@ -454,6 +456,7 @@ export function InnerComponent(props: Route.ComponentProps) {
     fullPath,
     files,
     isStandalone,
+    transcript,
     transcriptWordCount,
     clipSections,
     links,
@@ -907,6 +910,9 @@ export function InnerComponent(props: Route.ComponentProps) {
         <VideoContextPanel
           videoSrc={`/api/videos/${videoId}/stream`}
           transcriptWordCount={transcriptWordCount}
+          onCopyTranscript={() => {
+            navigator.clipboard.writeText(transcript);
+          }}
           clipSections={clipSections}
           enabledSections={enabledSections}
           onEnabledSectionsChange={setEnabledSections}
