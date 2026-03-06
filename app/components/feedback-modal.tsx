@@ -63,11 +63,14 @@ export function FeedbackModal(props: {
     prevState.current = fetcher.state;
   }, [fetcher.state, fetcher.data]);
 
-  // Close modal (or reset form) immediately on submit
+  // Close modal (or reset form) on submit
+  // Defer reset so the fetcher captures form data before clearing
   const handleSubmit = useCallback(() => {
     if (addMoreRef.current) {
-      formRef.current?.reset();
-      focusTextarea();
+      setTimeout(() => {
+        formRef.current?.reset();
+        focusTextarea();
+      }, 0);
     } else {
       props.onOpenChange(false);
     }
