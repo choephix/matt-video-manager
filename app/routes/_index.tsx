@@ -492,7 +492,7 @@ export default function Component(props: Route.ComponentProps) {
         <div className="p-6">
           {currentRepo ? (
             <>
-              <div className="flex gap-6">
+              <div className="flex gap-6 mb-4">
                 <div>
                   <h1 className="text-2xl font-bold mb-2 flex items-center gap-2">
                     {currentRepo.name}
