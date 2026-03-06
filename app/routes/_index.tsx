@@ -1822,7 +1822,7 @@ function SortableLessonItem({
         </ContextMenu>
         <div className="ml-5">
           {editingDesc ? (
-            <div className="mt-1">
+            <div className="mt-1 max-w-[65ch]">
               <Textarea
                 ref={descTextareaRef}
                 value={descValue}
@@ -1844,7 +1844,7 @@ function SortableLessonItem({
             </div>
           ) : lesson.description ? (
             <div
-              className="text-xs text-muted-foreground mt-1 cursor-pointer hover:text-foreground/70 whitespace-pre-line"
+              className="text-xs text-muted-foreground mt-1 cursor-pointer hover:text-foreground/70 whitespace-pre-line max-w-[65ch]"
               onClick={() => {
                 setDescValue(lesson.description || "");
                 setEditingDesc(true);
