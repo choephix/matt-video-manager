@@ -685,25 +685,43 @@ export default function Component(props: Route.ComponentProps) {
 
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                 {currentRepo.sections.map((section) => {
-                  const sectionDuration = section.lessons.reduce(
-                    (acc, lesson) => {
-                      return (
-                        acc +
-                        lesson.videos.reduce((videoAcc, video) => {
-                          return (
-                            videoAcc +
-                            video.clips.reduce((clipAcc, clip) => {
-                              return (
-                                clipAcc +
-                                (clip.sourceEndTime - clip.sourceStartTime)
-                              );
-                            }, 0)
-                          );
-                        }, 0)
-                      );
-                    },
-                    0
-                  );
+                  // Optimistic reordering: use pending fetcher data to show new order immediately
+                  let lessons = section.lessons;
+                  const pendingReorder = reorderLessonFetcher.formData;
+                  if (
+                    pendingReorder &&
+                    pendingReorder.get("sectionId") === section.id
+                  ) {
+                    const lessonIds = JSON.parse(
+                      pendingReorder.get("lessonIds") as string
+                    ) as string[];
+                    const lessonMap = new Map(
+                      section.lessons.map((l) => [l.id, l])
+                    );
+                    const reordered = lessonIds
+                      .map((id) => lessonMap.get(id))
+                      .filter(Boolean) as typeof section.lessons;
+                    if (reordered.length === section.lessons.length) {
+                      lessons = reordered;
+                    }
+                  }
+
+                  const sectionDuration = lessons.reduce((acc, lesson) => {
+                    return (
+                      acc +
+                      lesson.videos.reduce((videoAcc, video) => {
+                        return (
+                          videoAcc +
+                          video.clips.reduce((clipAcc, clip) => {
+                            return (
+                              clipAcc +
+                              (clip.sourceEndTime - clip.sourceStartTime)
+                            );
+                          }, 0)
+                        );
+                      }, 0)
+                    );
+                  }, 0);
 
                   return (
                     <div key={section.id} className="rounded-lg border bg-card">
@@ -718,7 +736,7 @@ export default function Component(props: Route.ComponentProps) {
                                 variant="secondary"
                                 className="text-[10px]"
                               >
-                                {section.lessons.length} lessons &middot;{" "}
+                                {lessons.length} lessons &middot;{" "}
                                 {formatSecondsToTimeCode(sectionDuration)}
                               </Badge>
                             </div>
@@ -744,16 +762,13 @@ export default function Component(props: Route.ComponentProps) {
                         <DndContext
                           sensors={sensors}
                           collisionDetection={closestCenter}
-                          onDragEnd={handleLessonDragEnd(
-                            section.id,
-                            section.lessons
-                          )}
+                          onDragEnd={handleLessonDragEnd(section.id, lessons)}
                         >
                           <SortableContext
-                            items={section.lessons.map((l) => l.id)}
+                            items={lessons.map((l) => l.id)}
                             strategy={verticalListSortingStrategy}
                           >
-                            {section.lessons.map((lesson, li) => (
+                            {lessons.map((lesson, li) => (
                               <SortableLessonItem
                                 key={lesson.id}
                                 lesson={lesson}
