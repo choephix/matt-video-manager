@@ -269,6 +269,7 @@ export const loader = async (args: Route.LoaderArgs) => {
           sectionPath: string;
           hasExplainerFolder: boolean;
         },
+        memory: "",
       };
     }
 
@@ -375,6 +376,7 @@ export const loader = async (args: Route.LoaderArgs) => {
             hasExplainerFolder: nextLessonHasExplainerFolder,
           }
         : null,
+      memory: repoWithSections?.memory ?? "",
     };
   }).pipe(
     Effect.tapErrorCause((e) => Console.dir(e, { depth: null })),
@@ -410,6 +412,7 @@ const modeToLabel: Record<Mode, string> = {
 const MODE_STORAGE_KEY = "article-writer-mode";
 const MODEL_STORAGE_KEY = "article-writer-model";
 const COURSE_STRUCTURE_STORAGE_KEY = "article-writer-include-course-structure";
+const MEMORY_ENABLED_STORAGE_KEY = "article-writer-memory-enabled";
 
 const getMessagesStorageKey = (videoId: string, mode: Mode) =>
   `article-writer-messages-${videoId}-${mode}`;
@@ -455,6 +458,8 @@ export function InnerComponent(props: Route.ComponentProps) {
     links,
     courseStructure,
     nextLessonWithoutVideo,
+    repoId,
+    memory: initialMemory,
   } = props.loaderData;
   const [text, setText] = useState<string>("");
   const [mode, setMode] = useState<Mode>(() => {
@@ -496,6 +501,49 @@ export function InnerComponent(props: Route.ComponentProps) {
     }
     return false;
   });
+
+  // Memory state and debounced save
+  const [memory, setMemory] = useState(initialMemory);
+  const [memoryEnabled, setMemoryEnabled] = useState(() => {
+    if (typeof localStorage !== "undefined") {
+      return localStorage.getItem(MEMORY_ENABLED_STORAGE_KEY) === "true";
+    }
+    return false;
+  });
+  const memorySaveTimeoutRef = useRef<
+    ReturnType<typeof setTimeout> | undefined
+  >(undefined);
+  const isMemoryInitialMount = useRef(true);
+  const updateMemoryFetcher = useFetcher();
+
+  useEffect(() => {
+    if (isMemoryInitialMount.current) {
+      isMemoryInitialMount.current = false;
+      return;
+    }
+
+    if (!repoId) return;
+
+    if (memorySaveTimeoutRef.current) {
+      clearTimeout(memorySaveTimeoutRef.current);
+    }
+
+    memorySaveTimeoutRef.current = setTimeout(() => {
+      updateMemoryFetcher.submit(
+        { memory },
+        {
+          method: "post",
+          action: `/api/repos/${repoId}/update-memory`,
+        }
+      );
+    }, 750);
+
+    return () => {
+      if (memorySaveTimeoutRef.current) {
+        clearTimeout(memorySaveTimeoutRef.current);
+      }
+    };
+  }, [memory, repoId]);
 
   // Check if explainer or problem folder exists
   const hasExplainerOrProblem = files.some(
@@ -877,6 +925,15 @@ export function InnerComponent(props: Route.ComponentProps) {
               method: "post",
               action: `/api/links/${linkId}/delete`,
             });
+          }}
+          memory={repoId ? memory : undefined}
+          onMemoryChange={repoId ? setMemory : undefined}
+          memoryEnabled={memoryEnabled}
+          onMemoryEnabledChange={(enabled) => {
+            setMemoryEnabled(enabled);
+            if (typeof localStorage !== "undefined") {
+              localStorage.setItem(MEMORY_ENABLED_STORAGE_KEY, String(enabled));
+            }
           }}
         />
 

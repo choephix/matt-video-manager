@@ -78,6 +78,12 @@ export type VideoContextPanelProps = {
 
   // Reveal video file in file system
   onRevealInFileSystem?: () => void;
+
+  // Memory
+  memory?: string;
+  onMemoryChange?: (memory: string) => void;
+  memoryEnabled?: boolean;
+  onMemoryEnabledChange?: (enabled: boolean) => void;
 };
 
 export function VideoContextPanel({
@@ -105,8 +111,14 @@ export function VideoContextPanel({
   onDeleteLink,
   videoSlot,
   onRevealInFileSystem,
+  memory,
+  onMemoryChange,
+  memoryEnabled,
+  onMemoryEnabledChange,
 }: VideoContextPanelProps) {
-  const [sidebarTab, setSidebarTab] = useState<"context" | "links">("context");
+  const [sidebarTab, setSidebarTab] = useState<"context" | "links" | "memory">(
+    "context"
+  );
 
   return (
     <div className="w-1/4 border-r flex flex-col overflow-hidden">
@@ -150,6 +162,19 @@ export function VideoContextPanel({
         >
           Links
         </button>
+        {onMemoryChange && (
+          <button
+            onClick={() => setSidebarTab("memory")}
+            className={cn(
+              "px-3 py-1.5 text-sm font-medium rounded transition-colors",
+              sidebarTab === "memory"
+                ? "bg-gray-700 text-white"
+                : "text-gray-400 hover:text-gray-200"
+            )}
+          >
+            Memory
+          </button>
+        )}
       </div>
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto p-4 pt-0 space-y-4 scrollbar scrollbar-track-transparent scrollbar-thumb-gray-700 hover:scrollbar-thumb-gray-600">
@@ -442,6 +467,31 @@ export function VideoContextPanel({
                 No links yet
               </div>
             )}
+          </div>
+        )}
+        {sidebarTab === "memory" && (
+          <div className="flex flex-col gap-3 h-full">
+            <div className="flex items-center gap-2 py-1 px-2">
+              <Checkbox
+                id="memory-enabled"
+                checked={memoryEnabled ?? false}
+                onCheckedChange={(checked) => {
+                  onMemoryEnabledChange?.(!!checked);
+                }}
+              />
+              <label
+                htmlFor="memory-enabled"
+                className="text-sm flex-1 cursor-pointer"
+              >
+                Include memory in prompts
+              </label>
+            </div>
+            <textarea
+              className="flex-1 w-full bg-muted/50 border border-border rounded-md p-3 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
+              placeholder="Add course-level memory here (style guides, spellings, context...)"
+              value={memory ?? ""}
+              onChange={(e) => onMemoryChange?.(e.target.value)}
+            />
           </div>
         )}
       </div>
