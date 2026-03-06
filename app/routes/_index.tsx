@@ -14,6 +14,7 @@ import {
 } from "@/components/dependency-selector";
 import { EditGhostLessonModal } from "@/components/edit-ghost-lesson-modal";
 import { EditLessonModal } from "@/components/edit-lesson-modal";
+import { MoveLessonModal } from "@/components/move-lesson-modal";
 import { MoveVideoModal } from "@/components/move-video-modal";
 import { RenameVideoModal } from "@/components/rename-video-modal";
 import { RenameRepoModal } from "@/components/rename-repo-modal";
@@ -320,6 +321,11 @@ export default function Component(props: Route.ComponentProps) {
     videoPath: string;
     currentLessonId: string;
   } | null>(null);
+  const [moveLessonState, setMoveLessonState] = useState<{
+    lessonId: string;
+    lessonTitle: string;
+    currentSectionId: string;
+  } | null>(null);
   const [renameVideoState, setRenameVideoState] = useState<{
     videoId: string;
     videoPath: string;
@@ -366,6 +372,7 @@ export default function Component(props: Route.ComponentProps) {
   const reorderSectionFetcher = useFetcher();
   const addGhostFetcher = useFetcher();
   const createSectionFetcher = useFetcher();
+  const moveLessonFetcher = useFetcher();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -1040,6 +1047,38 @@ export default function Component(props: Route.ComponentProps) {
                             ];
                           }
 
+                          // Optimistic lesson move between sections
+                          const pendingMove = moveLessonFetcher.formData;
+                          if (pendingMove) {
+                            const movedLessonId = pendingMove.get(
+                              "lessonId"
+                            ) as string;
+                            const targetSectionId = pendingMove.get(
+                              "sectionId"
+                            ) as string;
+                            // Remove from source section
+                            if (targetSectionId !== section.id) {
+                              lessons = lessons.filter(
+                                (l) => l.id !== movedLessonId
+                              );
+                            }
+                            // Add to target section
+                            if (targetSectionId === section.id) {
+                              const movedLesson = displaySections
+                                .flatMap((s) => s.lessons)
+                                .find((l) => l.id === movedLessonId);
+                              if (
+                                movedLesson &&
+                                !lessons.some((l) => l.id === movedLessonId)
+                              ) {
+                                lessons = [
+                                  ...lessons,
+                                  { ...movedLesson, sectionId: section.id },
+                                ];
+                              }
+                            }
+                          }
+
                           // Filter lessons based on active filters
                           const hasActiveFilters =
                             priorityFilter.length > 0 ||
@@ -1223,6 +1262,9 @@ export default function Component(props: Route.ComponentProps) {
                                             }
                                             setConvertToGhostLessonId={
                                               setConvertToGhostLessonId
+                                            }
+                                            setMoveLessonState={
+                                              setMoveLessonState
                                             }
                                             dependencyMap={dependencyMap}
                                           />
@@ -1442,6 +1484,20 @@ export default function Component(props: Route.ComponentProps) {
         />
       )}
 
+      {moveLessonState && currentRepo && (
+        <MoveLessonModal
+          lessonId={moveLessonState.lessonId}
+          lessonTitle={moveLessonState.lessonTitle}
+          currentSectionId={moveLessonState.currentSectionId}
+          sections={currentRepo.sections}
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) setMoveLessonState(null);
+          }}
+          fetcher={moveLessonFetcher}
+        />
+      )}
+
       {moveVideoState && currentRepo && (
         <MoveVideoModal
           videoId={moveVideoState.videoId}
@@ -1529,6 +1585,7 @@ function SortableLessonItem({
   deleteLessonFetcher,
   convertToGhostLessonId,
   setConvertToGhostLessonId,
+  setMoveLessonState,
   allFlatLessons,
   dependencyMap,
 }: {
@@ -1563,6 +1620,13 @@ function SortableLessonItem({
   deleteLessonFetcher: ReturnType<typeof useFetcher>;
   convertToGhostLessonId: string | null;
   setConvertToGhostLessonId: (id: string | null) => void;
+  setMoveLessonState: (
+    state: {
+      lessonId: string;
+      lessonTitle: string;
+      currentSectionId: string;
+    } | null
+  ) => void;
   allFlatLessons: DependencyLessonItem[];
   dependencyMap: Record<string, string[]>;
 }) {
@@ -1829,6 +1893,19 @@ function SortableLessonItem({
                 </ContextMenuItem>
               </>
             )}
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              onSelect={() =>
+                setMoveLessonState({
+                  lessonId: lesson.id,
+                  lessonTitle: lesson.title || lesson.path,
+                  currentSectionId: section.id,
+                })
+              }
+            >
+              <ArrowRightLeft className="w-4 h-4" />
+              Move to Section
+            </ContextMenuItem>
             <ContextMenuItem
               variant="destructive"
               onSelect={() => {
