@@ -1305,6 +1305,14 @@ export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
             db.update(sections).set({ order }).where(eq(sections.id, sectionId))
           );
         }),
+        updateLessonOrder: Effect.fn("updateLessonOrder")(function* (
+          lessonId: string,
+          order: number
+        ) {
+          return yield* makeDbCall(() =>
+            db.update(lessons).set({ order }).where(eq(lessons.id, lessonId))
+          );
+        }),
         getNextVideoId: Effect.fn("getNextVideoId")(function* (
           currentVideoId: string
         ) {

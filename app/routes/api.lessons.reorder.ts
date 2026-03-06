@@ -62,7 +62,7 @@ export const action = async (args: Route.ActionArgs) => {
         })),
       });
 
-      // Update DB for each affected lesson
+      // Update DB paths for each renamed real lesson
       for (const rename of renames) {
         const parsed = parseLessonPath(rename.newPath);
         if (parsed) {
@@ -72,6 +72,11 @@ export const action = async (args: Route.ActionArgs) => {
           });
         }
       }
+    }
+
+    // Update DB order for ALL lessons (ghost + real) based on new position
+    for (let i = 0; i < lessonIds.length; i++) {
+      yield* db.updateLessonOrder(lessonIds[i]!, i);
     }
 
     return { success: true, renames };
