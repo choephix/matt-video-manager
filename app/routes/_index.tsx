@@ -1500,6 +1500,42 @@ function SortableLessonItem({
   const [descValue, setDescValue] = useState(lesson.description || "");
   const descTextareaRef = useRef<HTMLTextAreaElement>(null);
   const dependencyFetcher = useFetcher();
+  const iconFetcher = useFetcher();
+  const priorityFetcher = useFetcher();
+
+  const currentIcon = (lesson.icon ?? "watch") as
+    | "watch"
+    | "code"
+    | "discussion";
+  const currentPriority = (lesson.priority ?? 2) as 1 | 2 | 3;
+
+  const handleIconCycle = useCallback(() => {
+    const nextIcon =
+      currentIcon === "watch"
+        ? "code"
+        : currentIcon === "code"
+          ? "discussion"
+          : "watch";
+    iconFetcher.submit(
+      { icon: nextIcon },
+      {
+        method: "post",
+        action: `/api/lessons/${lesson.id}/update-icon`,
+      }
+    );
+  }, [currentIcon, lesson.id, iconFetcher]);
+
+  const handlePriorityCycle = useCallback(() => {
+    const nextPriority =
+      currentPriority === 2 ? 3 : currentPriority === 3 ? 1 : 2;
+    priorityFetcher.submit(
+      { priority: String(nextPriority) },
+      {
+        method: "post",
+        action: `/api/lessons/${lesson.id}/update-priority`,
+      }
+    );
+  }, [currentPriority, lesson.id, priorityFetcher]);
 
   // Dependency violation checking
   const lessonDeps = lesson.dependencies ?? [];
@@ -1581,12 +1617,36 @@ function SortableLessonItem({
               >
                 <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
-              <BookOpen
+              <button
                 className={cn(
-                  "w-3.5 h-3.5 text-muted-foreground shrink-0",
+                  "flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-colors",
+                  currentIcon === "code"
+                    ? "bg-yellow-500/20 text-yellow-600"
+                    : currentIcon === "discussion"
+                      ? "bg-green-500/20 text-green-600"
+                      : "bg-purple-500/20 text-purple-600",
                   isGhost && "opacity-50"
                 )}
-              />
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleIconCycle();
+                }}
+                title={
+                  currentIcon === "code"
+                    ? "Interactive (click to change)"
+                    : currentIcon === "discussion"
+                      ? "Discussion (click to change)"
+                      : "Watch (click to change)"
+                }
+              >
+                {currentIcon === "code" ? (
+                  <Code className="w-3 h-3" />
+                ) : currentIcon === "discussion" ? (
+                  <MessageCircle className="w-3 h-3" />
+                ) : (
+                  <Play className="w-3 h-3" />
+                )}
+              </button>
               <span
                 className={cn(
                   "text-sm font-medium",
@@ -1600,18 +1660,23 @@ function SortableLessonItem({
                   <Ghost className="w-3 h-3" />
                 </span>
               )}
-              {lesson.priority !== undefined && lesson.priority !== 2 && (
-                <span
-                  className={cn(
-                    "flex-shrink-0 text-xs px-2 py-0.5 rounded-sm font-medium",
-                    lesson.priority === 1
-                      ? "bg-red-500/20 text-red-600"
-                      : "bg-sky-500/20 text-sky-500"
-                  )}
-                >
-                  P{lesson.priority}
-                </span>
-              )}
+              <button
+                className={cn(
+                  "flex-shrink-0 text-xs px-2 py-0.5 rounded-sm font-medium",
+                  currentPriority === 1
+                    ? "bg-red-500/20 text-red-600"
+                    : currentPriority === 3
+                      ? "bg-sky-500/20 text-sky-500"
+                      : "bg-yellow-500/20 text-yellow-600"
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePriorityCycle();
+                }}
+                title="Click to toggle priority (P2 → P3 → P1 → P2)"
+              >
+                P{currentPriority}
+              </button>
               <DependencySelector
                 lessonId={lesson.id}
                 dependencies={lessonDeps}
