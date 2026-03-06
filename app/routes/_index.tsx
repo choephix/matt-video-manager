@@ -736,7 +736,6 @@ export default function Component(props: Route.ComponentProps) {
                                 variant="secondary"
                                 className="text-[10px]"
                               >
-                                {lessons.length} lessons &middot;{" "}
                                 {formatSecondsToTimeCode(sectionDuration)}
                               </Badge>
                             </div>
