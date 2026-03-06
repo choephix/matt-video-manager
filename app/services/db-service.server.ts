@@ -1652,6 +1652,28 @@ export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
 
           return updated;
         }),
+        updateRepoMemory: Effect.fn("updateRepoMemory")(function* (opts: {
+          repoId: string;
+          memory: string;
+        }) {
+          const { repoId, memory } = opts;
+          const [updated] = yield* makeDbCall(() =>
+            db
+              .update(repos)
+              .set({ memory })
+              .where(eq(repos.id, repoId))
+              .returning()
+          );
+
+          if (!updated) {
+            return yield* new NotFoundError({
+              type: "updateRepoMemory",
+              params: { repoId },
+            });
+          }
+
+          return updated;
+        }),
         updateRepoArchiveStatus: Effect.fn("updateRepoArchiveStatus")(
           function* (opts: { repoId: string; archived: boolean }) {
             const { repoId, archived } = opts;

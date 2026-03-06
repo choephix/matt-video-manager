@@ -40,6 +40,7 @@ export const repos = createTable("repo", {
   filePath: text("file_path").notNull(),
   name: text("name").notNull(),
   archived: boolean("archived").notNull().default(false),
+  memory: text("memory").notNull().default(""),
   createdAt: timestamp("created_at", {
     mode: "date",
     withTimezone: true,
