@@ -7,6 +7,10 @@ import { AddVideoModal } from "@/components/add-video-modal";
 import { ClearVideoFilesModal } from "@/components/clear-video-files-modal";
 import { CreateVersionModal } from "@/components/create-version-modal";
 import { DeleteVersionModal } from "@/components/delete-version-modal";
+import {
+  DependencySelector,
+  type DependencyLessonItem,
+} from "@/components/dependency-selector";
 import { EditGhostLessonModal } from "@/components/edit-ghost-lesson-modal";
 import { EditLessonModal } from "@/components/edit-lesson-modal";
 import { MoveVideoModal } from "@/components/move-video-modal";
@@ -867,6 +871,19 @@ export default function Component(props: Route.ComponentProps) {
                   }
                 }
 
+                // Build flat lessons list for dependency selector
+                const allFlatLessons: DependencyLessonItem[] =
+                  displaySections.flatMap((section, sectionIdx) =>
+                    section.lessons.map((lesson, lessonIdx) => ({
+                      id: lesson.id,
+                      number: `${sectionIdx + 1}.${lessonIdx + 1}`,
+                      title: lesson.title || lesson.path,
+                      sectionId: section.id,
+                      sectionTitle: section.path,
+                      sectionNumber: sectionIdx + 1,
+                    }))
+                  );
+
                 return (
                   <DndContext
                     sensors={sensors}
@@ -1052,6 +1069,7 @@ export default function Component(props: Route.ComponentProps) {
                                             section={section}
                                             data={data}
                                             navigate={navigate}
+                                            allFlatLessons={allFlatLessons}
                                             setAddVideoToLessonId={
                                               setAddVideoToLessonId
                                             }
@@ -1372,6 +1390,7 @@ function SortableLessonItem({
   deleteVideoFileFetcher,
   deleteVideoFetcher,
   deleteLessonFetcher,
+  allFlatLessons,
 }: {
   lesson: Lesson;
   lessonIndex: number;
@@ -1402,6 +1421,7 @@ function SortableLessonItem({
   deleteVideoFileFetcher: ReturnType<typeof useFetcher>;
   deleteVideoFetcher: ReturnType<typeof useFetcher>;
   deleteLessonFetcher: ReturnType<typeof useFetcher>;
+  allFlatLessons: DependencyLessonItem[];
 }) {
   const {
     attributes,
@@ -1424,6 +1444,50 @@ function SortableLessonItem({
   const [editingDesc, setEditingDesc] = useState(false);
   const [descValue, setDescValue] = useState(lesson.description || "");
   const descTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const dependencyFetcher = useFetcher();
+
+  // Dependency violation checking
+  const lessonDeps = lesson.dependencies ?? [];
+  const flatLessonIdx = allFlatLessons.findIndex((l) => l.id === lesson.id);
+  const orderViolations = lessonDeps
+    .map((depId) => {
+      const depIdx = allFlatLessons.findIndex((l) => l.id === depId);
+      if (depIdx > flatLessonIdx) {
+        const dep = allFlatLessons[depIdx];
+        return dep ? { number: dep.number } : null;
+      }
+      return null;
+    })
+    .filter(Boolean) as { number: string }[];
+  const lessonPriority = lesson.priority ?? 2;
+  const priorityViolations = lessonDeps
+    .map((depId) => {
+      const dep = allFlatLessons.find((l) => l.id === depId);
+      if (!dep) return null;
+      // Find the actual lesson to get its priority
+      const depLesson = data.selectedRepo?.sections
+        .flatMap((s) => s.lessons)
+        .find((l) => l.id === depId);
+      const depPriority = depLesson?.priority ?? 2;
+      if (depPriority > lessonPriority) {
+        return { number: dep.number, priority: depPriority };
+      }
+      return null;
+    })
+    .filter(Boolean) as { number: string; priority: number }[];
+
+  const handleDependenciesChange = useCallback(
+    (newDeps: string[]) => {
+      dependencyFetcher.submit(
+        { dependencies: JSON.stringify(newDeps) },
+        {
+          method: "post",
+          action: `/api/lessons/${lesson.id}/update-dependencies`,
+        }
+      );
+    },
+    [lesson.id, dependencyFetcher]
+  );
 
   const saveDescription = useCallback(
     (value: string) => {
@@ -1494,6 +1558,15 @@ function SortableLessonItem({
                   P{lesson.priority}
                 </span>
               )}
+              <DependencySelector
+                lessonId={lesson.id}
+                dependencies={lessonDeps}
+                allLessons={allFlatLessons}
+                onDependenciesChange={handleDependenciesChange}
+                orderViolations={orderViolations}
+                priorityViolations={priorityViolations}
+                lessonPriority={lessonPriority}
+              />
             </div>
           </ContextMenuTrigger>
           <ContextMenuContent>
