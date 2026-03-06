@@ -1139,38 +1139,126 @@ export default function Component(props: Route.ComponentProps) {
                                 <>
                                   <ContextMenu>
                                     <ContextMenuTrigger asChild>
-                                      <div className="px-4 py-3 border-b bg-muted/30 cursor-context-menu">
-                                        <div className="flex items-center justify-between">
-                                          <div className="flex items-center gap-2">
-                                            <button
-                                              className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground touch-none"
-                                              {...dragHandleListeners}
-                                            >
-                                              <GripVertical className="w-4 h-4" />
-                                            </button>
-                                            <h2
-                                              className={cn(
-                                                "font-medium text-sm",
-                                                isGhostSection &&
-                                                  "text-muted-foreground/70 italic"
+                                      <div className="cursor-context-menu">
+                                        <div className="px-4 py-3 border-b bg-muted/30">
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                              <button
+                                                className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground touch-none"
+                                                {...dragHandleListeners}
+                                              >
+                                                <GripVertical className="w-4 h-4" />
+                                              </button>
+                                              <h2
+                                                className={cn(
+                                                  "font-medium text-sm",
+                                                  isGhostSection &&
+                                                    "text-muted-foreground/70 italic"
+                                                )}
+                                              >
+                                                {section.path}
+                                              </h2>
+                                              {isGhostSection && (
+                                                <Ghost className="w-3.5 h-3.5 text-muted-foreground/40" />
                                               )}
-                                            >
-                                              {section.path}
-                                            </h2>
-                                            {isGhostSection && (
-                                              <Ghost className="w-3.5 h-3.5 text-muted-foreground/40" />
+                                            </div>
+                                            {!isGhostSection && (
+                                              <Badge
+                                                variant="secondary"
+                                                className="text-[10px]"
+                                              >
+                                                {formatSecondsToTimeCode(
+                                                  sectionDuration
+                                                )}
+                                              </Badge>
                                             )}
                                           </div>
-                                          {!isGhostSection && (
-                                            <Badge
-                                              variant="secondary"
-                                              className="text-[10px]"
+                                        </div>
+                                        <div className="p-2">
+                                          <DndContext
+                                            sensors={sensors}
+                                            collisionDetection={closestCenter}
+                                            onDragEnd={handleLessonDragEnd(
+                                              section.id,
+                                              lessons
+                                            )}
+                                          >
+                                            <SortableContext
+                                              items={lessons.map((l) => l.id)}
+                                              strategy={
+                                                verticalListSortingStrategy
+                                              }
                                             >
-                                              {formatSecondsToTimeCode(
-                                                sectionDuration
+                                              {hasActiveFilters &&
+                                                filteredLessons.length ===
+                                                  0 && (
+                                                  <p className="text-xs text-muted-foreground text-center py-3">
+                                                    No matching lessons
+                                                  </p>
+                                                )}
+                                              {filteredLessons.map(
+                                                (lesson, li) => (
+                                                  <SortableLessonItem
+                                                    key={lesson.id}
+                                                    lesson={lesson}
+                                                    lessonIndex={li}
+                                                    section={section}
+                                                    data={data}
+                                                    navigate={navigate}
+                                                    allFlatLessons={
+                                                      allFlatLessons
+                                                    }
+                                                    setAddVideoToLessonId={
+                                                      setAddVideoToLessonId
+                                                    }
+                                                    addVideoToLessonId={
+                                                      addVideoToLessonId
+                                                    }
+                                                    setEditLessonId={
+                                                      setEditLessonId
+                                                    }
+                                                    editLessonId={editLessonId}
+                                                    setVideoPlayerState={
+                                                      setVideoPlayerState
+                                                    }
+                                                    startExportUpload={
+                                                      startExportUpload
+                                                    }
+                                                    revealVideoFetcher={
+                                                      revealVideoFetcher
+                                                    }
+                                                    setRenameVideoState={
+                                                      setRenameVideoState
+                                                    }
+                                                    setMoveVideoState={
+                                                      setMoveVideoState
+                                                    }
+                                                    deleteVideoFileFetcher={
+                                                      deleteVideoFileFetcher
+                                                    }
+                                                    deleteVideoFetcher={
+                                                      deleteVideoFetcher
+                                                    }
+                                                    deleteLessonFetcher={
+                                                      deleteLessonFetcher
+                                                    }
+                                                    convertToGhostLessonId={
+                                                      convertToGhostLessonId
+                                                    }
+                                                    setConvertToGhostLessonId={
+                                                      setConvertToGhostLessonId
+                                                    }
+                                                    setMoveLessonState={
+                                                      setMoveLessonState
+                                                    }
+                                                    dependencyMap={
+                                                      dependencyMap
+                                                    }
+                                                  />
+                                                )
                                               )}
-                                            </Badge>
-                                          )}
+                                            </SortableContext>
+                                          </DndContext>
                                         </div>
                                       </div>
                                     </ContextMenuTrigger>
@@ -1197,81 +1285,6 @@ export default function Component(props: Route.ComponentProps) {
                                     }}
                                     fetcher={addGhostFetcher}
                                   />
-                                  <div className="p-2">
-                                    <DndContext
-                                      sensors={sensors}
-                                      collisionDetection={closestCenter}
-                                      onDragEnd={handleLessonDragEnd(
-                                        section.id,
-                                        lessons
-                                      )}
-                                    >
-                                      <SortableContext
-                                        items={lessons.map((l) => l.id)}
-                                        strategy={verticalListSortingStrategy}
-                                      >
-                                        {hasActiveFilters &&
-                                          filteredLessons.length === 0 && (
-                                            <p className="text-xs text-muted-foreground text-center py-3">
-                                              No matching lessons
-                                            </p>
-                                          )}
-                                        {filteredLessons.map((lesson, li) => (
-                                          <SortableLessonItem
-                                            key={lesson.id}
-                                            lesson={lesson}
-                                            lessonIndex={li}
-                                            section={section}
-                                            data={data}
-                                            navigate={navigate}
-                                            allFlatLessons={allFlatLessons}
-                                            setAddVideoToLessonId={
-                                              setAddVideoToLessonId
-                                            }
-                                            addVideoToLessonId={
-                                              addVideoToLessonId
-                                            }
-                                            setEditLessonId={setEditLessonId}
-                                            editLessonId={editLessonId}
-                                            setVideoPlayerState={
-                                              setVideoPlayerState
-                                            }
-                                            startExportUpload={
-                                              startExportUpload
-                                            }
-                                            revealVideoFetcher={
-                                              revealVideoFetcher
-                                            }
-                                            setRenameVideoState={
-                                              setRenameVideoState
-                                            }
-                                            setMoveVideoState={
-                                              setMoveVideoState
-                                            }
-                                            deleteVideoFileFetcher={
-                                              deleteVideoFileFetcher
-                                            }
-                                            deleteVideoFetcher={
-                                              deleteVideoFetcher
-                                            }
-                                            deleteLessonFetcher={
-                                              deleteLessonFetcher
-                                            }
-                                            convertToGhostLessonId={
-                                              convertToGhostLessonId
-                                            }
-                                            setConvertToGhostLessonId={
-                                              setConvertToGhostLessonId
-                                            }
-                                            setMoveLessonState={
-                                              setMoveLessonState
-                                            }
-                                            dependencyMap={dependencyMap}
-                                          />
-                                        ))}
-                                      </SortableContext>
-                                    </DndContext>
-                                  </div>
                                 </>
                               )}
                             </SortableSectionItem>
