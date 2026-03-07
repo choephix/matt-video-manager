@@ -995,7 +995,10 @@ export default function Component(props: Route.ComponentProps) {
                     section.lessons.map((lesson, lessonIdx) => ({
                       id: lesson.id,
                       number: `${sectionIdx + 1}.${lessonIdx + 1}`,
-                      title: lesson.title || lesson.path,
+                      title:
+                        lesson.fsStatus === "ghost"
+                          ? lesson.title || lesson.path
+                          : lesson.path,
                       sectionId: section.id,
                       sectionTitle: section.path,
                       sectionNumber: sectionIdx + 1,
@@ -1843,7 +1846,7 @@ function SortableLessonItem({
                   isGhost && "text-muted-foreground/70 italic"
                 )}
               >
-                {lesson.title || lesson.path}
+                {isGhost ? lesson.title || lesson.path : lesson.path}
               </span>
               {isGhost && (
                 <span className="flex items-center text-muted-foreground/60 shrink-0">
@@ -1950,7 +1953,9 @@ function SortableLessonItem({
                 dispatch({
                   type: "open-move-lesson",
                   lessonId: lesson.id,
-                  lessonTitle: lesson.title || lesson.path,
+                  lessonTitle: isGhost
+                    ? lesson.title || lesson.path
+                    : lesson.path,
                   currentSectionId: section.id,
                 })
               }
@@ -2059,7 +2064,7 @@ function SortableLessonItem({
         {!isGhost && (
           <ConvertToGhostModal
             lessonId={lesson.id}
-            lessonTitle={lesson.title || lesson.path}
+            lessonTitle={lesson.path}
             hasFilesOnDisk={data.lessonHasFilesMap[lesson.id] ?? false}
             hasVideos={lesson.videos.length > 0}
             open={convertToGhostLessonId === lesson.id}
