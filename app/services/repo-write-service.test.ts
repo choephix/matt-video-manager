@@ -439,6 +439,181 @@ describe("RepoWriteService", () => {
       const tempEntries = entries.filter((e) => e.startsWith("__reorder_tmp_"));
       expect(tempEntries).toHaveLength(0);
     });
+
+    it("handles shift-down rename (all lessons shift by 1)", async () => {
+      const sectionDir = path.join(tempDir, "01-intro");
+      createAndCommitLessons(sectionDir, [
+        "01.01-first",
+        "01.02-second",
+        "01.03-third",
+      ]);
+
+      // Simulate insert at position 0: all lessons shift down by 1
+      await runEffect(
+        Effect.gen(function* () {
+          const service = yield* RepoWriteService;
+          yield* service.renameLessons({
+            repoPath: tempDir,
+            sectionPath: "01-intro",
+            renames: [
+              { oldPath: "01.01-first", newPath: "01.02-first" },
+              { oldPath: "01.02-second", newPath: "01.03-second" },
+              { oldPath: "01.03-third", newPath: "01.04-third" },
+            ],
+          });
+        })
+      );
+
+      expect(fs.existsSync(path.join(sectionDir, "01.02-first"))).toBe(true);
+      expect(fs.existsSync(path.join(sectionDir, "01.03-second"))).toBe(true);
+      expect(fs.existsSync(path.join(sectionDir, "01.04-third"))).toBe(true);
+      // Old paths should not exist
+      expect(fs.existsSync(path.join(sectionDir, "01.01-first"))).toBe(false);
+      // No temp dirs left
+      const entries = fs.readdirSync(sectionDir);
+      expect(
+        entries.filter((e) => e.startsWith("__reorder_tmp_"))
+      ).toHaveLength(0);
+    });
+
+    it("handles partial rename (only some lessons change)", async () => {
+      const sectionDir = path.join(tempDir, "01-intro");
+      createAndCommitLessons(sectionDir, [
+        "01.01-stays",
+        "01.02-moves",
+        "01.03-also-stays",
+      ]);
+
+      // Only lesson 2 and 3 swap; lesson 1 stays
+      await runEffect(
+        Effect.gen(function* () {
+          const service = yield* RepoWriteService;
+          yield* service.renameLessons({
+            repoPath: tempDir,
+            sectionPath: "01-intro",
+            renames: [
+              { oldPath: "01.02-moves", newPath: "01.03-moves" },
+              { oldPath: "01.03-also-stays", newPath: "01.02-also-stays" },
+            ],
+          });
+        })
+      );
+
+      // Untouched lesson still there
+      expect(fs.existsSync(path.join(sectionDir, "01.01-stays"))).toBe(true);
+      // Swapped lessons in correct positions
+      expect(fs.existsSync(path.join(sectionDir, "01.02-also-stays"))).toBe(
+        true
+      );
+      expect(fs.existsSync(path.join(sectionDir, "01.03-moves"))).toBe(true);
+    });
+
+    it("cleans up leftover temp dirs from a previous failed rename", async () => {
+      const sectionDir = path.join(tempDir, "01-intro");
+      createAndCommitLessons(sectionDir, ["01.01-aaa", "01.02-bbb"]);
+
+      // Simulate leftover temp dirs from a previous crash
+      const leftoverDir = path.join(
+        sectionDir,
+        "__reorder_tmp_0_01.02-old-stuff"
+      );
+      fs.mkdirSync(path.join(leftoverDir, "explainer"), { recursive: true });
+      fs.writeFileSync(
+        path.join(leftoverDir, "explainer", "readme.md"),
+        "# Leftover\n"
+      );
+      execSync("git add . && git commit -m 'leftover'", { cwd: tempDir });
+
+      await runEffect(
+        Effect.gen(function* () {
+          const service = yield* RepoWriteService;
+          yield* service.renameLessons({
+            repoPath: tempDir,
+            sectionPath: "01-intro",
+            renames: [
+              { oldPath: "01.01-aaa", newPath: "01.02-aaa" },
+              { oldPath: "01.02-bbb", newPath: "01.01-bbb" },
+            ],
+          });
+        })
+      );
+
+      const entries = fs.readdirSync(sectionDir);
+      const tempEntries = entries.filter((e) => e.startsWith("__reorder_tmp_"));
+      expect(tempEntries).toHaveLength(0);
+      // Actual renames should have completed
+      expect(fs.existsSync(path.join(sectionDir, "01.01-bbb"))).toBe(true);
+      expect(fs.existsSync(path.join(sectionDir, "01.02-aaa"))).toBe(true);
+    });
+
+    it("does not leave temp dirs when pass 1 fails partway through", async () => {
+      const sectionDir = path.join(tempDir, "01-intro");
+      createAndCommitLessons(sectionDir, ["01.01-real"]);
+
+      // Try to rename a path that doesn't exist — should fail
+      // but should NOT leave temp files from earlier successful entries
+      const result = runEffect(
+        Effect.gen(function* () {
+          const service = yield* RepoWriteService;
+          yield* service.renameLessons({
+            repoPath: tempDir,
+            sectionPath: "01-intro",
+            renames: [
+              { oldPath: "01.01-real", newPath: "01.02-real" },
+              { oldPath: "01.99-nonexistent", newPath: "01.01-nonexistent" },
+            ],
+          });
+        })
+      );
+
+      await expect(result).rejects.toThrow();
+
+      // The original lesson should be restored, not stuck in temp
+      const entries = fs.readdirSync(sectionDir);
+      const tempEntries = entries.filter((e) => e.startsWith("__reorder_tmp_"));
+      expect(tempEntries).toHaveLength(0);
+      // Original file should still be accessible (either at original or restored)
+      expect(fs.existsSync(path.join(sectionDir, "01.01-real"))).toBe(true);
+    });
+
+    it("handles large reorder (10 lessons, reverse order)", async () => {
+      const sectionDir = path.join(tempDir, "01-intro");
+      const lessonNames = Array.from(
+        { length: 10 },
+        (_, i) =>
+          `01.${String(i + 1).padStart(2, "0")}-lesson-${String.fromCharCode(97 + i)}`
+      );
+      createAndCommitLessons(sectionDir, lessonNames);
+
+      // Reverse all 10 lessons
+      const renames = lessonNames.map((name, i) => ({
+        oldPath: name,
+        newPath: `01.${String(10 - i).padStart(2, "0")}-lesson-${String.fromCharCode(97 + i)}`,
+      }));
+
+      await runEffect(
+        Effect.gen(function* () {
+          const service = yield* RepoWriteService;
+          yield* service.renameLessons({
+            repoPath: tempDir,
+            sectionPath: "01-intro",
+            renames,
+          });
+        })
+      );
+
+      // Verify all 10 are in reversed positions
+      for (let i = 0; i < 10; i++) {
+        const expectedDir = `01.${String(10 - i).padStart(2, "0")}-lesson-${String.fromCharCode(97 + i)}`;
+        expect(fs.existsSync(path.join(sectionDir, expectedDir))).toBe(true);
+      }
+
+      // No temp dirs
+      const entries = fs.readdirSync(sectionDir);
+      expect(
+        entries.filter((e) => e.startsWith("__reorder_tmp_"))
+      ).toHaveLength(0);
+    });
   });
 
   describe("renameSections (batch)", () => {
@@ -575,6 +750,72 @@ describe("RepoWriteService", () => {
         e.startsWith("__section_reorder_tmp_")
       );
       expect(tempEntries).toHaveLength(0);
+    });
+
+    it("cleans up leftover temp dirs from a previous failed rename", async () => {
+      createAndCommitSections(["01-intro", "02-advanced"]);
+
+      // Simulate leftover temp dirs from a previous crash
+      const leftoverDir = path.join(
+        tempDir,
+        "__section_reorder_tmp_0_03-leftover"
+      );
+      fs.mkdirSync(path.join(leftoverDir, "01.01-example", "explainer"), {
+        recursive: true,
+      });
+      fs.writeFileSync(
+        path.join(leftoverDir, "01.01-example", "explainer", "readme.md"),
+        "# Leftover\n"
+      );
+      execSync("git add . && git commit -m 'leftover'", { cwd: tempDir });
+
+      await runEffect(
+        Effect.gen(function* () {
+          const service = yield* RepoWriteService;
+          yield* service.renameSections({
+            repoPath: tempDir,
+            renames: [
+              { oldPath: "01-intro", newPath: "02-intro" },
+              { oldPath: "02-advanced", newPath: "01-advanced" },
+            ],
+          });
+        })
+      );
+
+      const entries = fs.readdirSync(tempDir);
+      const tempEntries = entries.filter((e) =>
+        e.startsWith("__section_reorder_tmp_")
+      );
+      expect(tempEntries).toHaveLength(0);
+      expect(fs.existsSync(path.join(tempDir, "01-advanced"))).toBe(true);
+      expect(fs.existsSync(path.join(tempDir, "02-intro"))).toBe(true);
+    });
+
+    it("does not leave temp dirs when pass 1 fails partway through", async () => {
+      createAndCommitSections(["01-intro"]);
+
+      const result = runEffect(
+        Effect.gen(function* () {
+          const service = yield* RepoWriteService;
+          yield* service.renameSections({
+            repoPath: tempDir,
+            renames: [
+              { oldPath: "01-intro", newPath: "02-intro" },
+              { oldPath: "99-nonexistent", newPath: "01-nonexistent" },
+            ],
+          });
+        })
+      );
+
+      await expect(result).rejects.toThrow();
+
+      const entries = fs.readdirSync(tempDir);
+      const tempEntries = entries.filter((e) =>
+        e.startsWith("__section_reorder_tmp_")
+      );
+      expect(tempEntries).toHaveLength(0);
+      // Original should be restored
+      expect(fs.existsSync(path.join(tempDir, "01-intro"))).toBe(true);
     });
 
     it("handles three-way rotation", async () => {

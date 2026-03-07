@@ -180,49 +180,97 @@ export class RepoWriteService extends Effect.Service<RepoWriteService>()(
         if (opts.renames.length === 0) return;
 
         const tempPrefix = `__reorder_tmp_`;
+        const sectionFullPath = path.join(opts.repoPath, opts.sectionPath);
+
+        // Clean up any leftover temp dirs from a previous failed rename
+        const existingEntries = yield* fs
+          .readDirectory(sectionFullPath)
+          .pipe(Effect.catchAll(() => Effect.succeed([] as string[])));
+
+        for (const entry of existingEntries) {
+          if (entry.startsWith(tempPrefix)) {
+            const tempFullPath = path.join(sectionFullPath, entry);
+            // Try git rm first, fall back to plain removal
+            yield* Effect.try({
+              try: () =>
+                execFileSync("git", ["rm", "-rf", tempFullPath], {
+                  cwd: opts.repoPath,
+                }),
+              catch: () =>
+                new RepoWriteError({
+                  cause: null,
+                  message: `cleanup git rm failed: ${entry}`,
+                }),
+            }).pipe(
+              Effect.catchAll(() =>
+                fs.remove(tempFullPath, { recursive: true })
+              )
+            );
+          }
+        }
 
         // Pass 1: old → temp (avoids collisions)
-        for (let i = 0; i < opts.renames.length; i++) {
-          const rename = opts.renames[i]!;
-          const tempName = `${tempPrefix}${i}_${rename.newPath}`;
-          const oldFullPath = path.join(
-            opts.repoPath,
-            opts.sectionPath,
-            rename.oldPath
-          );
-          const tempFullPath = path.join(
-            opts.repoPath,
-            opts.sectionPath,
-            tempName
-          );
+        const completedPass1: number[] = [];
+        const pass1 = Effect.forEach(
+          opts.renames,
+          (rename, i) => {
+            const tempName = `${tempPrefix}${i}_${rename.newPath}`;
+            const oldFullPath = path.join(sectionFullPath, rename.oldPath);
+            const tempFullPath = path.join(sectionFullPath, tempName);
 
-          yield* Effect.try({
-            try: () =>
-              execFileSync("git", ["mv", oldFullPath, tempFullPath], {
-                cwd: opts.repoPath,
-              }),
-            catch: (cause) =>
-              new RepoWriteError({
-                cause,
-                message: `git mv failed (pass 1): ${rename.oldPath} → ${tempName}`,
-              }),
-          });
-        }
+            return Effect.try({
+              try: () => {
+                execFileSync("git", ["mv", oldFullPath, tempFullPath], {
+                  cwd: opts.repoPath,
+                });
+                completedPass1.push(i);
+              },
+              catch: (cause) =>
+                new RepoWriteError({
+                  cause,
+                  message: `git mv failed (pass 1): ${rename.oldPath} → ${tempName}`,
+                }),
+            });
+          },
+          { concurrency: 1 }
+        );
+
+        // If pass 1 fails, rollback completed entries (temp → old)
+        yield* pass1.pipe(
+          Effect.catchAll((error) =>
+            Effect.gen(function* () {
+              for (const i of completedPass1) {
+                const rename = opts.renames[i]!;
+                const tempName = `${tempPrefix}${i}_${rename.newPath}`;
+                const tempFullPath = path.join(sectionFullPath, tempName);
+                const oldFullPath = path.join(sectionFullPath, rename.oldPath);
+
+                yield* Effect.try({
+                  try: () =>
+                    execFileSync("git", ["mv", tempFullPath, oldFullPath], {
+                      cwd: opts.repoPath,
+                    }),
+                  catch: () =>
+                    new RepoWriteError({
+                      cause: null,
+                      message: `rollback git mv failed: ${tempName} → ${rename.oldPath}`,
+                    }),
+                }).pipe(Effect.catchAll(() => Effect.void));
+              }
+              return yield* new RepoWriteError({
+                cause: error,
+                message: error.message,
+              });
+            })
+          )
+        );
 
         // Pass 2: temp → final
         for (let i = 0; i < opts.renames.length; i++) {
           const rename = opts.renames[i]!;
           const tempName = `${tempPrefix}${i}_${rename.newPath}`;
-          const tempFullPath = path.join(
-            opts.repoPath,
-            opts.sectionPath,
-            tempName
-          );
-          const newFullPath = path.join(
-            opts.repoPath,
-            opts.sectionPath,
-            rename.newPath
-          );
+          const tempFullPath = path.join(sectionFullPath, tempName);
+          const newFullPath = path.join(sectionFullPath, rename.newPath);
 
           yield* Effect.try({
             try: () =>
@@ -253,25 +301,87 @@ export class RepoWriteService extends Effect.Service<RepoWriteService>()(
 
         const tempPrefix = `__section_reorder_tmp_`;
 
-        // Pass 1: old → temp (avoids collisions)
-        for (let i = 0; i < opts.renames.length; i++) {
-          const rename = opts.renames[i]!;
-          const tempName = `${tempPrefix}${i}_${rename.newPath}`;
-          const oldFullPath = path.join(opts.repoPath, rename.oldPath);
-          const tempFullPath = path.join(opts.repoPath, tempName);
+        // Clean up any leftover temp dirs from a previous failed rename
+        const existingEntries = yield* fs
+          .readDirectory(opts.repoPath)
+          .pipe(Effect.catchAll(() => Effect.succeed([] as string[])));
 
-          yield* Effect.try({
-            try: () =>
-              execFileSync("git", ["mv", oldFullPath, tempFullPath], {
-                cwd: opts.repoPath,
-              }),
-            catch: (cause) =>
-              new RepoWriteError({
-                cause,
-                message: `git mv failed (pass 1): ${rename.oldPath} → ${tempName}`,
-              }),
-          });
+        for (const entry of existingEntries) {
+          if (entry.startsWith(tempPrefix)) {
+            const tempFullPath = path.join(opts.repoPath, entry);
+            yield* Effect.try({
+              try: () =>
+                execFileSync("git", ["rm", "-rf", tempFullPath], {
+                  cwd: opts.repoPath,
+                }),
+              catch: () =>
+                new RepoWriteError({
+                  cause: null,
+                  message: `cleanup git rm failed: ${entry}`,
+                }),
+            }).pipe(
+              Effect.catchAll(() =>
+                fs.remove(tempFullPath, { recursive: true })
+              )
+            );
+          }
         }
+
+        // Pass 1: old → temp (avoids collisions)
+        const completedPass1: number[] = [];
+        const pass1 = Effect.forEach(
+          opts.renames,
+          (rename, i) => {
+            const tempName = `${tempPrefix}${i}_${rename.newPath}`;
+            const oldFullPath = path.join(opts.repoPath, rename.oldPath);
+            const tempFullPath = path.join(opts.repoPath, tempName);
+
+            return Effect.try({
+              try: () => {
+                execFileSync("git", ["mv", oldFullPath, tempFullPath], {
+                  cwd: opts.repoPath,
+                });
+                completedPass1.push(i);
+              },
+              catch: (cause) =>
+                new RepoWriteError({
+                  cause,
+                  message: `git mv failed (pass 1): ${rename.oldPath} → ${tempName}`,
+                }),
+            });
+          },
+          { concurrency: 1 }
+        );
+
+        // If pass 1 fails, rollback completed entries (temp → old)
+        yield* pass1.pipe(
+          Effect.catchAll((error) =>
+            Effect.gen(function* () {
+              for (const i of completedPass1) {
+                const rename = opts.renames[i]!;
+                const tempName = `${tempPrefix}${i}_${rename.newPath}`;
+                const tempFullPath = path.join(opts.repoPath, tempName);
+                const oldFullPath = path.join(opts.repoPath, rename.oldPath);
+
+                yield* Effect.try({
+                  try: () =>
+                    execFileSync("git", ["mv", tempFullPath, oldFullPath], {
+                      cwd: opts.repoPath,
+                    }),
+                  catch: () =>
+                    new RepoWriteError({
+                      cause: null,
+                      message: `rollback git mv failed: ${tempName} → ${rename.oldPath}`,
+                    }),
+                }).pipe(Effect.catchAll(() => Effect.void));
+              }
+              return yield* new RepoWriteError({
+                cause: error,
+                message: error.message,
+              });
+            })
+          )
+        );
 
         // Pass 2: temp → final
         for (let i = 0; i < opts.renames.length; i++) {
