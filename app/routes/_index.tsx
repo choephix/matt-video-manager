@@ -13,7 +13,9 @@ import {
   type DependencyLessonItem,
 } from "@/components/dependency-selector";
 import { EditGhostLessonModal } from "@/components/edit-ghost-lesson-modal";
+import { EditGhostSectionModal } from "@/components/edit-ghost-section-modal";
 import { EditLessonModal } from "@/components/edit-lesson-modal";
+import { EditSectionModal } from "@/components/edit-section-modal";
 import { MoveLessonModal } from "@/components/move-lesson-modal";
 import { MoveVideoModal } from "@/components/move-video-modal";
 import { RenameVideoModal } from "@/components/rename-video-modal";
@@ -301,6 +303,7 @@ export default function Component(props: Route.ComponentProps) {
     addGhostLessonSectionId,
     addVideoToLessonId,
     editLessonId,
+    editSectionId,
     convertToGhostLessonId,
     videoPlayerState,
     moveVideoState,
@@ -1298,6 +1301,17 @@ export default function Component(props: Route.ComponentProps) {
                                         <Plus className="w-4 h-4" />
                                         Add Lesson
                                       </ContextMenuItem>
+                                      <ContextMenuItem
+                                        onSelect={() =>
+                                          dispatch({
+                                            type: "set-edit-section-id",
+                                            sectionId: section.id,
+                                          })
+                                        }
+                                      >
+                                        <PencilIcon className="w-4 h-4" />
+                                        Rename
+                                      </ContextMenuItem>
                                     </ContextMenuContent>
                                   </ContextMenu>
                                   <AddGhostLessonModal
@@ -1313,6 +1327,31 @@ export default function Component(props: Route.ComponentProps) {
                                     }}
                                     fetcher={addGhostFetcher}
                                   />
+                                  {isGhostSection ? (
+                                    <EditGhostSectionModal
+                                      sectionId={section.id}
+                                      currentTitle={section.path}
+                                      open={editSectionId === section.id}
+                                      onOpenChange={(open) => {
+                                        dispatch({
+                                          type: "set-edit-section-id",
+                                          sectionId: open ? section.id : null,
+                                        });
+                                      }}
+                                    />
+                                  ) : (
+                                    <EditSectionModal
+                                      sectionId={section.id}
+                                      currentPath={section.path}
+                                      open={editSectionId === section.id}
+                                      onOpenChange={(open) => {
+                                        dispatch({
+                                          type: "set-edit-section-id",
+                                          sectionId: open ? section.id : null,
+                                        });
+                                      }}
+                                    />
+                                  )}
                                 </>
                               )}
                             </SortableSectionItem>
