@@ -2,7 +2,7 @@ import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as schema from "@/db/schema";
 import { Effect } from "effect";
 
-type DrizzleDB = PostgresJsDatabase<typeof schema>;
+export type DrizzleDB = PostgresJsDatabase<typeof schema>;
 
 export class DrizzleService extends Effect.Service<DrizzleService>()(
   "DrizzleService",
