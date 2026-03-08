@@ -393,7 +393,7 @@ export default function Component(props: Route.ComponentProps) {
           {currentRepo ? (
             <>
               {/* Title + version + actions */}
-              <div className="flex items-center gap-2 mb-6">
+              <div className="flex items-center gap-2 mb-2">
                 <h1 className="text-2xl font-bold flex items-center gap-2">
                   {currentRepo.name}
                   {loaderData.selectedVersion &&
@@ -422,12 +422,12 @@ export default function Component(props: Route.ComponentProps) {
               </div>
 
               {/* Stats */}
-              <div className="mb-8">
+              <div className="mb-10">
                 <StatsBar selectedRepo={loaderData.selectedRepo} />
               </div>
 
               {/* Next Up */}
-              <div className="mb-8">
+              <div className="mb-14">
                 <NextTodoCard
                   sections={currentRepo.sections}
                   data={loaderData}
