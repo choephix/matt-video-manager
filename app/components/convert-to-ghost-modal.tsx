@@ -6,20 +6,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Ghost, Loader2, AlertTriangle, Code } from "lucide-react";
+import { Ghost, Loader2, AlertTriangle, Code, File } from "lucide-react";
 import { useFetcher } from "react-router";
 
 export function ConvertToGhostModal(props: {
   lessonId: string;
   lessonTitle: string;
-  hasFilesOnDisk: boolean;
+  filesOnDisk: string[];
   hasVideos: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const fetcher = useFetcher();
   const openRepoFetcher = useFetcher();
-  const canConvert = !props.hasFilesOnDisk && !props.hasVideos;
+  const hasFiles = props.filesOnDisk.length > 0;
+  const canConvert = !props.hasVideos;
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -35,14 +36,24 @@ export function ConvertToGhostModal(props: {
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          {props.hasFilesOnDisk && (
+          {hasFiles && (
             <div className="flex items-start gap-2 text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 rounded-md p-3">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
               <div className="space-y-2">
-                <span>
-                  This lesson has files on disk. Remove them before converting
-                  to ghost.
-                </span>
+                <span>These files will be permanently deleted:</span>
+                <div className="rounded border border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-black/20 p-2">
+                  <ul className="space-y-1">
+                    {props.filesOnDisk.sort().map((entry) => (
+                      <li
+                        key={entry}
+                        className="flex items-center gap-1.5 text-xs font-mono"
+                      >
+                        <File className="w-3 h-3 shrink-0 opacity-60" />
+                        {entry}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
                 <div>
                   <Button
                     variant="outline"
@@ -80,6 +91,7 @@ export function ConvertToGhostModal(props: {
             </Button>
             <Button
               disabled={!canConvert}
+              variant={hasFiles ? "destructive" : "default"}
               onClick={() => {
                 fetcher.submit(null, {
                   method: "post",
@@ -90,6 +102,8 @@ export function ConvertToGhostModal(props: {
             >
               {fetcher.state === "submitting" ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
+              ) : hasFiles ? (
+                "Delete Files & Convert"
               ) : (
                 "Convert to Ghost"
               )}

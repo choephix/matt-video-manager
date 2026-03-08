@@ -149,7 +149,7 @@ export const loader = async (args: Route.LoaderArgs) => {
           }))
       ) ?? [];
 
-    const lessonHasFilesMap: Record<string, boolean> = {};
+    const lessonHasFilesMap: Record<string, string[]> = {};
 
     yield* Effect.forEach(lessons, (lesson) => {
       return Effect.gen(function* () {
@@ -158,11 +158,11 @@ export const loader = async (args: Route.LoaderArgs) => {
 
         hasExplainerFolderMap[lesson.id] = hasExplainerFolder;
 
-        // Check if lesson directory has any files/subdirectories
+        // List files/subdirectories in lesson directory
         const entries = yield* fs
           .readDirectory(lesson.fullPath)
           .pipe(Effect.catchAll(() => Effect.succeed([] as string[])));
-        lessonHasFilesMap[lesson.id] = entries.length > 0;
+        lessonHasFilesMap[lesson.id] = entries;
       });
     });
 

@@ -475,7 +475,7 @@ export function SortableLessonItem({
           <ConvertToGhostModal
             lessonId={lesson.id}
             lessonTitle={lesson.path}
-            hasFilesOnDisk={data.lessonHasFilesMap[lesson.id] ?? false}
+            filesOnDisk={data.lessonHasFilesMap[lesson.id] ?? []}
             hasVideos={lesson.videos.length > 0}
             open={convertToGhostLessonId === lesson.id}
             onOpenChange={(open) => {
