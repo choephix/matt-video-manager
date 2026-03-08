@@ -18,10 +18,13 @@ import {
   MessageCircle,
   Play,
   Plus,
+  Search,
   VideoIcon,
+  X,
 } from "lucide-react";
 import { Link, useFetcher, useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { LoaderData } from "./course-view-types";
 
 export function StatsBar({
@@ -114,118 +117,184 @@ export function FilterBar({
   iconFilter,
   fsStatusFilter,
   fsStatusCounts,
+  searchQuery,
   dispatch,
 }: {
   priorityFilter: number[];
   iconFilter: string[];
   fsStatusFilter: string | null;
   fsStatusCounts: { ghost: number; real: number; todo: number };
+  searchQuery: string;
   dispatch: (action: courseViewReducer.Action) => void;
 }) {
+  const hasActiveFilters =
+    priorityFilter.length > 0 ||
+    iconFilter.length > 0 ||
+    fsStatusFilter !== null ||
+    searchQuery.length > 0;
+
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-muted-foreground">Filter:</span>
-      {([1, 2, 3] as const).map((priority) => {
-        const isSelected = priorityFilter.includes(priority);
-        const showAsActive = priorityFilter.length === 0 || isSelected;
-        return (
+    <div className="rounded-lg border bg-card p-3 space-y-3">
+      {/* Search input */}
+      <div className="relative">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+        <Input
+          placeholder="Search by path, description, or video title..."
+          value={searchQuery}
+          onChange={(e) =>
+            dispatch({ type: "set-search-query", query: e.target.value })
+          }
+          className="pl-8 h-8 text-sm"
+        />
+        {searchQuery && (
           <button
-            key={priority}
-            className={`text-xs px-2 py-0.5 rounded-sm font-medium transition-colors ${
-              showAsActive
-                ? priority === 1
-                  ? "bg-red-500/20 text-red-600"
-                  : priority === 2
-                    ? "bg-yellow-500/20 text-yellow-600"
-                    : "bg-sky-500/20 text-sky-500"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
-            } ${isSelected ? "ring-1 ring-current" : ""}`}
-            onClick={() =>
-              dispatch({
-                type: "toggle-priority-filter",
-                priority,
-              })
-            }
+            onClick={() => dispatch({ type: "set-search-query", query: "" })}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
-            P{priority}
+            <X className="w-3.5 h-3.5" />
           </button>
-        );
-      })}
+        )}
+      </div>
 
-      <span className="text-muted-foreground mx-1">|</span>
-      {(["code", "discussion", "watch"] as const).map((icon) => {
-        const isSelected = iconFilter.includes(icon);
-        const showAsActive = iconFilter.length === 0 || isSelected;
-        return (
-          <button
-            key={icon}
-            className={`flex items-center justify-center w-6 h-6 rounded-full transition-colors ${
-              icon === "code"
-                ? showAsActive
-                  ? "bg-yellow-500/20 text-yellow-600"
+      {/* Filter buttons */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-muted-foreground">Filters:</span>
+        {([1, 2, 3] as const).map((priority) => {
+          const isSelected = priorityFilter.includes(priority);
+          const showAsActive = priorityFilter.length === 0 || isSelected;
+          return (
+            <button
+              key={priority}
+              className={`text-xs px-2 py-0.5 rounded-sm font-medium transition-colors ${
+                showAsActive
+                  ? priority === 1
+                    ? "bg-red-500/20 text-red-600"
+                    : priority === 2
+                      ? "bg-yellow-500/20 text-yellow-600"
+                      : "bg-sky-500/20 text-sky-500"
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
-                : icon === "discussion"
-                  ? showAsActive
-                    ? "bg-green-500/20 text-green-600"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  : showAsActive
-                    ? "bg-purple-500/20 text-purple-600"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-            } ${isSelected ? "ring-1 ring-current" : ""}`}
-            onClick={() => dispatch({ type: "toggle-icon-filter", icon })}
-            title={
-              icon === "code"
-                ? "Interactive"
-                : icon === "discussion"
-                  ? "Discussion"
-                  : "Watch"
-            }
-          >
-            {icon === "code" ? (
-              <Code className="w-3 h-3" />
-            ) : icon === "discussion" ? (
-              <MessageCircle className="w-3 h-3" />
-            ) : (
-              <Play className="w-3 h-3" />
-            )}
-          </button>
-        );
-      })}
+              } ${isSelected ? "ring-1 ring-current" : ""}`}
+              onClick={() =>
+                dispatch({ type: "toggle-priority-filter", priority })
+              }
+            >
+              P{priority}
+            </button>
+          );
+        })}
 
-      <span className="text-muted-foreground mx-1">|</span>
-      {(["ghost", "real", "todo"] as const).map((status) => {
-        const isSelected = fsStatusFilter === status;
-        const showAsActive = fsStatusFilter === null || isSelected;
-        return (
-          <button
-            key={status}
-            className={`text-xs px-2 py-0.5 rounded-sm font-medium transition-colors flex items-center gap-1 ${
-              showAsActive
-                ? "bg-muted text-muted-foreground"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
-            } ${isSelected ? "ring-1 ring-current" : ""}`}
-            onClick={() =>
-              dispatch({
-                type: "toggle-fs-status-filter",
-                status,
-              })
-            }
-            title={
-              status === "ghost" ? "Ghost" : status === "real" ? "Real" : "Todo"
-            }
-          >
-            {status === "ghost" ? (
-              <Ghost className="w-3 h-3" />
-            ) : status === "real" ? (
-              <FileVideo className="w-3 h-3" />
-            ) : (
-              <ListChecks className="w-3 h-3" />
-            )}
-            {status === "ghost" ? "Ghost" : status === "real" ? "Real" : "Todo"}
-            <span className="opacity-60">{fsStatusCounts[status]}</span>
-          </button>
-        );
-      })}
+        <span className="text-muted-foreground mx-0.5">|</span>
+        {(["code", "discussion", "watch"] as const).map((icon) => {
+          const isSelected = iconFilter.includes(icon);
+          const showAsActive = iconFilter.length === 0 || isSelected;
+          return (
+            <button
+              key={icon}
+              className={`flex items-center justify-center w-6 h-6 rounded-full transition-colors ${
+                icon === "code"
+                  ? showAsActive
+                    ? "bg-yellow-500/20 text-yellow-600"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  : icon === "discussion"
+                    ? showAsActive
+                      ? "bg-green-500/20 text-green-600"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    : showAsActive
+                      ? "bg-purple-500/20 text-purple-600"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+              } ${isSelected ? "ring-1 ring-current" : ""}`}
+              onClick={() => dispatch({ type: "toggle-icon-filter", icon })}
+              title={
+                icon === "code"
+                  ? "Interactive"
+                  : icon === "discussion"
+                    ? "Discussion"
+                    : "Watch"
+              }
+            >
+              {icon === "code" ? (
+                <Code className="w-3 h-3" />
+              ) : icon === "discussion" ? (
+                <MessageCircle className="w-3 h-3" />
+              ) : (
+                <Play className="w-3 h-3" />
+              )}
+            </button>
+          );
+        })}
+
+        <span className="text-muted-foreground mx-0.5">|</span>
+        {(["ghost", "real", "todo"] as const).map((status) => {
+          const isSelected = fsStatusFilter === status;
+          const showAsActive = fsStatusFilter === null || isSelected;
+          return (
+            <button
+              key={status}
+              className={`text-xs px-2 py-0.5 rounded-sm font-medium transition-colors flex items-center gap-1 ${
+                showAsActive
+                  ? "bg-muted text-muted-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              } ${isSelected ? "ring-1 ring-current" : ""}`}
+              onClick={() =>
+                dispatch({ type: "toggle-fs-status-filter", status })
+              }
+              title={
+                status === "ghost"
+                  ? "Ghost"
+                  : status === "real"
+                    ? "Real"
+                    : "Todo"
+              }
+            >
+              {status === "ghost" ? (
+                <Ghost className="w-3 h-3" />
+              ) : status === "real" ? (
+                <FileVideo className="w-3 h-3" />
+              ) : (
+                <ListChecks className="w-3 h-3" />
+              )}
+              {status === "ghost"
+                ? "Ghost"
+                : status === "real"
+                  ? "Real"
+                  : "Todo"}
+              <span className="opacity-60">{fsStatusCounts[status]}</span>
+            </button>
+          );
+        })}
+
+        {hasActiveFilters && (
+          <>
+            <span className="text-muted-foreground mx-0.5">|</span>
+            <button
+              className="text-xs px-2 py-0.5 rounded-sm text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => {
+                if (priorityFilter.length > 0) {
+                  for (const p of priorityFilter) {
+                    dispatch({ type: "toggle-priority-filter", priority: p });
+                  }
+                }
+                if (iconFilter.length > 0) {
+                  for (const i of iconFilter) {
+                    dispatch({ type: "toggle-icon-filter", icon: i });
+                  }
+                }
+                if (fsStatusFilter !== null) {
+                  dispatch({
+                    type: "toggle-fs-status-filter",
+                    status: fsStatusFilter,
+                  });
+                }
+                if (searchQuery) {
+                  dispatch({ type: "set-search-query", query: "" });
+                }
+              }}
+            >
+              Clear all
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

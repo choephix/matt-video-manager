@@ -54,6 +54,7 @@ export namespace courseViewReducer {
     priorityFilter: number[];
     iconFilter: string[];
     fsStatusFilter: string | null;
+    searchQuery: string;
   };
 
   export type Action =
@@ -103,7 +104,8 @@ export namespace courseViewReducer {
     // Filters
     | { type: "toggle-priority-filter"; priority: number }
     | { type: "toggle-icon-filter"; icon: string }
-    | { type: "toggle-fs-status-filter"; status: string };
+    | { type: "toggle-fs-status-filter"; status: string }
+    | { type: "set-search-query"; query: string };
 
   export type Effect = never;
 }
@@ -132,6 +134,7 @@ export function createInitialCourseViewState(): courseViewReducer.State {
     priorityFilter: [],
     iconFilter: [],
     fsStatusFilter: null,
+    searchQuery: "",
   };
 }
 
@@ -250,5 +253,7 @@ export const courseViewReducer: EffectReducer<
         fsStatusFilter:
           state.fsStatusFilter === action.status ? null : action.status,
       };
+    case "set-search-query":
+      return { ...state, searchQuery: action.query };
   }
 };

@@ -46,6 +46,7 @@ export function SectionGrid({
   priorityFilter,
   iconFilter,
   fsStatusFilter,
+  searchQuery,
   addGhostLessonSectionId,
   editSectionId,
   addVideoToLessonId,
@@ -91,6 +92,7 @@ export function SectionGrid({
   priorityFilter: number[];
   iconFilter: string[];
   fsStatusFilter: string | null;
+  searchQuery: string;
   addGhostLessonSectionId: string | null;
   editSectionId: string | null;
   addVideoToLessonId: string | null;
@@ -263,7 +265,8 @@ export function SectionGrid({
             const hasActiveFilters =
               priorityFilter.length > 0 ||
               iconFilter.length > 0 ||
-              fsStatusFilter !== null;
+              fsStatusFilter !== null ||
+              searchQuery.length > 0;
             const filteredLessons = hasActiveFilters
               ? lessons.filter((lesson) => {
                   const passesPriorityFilter =
@@ -285,10 +288,22 @@ export function SectionGrid({
                       return false;
                     return lesson.videos.some((v) => v.clips.length === 0);
                   })();
+                  const passesSearch = (() => {
+                    if (!searchQuery) return true;
+                    const q = searchQuery.toLowerCase();
+                    if (lesson.path.toLowerCase().includes(q)) return true;
+                    if (lesson.title?.toLowerCase().includes(q)) return true;
+                    if (lesson.description?.toLowerCase().includes(q))
+                      return true;
+                    return lesson.videos.some((v) =>
+                      v.path.toLowerCase().includes(q)
+                    );
+                  })();
                   return (
                     passesPriorityFilter &&
                     passesIconFilter &&
-                    passesFsStatusFilter
+                    passesFsStatusFilter &&
+                    passesSearch
                   );
                 })
               : lessons;

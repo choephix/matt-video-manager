@@ -218,6 +218,7 @@ export default function Component(props: Route.ComponentProps) {
     priorityFilter,
     iconFilter,
     fsStatusFilter,
+    searchQuery,
   } = viewState;
 
   const [nextUpDismissed, setNextUpDismissed] = useState(false);
@@ -378,6 +379,18 @@ export default function Component(props: Route.ComponentProps) {
           iconFilter.includes(lesson.icon ?? "watch");
         if (!passesPriority || !passesIcon) continue;
 
+        if (searchQuery) {
+          const q = searchQuery.toLowerCase();
+          const matchesPath = lesson.path.toLowerCase().includes(q);
+          const matchesTitle = lesson.title?.toLowerCase().includes(q);
+          const matchesDesc = lesson.description?.toLowerCase().includes(q);
+          const matchesVideo = lesson.videos.some((v) =>
+            v.path.toLowerCase().includes(q)
+          );
+          if (!matchesPath && !matchesTitle && !matchesDesc && !matchesVideo)
+            continue;
+        }
+
         const status = lesson.fsStatus ?? "real";
         if (status === "ghost") {
           counts.ghost++;
@@ -392,7 +405,7 @@ export default function Component(props: Route.ComponentProps) {
       }
     }
     return counts;
-  }, [currentRepo?.sections, priorityFilter, iconFilter]);
+  }, [currentRepo?.sections, priorityFilter, iconFilter, searchQuery]);
 
   const handleBatchExport = () => {
     if (!loaderData.selectedVersion) return;
@@ -486,6 +499,7 @@ export default function Component(props: Route.ComponentProps) {
                   iconFilter={iconFilter}
                   fsStatusFilter={fsStatusFilter}
                   fsStatusCounts={fsStatusCounts}
+                  searchQuery={searchQuery}
                   dispatch={dispatch}
                 />
               </div>
@@ -505,6 +519,7 @@ export default function Component(props: Route.ComponentProps) {
                 priorityFilter={priorityFilter}
                 iconFilter={iconFilter}
                 fsStatusFilter={fsStatusFilter}
+                searchQuery={searchQuery}
                 addGhostLessonSectionId={addGhostLessonSectionId}
                 editSectionId={editSectionId}
                 addVideoToLessonId={addVideoToLessonId}
