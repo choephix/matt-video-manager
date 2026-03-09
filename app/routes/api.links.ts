@@ -48,9 +48,9 @@ export const action = async (args: Route.ActionArgs) => {
     const db = yield* DBFunctionsService;
 
     const link = yield* db.createLink({
-      title: parsed.title,
-      url: parsed.url,
-      description: parsed.description,
+      title: parsed.title.trim(),
+      url: parsed.url.trim(),
+      description: parsed.description?.trim() ?? parsed.description,
     });
 
     return { link };

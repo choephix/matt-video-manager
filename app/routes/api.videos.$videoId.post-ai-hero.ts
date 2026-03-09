@@ -7,9 +7,13 @@ import type { Route } from "./+types/api.videos.$videoId.post-ai-hero";
 export const action = async (args: Route.ActionArgs) => {
   const { videoId } = args.params;
   const body = await args.request.json();
-  const title: string = body.title;
+  const title: string =
+    typeof body.title === "string" ? body.title.trim() : body.title;
   const postBody: string = body.body;
-  const description: string = body.description;
+  const description: string =
+    typeof body.description === "string"
+      ? body.description.trim()
+      : body.description;
   const slug: string = body.slug ?? "";
 
   if (!title) {

@@ -12,8 +12,12 @@ import type { Route } from "./+types/api.videos.$videoId.upload";
 export const action = async (args: Route.ActionArgs) => {
   const { videoId } = args.params;
   const body = await args.request.json();
-  const title: string = body.title;
-  const description: string = body.description;
+  const title: string =
+    typeof body.title === "string" ? body.title.trim() : body.title;
+  const description: string =
+    typeof body.description === "string"
+      ? body.description.trim()
+      : body.description;
   const privacyStatus: "public" | "unlisted" =
     body.privacyStatus === "public" ? "public" : "unlisted";
 

@@ -23,7 +23,7 @@ export const action = async (args: Route.ActionArgs) => {
     yield* db.getLessonWithHierarchyById(args.params.lessonId);
 
     yield* db.updateLesson(args.params.lessonId, {
-      description,
+      description: description.trim(),
     });
 
     return { success: true };

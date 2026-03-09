@@ -9,7 +9,13 @@ import { runtimeLive } from "@/services/layer.server";
  */
 export const action = async ({ request }: { request: Request }) => {
   const body = await request.json();
-  const { url, description } = body as { url: string; description: string };
+  const rawBody = body as { url: string; description: string };
+  const url =
+    typeof rawBody.url === "string" ? rawBody.url.trim() : rawBody.url;
+  const description =
+    typeof rawBody.description === "string"
+      ? rawBody.description.trim()
+      : rawBody.description;
 
   if (!url || !description) {
     return Response.json(
