@@ -515,7 +515,7 @@ export function SortableLessonItem({
             }}
           />
         )}
-        <div className="ml-5 mt-1.5">
+        <div className="ml-5 mt-3">
           <VideoThumbnailGrid
             videos={lesson.videos}
             section={section}

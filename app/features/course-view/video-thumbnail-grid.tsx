@@ -53,33 +53,33 @@ function VideoThumbnailItem({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <button
-          className="flex flex-col text-left group/thumb w-full"
+          className="flex flex-col text-left group/thumb w-full bg-gray-700 rounded overflow-hidden max-w-34"
           onMouseDown={(e) => {
             if (!isLeftClick(e)) return;
             navigate(`/videos/${video.id}/edit`);
           }}
         >
-          <div className="relative aspect-[16/9] w-full rounded overflow-hidden bg-muted">
+          <div className="relative aspect-video w-full bg-muted">
             {firstClip ? (
               <img
                 src={`/clips/${firstClip.id}/first-frame`}
                 alt={video.path}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover rounded"
                 loading="lazy"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
+              <div className="w-full h-full flex items-center justify-center rounded">
                 <FileVideo className="w-6 h-6 text-muted-foreground/40" />
               </div>
             )}
-            <div className="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] font-mono px-1 py-0.5 rounded leading-none">
+            <div className="absolute bottom-1 right-1 bg-black/80 text-white text-[12px] font-mono px-1 py-0.5 rounded leading-none">
               {formatSecondsToTimeCode(totalDuration)}
             </div>
             {!data.hasExportedVideoMap[video.id] && (
-              <div className="absolute top-1 left-1 w-2 h-2 rounded-full bg-red-500" />
+              <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
             )}
           </div>
-          <span className="text-xs text-muted-foreground truncate mt-1 group-hover/thumb:text-foreground transition-colors w-full">
+          <span className="text-xs text-muted-foreground truncate group-hover/thumb:text-foreground transition-colors py-1 px-2">
             {video.path}
           </span>
         </button>
@@ -210,7 +210,7 @@ export function VideoThumbnailGrid({
   if (videos.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+    <div className="flex gap-3">
       {videos.map((video) => (
         <VideoThumbnailItem
           key={video.id}
