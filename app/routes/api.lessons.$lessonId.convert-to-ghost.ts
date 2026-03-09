@@ -3,7 +3,6 @@ import type { Route } from "./+types/api.lessons.$lessonId.convert-to-ghost";
 import { CourseWriteService } from "@/services/course-write-service";
 import { runtimeLive } from "@/services/layer.server";
 import { withDatabaseDump } from "@/services/dump-service";
-import { withSyncValidation } from "@/services/repo-sync-validation";
 import { data } from "react-router";
 
 export const action = async (args: Route.ActionArgs) => {
@@ -11,7 +10,6 @@ export const action = async (args: Route.ActionArgs) => {
     const service = yield* CourseWriteService;
     return yield* service.convertToGhost(args.params.lessonId);
   }).pipe(
-    withSyncValidation,
     withDatabaseDump,
     Effect.tapErrorCause((e) => Console.dir(e, { depth: null })),
     Effect.catchTag("RepoSyncError", (e) => {

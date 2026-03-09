@@ -449,6 +449,135 @@ describe("CourseWriteService", () => {
       expect(updatedSection.path).toBe("01-intro");
     });
 
+    it("rejects operations when repo is out of sync with filesystem", async () => {
+      const { run, createSection, createRealLesson } = await setup();
+
+      const section = await createSection("01-intro", 1);
+      await createRealLesson(section.id, "01-intro", "01.01-basics", 1);
+
+      // Delete the section directory from disk to create a mismatch
+      fs.rmSync(path.join(tempDir, "01-intro"), {
+        recursive: true,
+        force: true,
+      });
+      execSync("git add . && git commit -m 'remove section'", {
+        cwd: tempDir,
+      });
+
+      // Attempting a rename should fail with RepoSyncError
+      const result = await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.renameSection(section.id, "new-name");
+        }).pipe(
+          Effect.map(() => "succeeded" as const),
+          Effect.catchTag("RepoSyncError", () =>
+            Effect.succeed("sync-error" as const)
+          )
+        )
+      );
+
+      expect(result).toBe("sync-error");
+    });
+
+    it("succeeds when latest version is in sync despite stale older versions", async () => {
+      setupTempGitRepo();
+      await truncateAllTables(testDb);
+
+      const drizzleLayer = Layer.succeed(DrizzleService, testDb as any);
+      const testLayer = Layer.mergeAll(
+        CourseWriteService.Default,
+        DBFunctionsService.Default
+      ).pipe(Layer.provide(drizzleLayer), Layer.provide(NodeContext.layer));
+      const dbLayer = DBFunctionsService.Default.pipe(
+        Layer.provide(drizzleLayer)
+      );
+      const run = <A, E>(effect: Effect.Effect<A, E, CourseWriteService>) =>
+        Effect.runPromise(effect.pipe(Effect.provide(testLayer)));
+
+      const dbRun = <A, E>(effect: Effect.Effect<A, E, DBFunctionsService>) =>
+        Effect.runPromise(effect.pipe(Effect.provide(dbLayer)));
+
+      const repo = await dbRun(
+        Effect.gen(function* () {
+          const db = yield* DBFunctionsService;
+          return yield* db.createRepo({ filePath: tempDir, name: "test-repo" });
+        })
+      );
+
+      // Create old version with a stale section path (no directory on disk)
+      const oldVersion = await dbRun(
+        Effect.gen(function* () {
+          const db = yield* DBFunctionsService;
+          return yield* db.createRepoVersion({
+            repoId: repo.id,
+            name: "v1-stale",
+          });
+        })
+      );
+      await dbRun(
+        Effect.gen(function* () {
+          const db = yield* DBFunctionsService;
+          return yield* db.createSections({
+            repoVersionId: oldVersion.id,
+            sections: [
+              { sectionPathWithNumber: "01-old-name", sectionNumber: 1 },
+            ],
+          });
+        })
+      );
+
+      // Create latest version with section matching disk
+      const currentVersion = await dbRun(
+        Effect.gen(function* () {
+          const db = yield* DBFunctionsService;
+          return yield* db.createRepoVersion({
+            repoId: repo.id,
+            name: "v2-current",
+          });
+        })
+      );
+
+      // Create section on disk
+      const sectionDir = path.join(tempDir, "01-intro");
+      fs.mkdirSync(sectionDir, { recursive: true });
+      const lessonDir = path.join(sectionDir, "01.01-basics", "explainer");
+      fs.mkdirSync(lessonDir, { recursive: true });
+      fs.writeFileSync(path.join(lessonDir, "readme.md"), "# Test\n");
+      execSync("git add . && git commit -m 'add section'", {
+        cwd: tempDir,
+      });
+
+      // Create matching section in current version DB
+      const [section] = await dbRun(
+        Effect.gen(function* () {
+          const db = yield* DBFunctionsService;
+          return yield* db.createSections({
+            repoVersionId: currentVersion.id,
+            sections: [{ sectionPathWithNumber: "01-intro", sectionNumber: 1 }],
+          });
+        })
+      );
+      await dbRun(
+        Effect.gen(function* () {
+          const db = yield* DBFunctionsService;
+          return yield* db.createLessons(section!.id, [
+            { lessonPathWithNumber: "01.01-basics", lessonNumber: 1 },
+          ]);
+        })
+      );
+
+      // Operation should succeed — only latest version is validated
+      const result = await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.renameSection(section!.id, "getting-started");
+        })
+      );
+
+      expect(result.success).toBe(true);
+    });
+
     it("dematerializing a section renumbers remaining real sections and their lessons", async () => {
       const {
         run,

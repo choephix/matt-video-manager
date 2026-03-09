@@ -32,10 +32,24 @@ export class RepoSyncValidationService extends Effect.Service<RepoSyncValidation
 
           const repoData = yield* db.getRepoWithSectionsById(repo.id);
 
-          for (const version of repoData.versions) {
+          // Only validate the latest version (versions are ordered newest-first).
+          // The filesystem only represents one version's state at a time, so
+          // older versions may have stale section paths that no longer match.
+          const latestVersion = repoData.versions[0];
+          if (!latestVersion) continue;
+
+          {
+            const version = latestVersion;
             for (const section of version.sections) {
               const parsed = parseSectionPath(section.path);
               if (!parsed) continue; // ghost section — no directory expected
+
+              // Skip sections with no real lessons — they may not have a
+              // directory on disk yet (e.g. ghost sections with numbered paths).
+              const hasRealLessons = section.lessons.some(
+                (l) => l.fsStatus === "real"
+              );
+              if (!hasRealLessons) continue;
 
               const sectionDir = path.join(repoPath, section.path);
               const sectionExists = yield* fs.exists(sectionDir);
@@ -121,37 +135,3 @@ export class RepoSyncValidationService extends Effect.Service<RepoSyncValidation
     dependencies: [NodeFileSystem.layer, DBFunctionsService.Default],
   }
 ) {}
-
-/**
- * Runs validation, catching any internal errors (DB/FS) and wrapping them
- * as RepoSyncError so callers only see one error type.
- */
-const runValidation = Effect.gen(function* () {
-  const syncService = yield* RepoSyncValidationService;
-  yield* syncService.validate().pipe(
-    Effect.catchAll((e) => {
-      if (e._tag === "RepoSyncError") return Effect.fail(e);
-      return Effect.fail(
-        new RepoSyncError({
-          cause: e,
-          message: `Sync validation encountered an error: ${String(e)}`,
-        })
-      );
-    })
-  );
-});
-
-/**
- * Wraps an Effect with repo sync validation before and after execution.
- * If the repo is out of sync before the operation, the operation is aborted.
- * If the repo is out of sync after the operation, a RepoSyncError is raised.
- */
-export const withSyncValidation = <A, E, R>(
-  effect: Effect.Effect<A, E, R>
-): Effect.Effect<A, E | RepoSyncError, R | RepoSyncValidationService> =>
-  Effect.gen(function* () {
-    yield* runValidation;
-    const result = yield* effect;
-    yield* runValidation;
-    return result;
-  });

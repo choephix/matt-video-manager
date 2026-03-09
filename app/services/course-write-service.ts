@@ -15,8 +15,13 @@ import {
 } from "./section-path-service";
 import { createSectionOps } from "./course-write-service.helpers";
 import { CourseWriteError } from "./course-write-service.types";
+import {
+  RepoSyncValidationService,
+  RepoSyncError,
+} from "./repo-sync-validation";
 
 export { CourseWriteError } from "./course-write-service.types";
+export { RepoSyncError } from "./repo-sync-validation";
 
 export class CourseWriteService extends Effect.Service<CourseWriteService>()(
   "CourseWriteService",
@@ -24,6 +29,29 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
     effect: Effect.gen(function* () {
       const db = yield* DBFunctionsService;
       const repoWrite = yield* RepoWriteService;
+      const syncService = yield* RepoSyncValidationService;
+
+      const runValidation = syncService.validate().pipe(
+        Effect.catchAll((e) => {
+          if (e._tag === "RepoSyncError") return Effect.fail(e);
+          return Effect.fail(
+            new RepoSyncError({
+              cause: e,
+              message: `Sync validation encountered an error: ${String(e)}`,
+            })
+          );
+        })
+      );
+
+      const withSyncValidation = <A, E>(
+        effect: Effect.Effect<A, E>
+      ): Effect.Effect<A, E | RepoSyncError> =>
+        Effect.gen(function* () {
+          yield* runValidation;
+          const result = yield* effect;
+          yield* runValidation;
+          return result;
+        });
 
       const { renumberSections, reorderSections, renameSection } =
         createSectionOps(db, repoWrite);
@@ -573,19 +601,32 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
       });
 
       return {
-        materializeGhost,
+        materializeGhost: (...args: Parameters<typeof materializeGhost>) =>
+          withSyncValidation(materializeGhost(...args)),
         addGhostSection,
         addGhostLesson,
-        deleteLesson,
-        deleteSection,
-        convertToGhost,
-        renameLesson,
-        reorderLessons,
-        moveToSection,
-        reorderSections,
-        renameSection,
+        deleteLesson: (...args: Parameters<typeof deleteLesson>) =>
+          withSyncValidation(deleteLesson(...args)),
+        deleteSection: (...args: Parameters<typeof deleteSection>) =>
+          withSyncValidation(deleteSection(...args)),
+        convertToGhost: (...args: Parameters<typeof convertToGhost>) =>
+          withSyncValidation(convertToGhost(...args)),
+        renameLesson: (...args: Parameters<typeof renameLesson>) =>
+          withSyncValidation(renameLesson(...args)),
+        reorderLessons: (...args: Parameters<typeof reorderLessons>) =>
+          withSyncValidation(reorderLessons(...args)),
+        moveToSection: (...args: Parameters<typeof moveToSection>) =>
+          withSyncValidation(moveToSection(...args)),
+        reorderSections: (...args: Parameters<typeof reorderSections>) =>
+          withSyncValidation(reorderSections(...args)),
+        renameSection: (...args: Parameters<typeof renameSection>) =>
+          withSyncValidation(renameSection(...args)),
       };
     }),
-    dependencies: [DBFunctionsService.Default, RepoWriteService.Default],
+    dependencies: [
+      DBFunctionsService.Default,
+      RepoWriteService.Default,
+      RepoSyncValidationService.Default,
+    ],
   }
 ) {}
