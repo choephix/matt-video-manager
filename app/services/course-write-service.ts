@@ -534,11 +534,50 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
         return { success: true };
       });
 
+      /**
+       * Deletes a ghost section and all its ghost lessons.
+       * Fails if the section contains any real lessons.
+       */
+      const deleteSection = Effect.fn("deleteSection")(function* (
+        sectionId: string
+      ) {
+        const section = yield* db.getSectionWithHierarchyById(sectionId);
+        const repoPath = section.repoVersion.repo.filePath;
+        const repoVersionId = section.repoVersionId;
+
+        const sectionLessons = yield* db.getLessonsBySectionId(sectionId);
+        const realLessons = sectionLessons.filter(
+          (l) => l.fsStatus !== "ghost"
+        );
+
+        if (realLessons.length > 0) {
+          return yield* new CourseWriteError({
+            cause: null,
+            message:
+              "Cannot delete section with real lessons. Convert or delete them first.",
+          });
+        }
+
+        // Delete all ghost lessons in this section
+        for (const lesson of sectionLessons) {
+          yield* db.deleteLesson(lesson.id);
+        }
+
+        // Delete the section itself
+        yield* db.deleteSection(sectionId);
+
+        // Renumber remaining sections to close the gap
+        yield* renumberSections(repoVersionId, repoPath);
+
+        return { success: true };
+      });
+
       return {
         materializeGhost,
         addGhostSection,
         addGhostLesson,
         deleteLesson,
+        deleteSection,
         convertToGhost,
         renameLesson,
         reorderLessons,

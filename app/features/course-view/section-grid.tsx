@@ -1,4 +1,5 @@
 import { AddGhostLessonModal } from "@/components/add-ghost-lesson-modal";
+import { DeleteSectionModal } from "@/components/delete-section-modal";
 import { type DependencyLessonItem } from "@/components/dependency-selector";
 import { EditGhostSectionModal } from "@/components/edit-ghost-section-modal";
 import { EditSectionModal } from "@/components/edit-section-modal";
@@ -7,6 +8,7 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { cn } from "@/lib/utils";
@@ -14,6 +16,7 @@ import { courseViewReducer } from "@/features/course-view/course-view-reducer";
 import { SortableLessonItem } from "./sortable-lesson-item";
 import { SortableSectionItem } from "./sortable-section-item";
 import type { LoaderData, Section, Lesson } from "./course-view-types";
+import { buildSectionTranscript } from "./section-transcript";
 import { formatSecondsToTimeCode } from "@/services/utils";
 import {
   DndContext,
@@ -32,6 +35,7 @@ import {
   GripVertical,
   PencilIcon,
   Plus,
+  Trash2,
 } from "lucide-react";
 import { useNavigate, useFetcher } from "react-router";
 import { toast } from "sonner";
@@ -59,6 +63,7 @@ export function SectionGrid({
   addVideoToLessonId,
   editLessonId,
   convertToGhostLessonId,
+  deleteSectionId,
   dispatch,
   navigate,
   startExportUpload,
@@ -105,6 +110,7 @@ export function SectionGrid({
   addVideoToLessonId: string | null;
   editLessonId: string | null;
   convertToGhostLessonId: string | null;
+  deleteSectionId: string | null;
   dispatch: (action: courseViewReducer.Action) => void;
   navigate: ReturnType<typeof useNavigate>;
   startExportUpload: (videoId: string, path: string) => void;
@@ -448,41 +454,9 @@ export function SectionGrid({
                         </ContextMenuItem>
                         <ContextMenuItem
                           onSelect={async () => {
-                            const realLessons = lessons.filter(
-                              (l) => l.fsStatus !== "ghost"
-                            );
-                            const lines: string[] = [`# ${section.path}`, ""];
-                            for (const lesson of realLessons) {
-                              lines.push(`## ${lesson.title || lesson.path}`);
-                              lines.push("");
-                              if (lesson.videos.length === 0) {
-                                lines.push("(no videos)");
-                                lines.push("");
-                                continue;
-                              }
-                              for (const video of lesson.videos) {
-                                lines.push(`### ${video.path}`);
-                                lines.push("");
-                                if (video.clips.length === 0) {
-                                  lines.push("(no clips)");
-                                  lines.push("");
-                                  continue;
-                                }
-                                const transcript = video.clips
-                                  .map((c) => c.text)
-                                  .filter(Boolean)
-                                  .join(" ");
-                                if (transcript) {
-                                  lines.push(transcript);
-                                } else {
-                                  lines.push("(no transcript)");
-                                }
-                                lines.push("");
-                              }
-                            }
                             try {
                               await navigator.clipboard.writeText(
-                                lines.join("\n").trimEnd()
+                                buildSectionTranscript(section.path, lessons)
                               );
                               toast("Section transcript copied to clipboard");
                             } catch {
@@ -495,6 +469,23 @@ export function SectionGrid({
                           <ClipboardCopy className="w-4 h-4" />
                           Copy Section Transcript
                         </ContextMenuItem>
+                        {isGhostSection && (
+                          <>
+                            <ContextMenuSeparator />
+                            <ContextMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onSelect={() =>
+                                dispatch({
+                                  type: "set-delete-section-id",
+                                  sectionId: section.id,
+                                })
+                              }
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Delete Section
+                            </ContextMenuItem>
+                          </>
+                        )}
                       </ContextMenuContent>
                     </ContextMenu>
                     <AddGhostLessonModal
@@ -507,6 +498,18 @@ export function SectionGrid({
                         });
                       }}
                       fetcher={addGhostFetcher}
+                    />
+                    <DeleteSectionModal
+                      sectionId={section.id}
+                      sectionTitle={section.path}
+                      lessonCount={lessons.length}
+                      open={deleteSectionId === section.id}
+                      onOpenChange={(open) => {
+                        dispatch({
+                          type: "set-delete-section-id",
+                          sectionId: open ? section.id : null,
+                        });
+                      }}
                     />
                     {isGhostSection ? (
                       <EditGhostSectionModal

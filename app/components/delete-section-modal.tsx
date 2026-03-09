@@ -1,0 +1,71 @@
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Loader2, Trash2 } from "lucide-react";
+import { useFetcher } from "react-router";
+
+export function DeleteSectionModal(props: {
+  sectionId: string;
+  sectionTitle: string;
+  lessonCount: number;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const fetcher = useFetcher();
+
+  return (
+    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Trash2 className="w-5 h-5 text-destructive" />
+            Delete Section
+          </DialogTitle>
+          <DialogDescription>
+            Are you sure you want to delete "{props.sectionTitle}"?
+            {props.lessonCount > 0 && (
+              <>
+                {" "}
+                This will permanently delete {props.lessonCount} ghost{" "}
+                {props.lessonCount === 1 ? "lesson" : "lessons"} in this
+                section.
+              </>
+            )}{" "}
+            This action cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex justify-end space-x-2 pt-4">
+          <Button
+            variant="outline"
+            onClick={() => props.onOpenChange(false)}
+            type="button"
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={fetcher.state === "submitting"}
+            onClick={() => {
+              fetcher.submit(null, {
+                method: "post",
+                action: `/api/sections/${props.sectionId}/delete`,
+              });
+              props.onOpenChange(false);
+            }}
+          >
+            {fetcher.state === "submitting" ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              "Delete Section"
+            )}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
