@@ -36,6 +36,7 @@ export namespace courseViewReducer {
     isClearVideoFilesModalOpen: boolean;
     isRewriteRepoPathModalOpen: boolean;
     isAddStandaloneVideoModalOpen: boolean;
+    isCopyTranscriptModalOpen: boolean;
 
     // ID-based selection states (null = closed)
     addGhostLessonSectionId: string | null;
@@ -72,6 +73,7 @@ export namespace courseViewReducer {
     | { type: "set-clear-video-files-modal-open"; open: boolean }
     | { type: "set-rewrite-repo-path-modal-open"; open: boolean }
     | { type: "set-add-standalone-video-modal-open"; open: boolean }
+    | { type: "set-copy-transcript-modal-open"; open: boolean }
     // ID-based selections
     | { type: "set-add-ghost-lesson-section-id"; sectionId: string | null }
     | {
@@ -132,6 +134,7 @@ export function createInitialCourseViewState(): courseViewReducer.State {
     isClearVideoFilesModalOpen: false,
     isRewriteRepoPathModalOpen: false,
     isAddStandaloneVideoModalOpen: false,
+    isCopyTranscriptModalOpen: false,
     addGhostLessonSectionId: null,
     insertAdjacentLessonId: null,
     insertPosition: null,
@@ -178,6 +181,8 @@ export const courseViewReducer: EffectReducer<
       return { ...state, isRewriteRepoPathModalOpen: action.open };
     case "set-add-standalone-video-modal-open":
       return { ...state, isAddStandaloneVideoModalOpen: action.open };
+    case "set-copy-transcript-modal-open":
+      return { ...state, isCopyTranscriptModalOpen: action.open };
 
     // ID-based selections
     case "set-add-ghost-lesson-section-id":

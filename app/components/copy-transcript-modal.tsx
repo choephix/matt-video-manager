@@ -1,0 +1,149 @@
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import type { Section } from "@/features/course-view/course-view-types";
+import {
+  buildCourseTranscript,
+  type TranscriptOptions,
+} from "@/features/course-view/section-transcript";
+import { ClipboardCopy } from "lucide-react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+
+export function CopyTranscriptModal(props: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  courseName: string;
+  sections: Section[];
+}) {
+  const [options, setOptions] = useState<TranscriptOptions>({
+    includeTranscripts: true,
+    includeLessonDescriptions: false,
+    includeLessonTitles: false,
+  });
+
+  const preview = useMemo(
+    () => buildCourseTranscript(props.courseName, props.sections, options),
+    [props.courseName, props.sections, options]
+  );
+
+  const byteCount = new TextEncoder().encode(preview).length;
+  const approxTokens = Math.ceil(byteCount / 4);
+
+  const formatTokens = (tokens: number) => {
+    if (tokens >= 1000) {
+      return `~${(tokens / 1000).toFixed(1)}k tokens`;
+    }
+    return `~${tokens} tokens`;
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(preview);
+      toast("Course transcript copied to clipboard");
+      props.onOpenChange(false);
+    } catch {
+      toast.error("Failed to copy transcript to clipboard");
+    }
+  };
+
+  return (
+    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Copy Course Transcript</DialogTitle>
+          <DialogDescription>
+            Choose what to include in the exported transcript.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="include-transcripts"
+                checked={options.includeTranscripts}
+                onCheckedChange={(checked) =>
+                  setOptions((o) => ({
+                    ...o,
+                    includeTranscripts: checked === true,
+                  }))
+                }
+              />
+              <Label htmlFor="include-transcripts" className="cursor-pointer">
+                Transcripts
+              </Label>
+              <span className="text-xs text-muted-foreground">
+                Clip text content
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="include-lesson-titles"
+                checked={options.includeLessonTitles}
+                onCheckedChange={(checked) =>
+                  setOptions((o) => ({
+                    ...o,
+                    includeLessonTitles: checked === true,
+                  }))
+                }
+              />
+              <Label htmlFor="include-lesson-titles" className="cursor-pointer">
+                Lesson titles
+              </Label>
+              <span className="text-xs text-muted-foreground">
+                Human-readable lesson names
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="include-lesson-descriptions"
+                checked={options.includeLessonDescriptions}
+                onCheckedChange={(checked) =>
+                  setOptions((o) => ({
+                    ...o,
+                    includeLessonDescriptions: checked === true,
+                  }))
+                }
+              />
+              <Label
+                htmlFor="include-lesson-descriptions"
+                className="cursor-pointer"
+              >
+                Lesson descriptions
+              </Label>
+              <span className="text-xs text-muted-foreground">
+                Description metadata
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-sm">
+            <span className="text-muted-foreground">Estimated size</span>
+            <span className="font-medium">{formatTokens(approxTokens)}</span>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => props.onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleCopy}>
+            <ClipboardCopy className="w-4 h-4 mr-1" />
+            Copy
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

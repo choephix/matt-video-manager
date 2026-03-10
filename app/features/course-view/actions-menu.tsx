@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/tooltip";
 import { courseViewReducer } from "@/features/course-view/course-view-reducer";
 import type { LoaderData } from "./course-view-types";
-import { buildCourseTranscript } from "./section-transcript";
 import {
   Archive,
   ChevronDown,
@@ -157,19 +156,12 @@ export function ActionsDropdown({
             s.lessons.some((l) => l.fsStatus !== "ghost" && l.videos.length > 0)
           ) && (
             <DropdownMenuItem
-              onSelect={async () => {
-                try {
-                  await navigator.clipboard.writeText(
-                    buildCourseTranscript(
-                      currentRepo.name,
-                      currentRepo.sections
-                    )
-                  );
-                  toast("Course transcript copied to clipboard");
-                } catch {
-                  toast.error("Failed to copy transcript to clipboard");
-                }
-              }}
+              onSelect={() =>
+                dispatch({
+                  type: "set-copy-transcript-modal-open",
+                  open: true,
+                })
+              }
             >
               <ClipboardCopy className="w-4 h-4 mr-2" />
               <div className="flex flex-col">

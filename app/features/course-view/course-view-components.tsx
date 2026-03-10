@@ -1,4 +1,5 @@
 import { ClearVideoFilesModal } from "@/components/clear-video-files-modal";
+import { CopyTranscriptModal } from "@/components/copy-transcript-modal";
 import { CreateVersionModal } from "@/components/create-version-modal";
 import { DeleteVersionModal } from "@/components/delete-version-modal";
 import { EditVersionModal } from "@/components/edit-version-modal";
@@ -418,6 +419,7 @@ export function RouteModals({
     isDeleteVersionModalOpen: boolean;
     isClearVideoFilesModalOpen: boolean;
     isRewriteRepoPathModalOpen: boolean;
+    isCopyTranscriptModalOpen: boolean;
     moveLessonState: {
       lessonId: string;
       lessonTitle: string;
@@ -521,6 +523,17 @@ export function RouteModals({
           open={viewState.isRewriteRepoPathModalOpen}
           onOpenChange={(open) =>
             dispatch({ type: "set-rewrite-repo-path-modal-open", open })
+          }
+        />
+      )}
+
+      {currentRepo && (
+        <CopyTranscriptModal
+          courseName={currentRepo.name}
+          sections={currentRepo.sections}
+          open={viewState.isCopyTranscriptModalOpen}
+          onOpenChange={(open) =>
+            dispatch({ type: "set-copy-transcript-modal-open", open })
           }
         />
       )}

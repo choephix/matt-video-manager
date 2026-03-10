@@ -1,9 +1,29 @@
 import type { Lesson, Section } from "./course-view-types";
 
-export function buildCourseTranscript(coursePath: string, sections: Section[]) {
+export type TranscriptOptions = {
+  includeTranscripts: boolean;
+  includeLessonDescriptions: boolean;
+  includeLessonTitles: boolean;
+};
+
+const defaultOptions: TranscriptOptions = {
+  includeTranscripts: true,
+  includeLessonDescriptions: false,
+  includeLessonTitles: false,
+};
+
+export function buildCourseTranscript(
+  coursePath: string,
+  sections: Section[],
+  options: TranscriptOptions = defaultOptions
+) {
   const lines: string[] = [`<course title="${escapeAttr(coursePath)}">`];
   for (const section of sections) {
-    const sectionLines = buildSectionTranscript(section.path, section.lessons);
+    const sectionLines = buildSectionTranscript(
+      section.path,
+      section.lessons,
+      options
+    );
     // Indent each line of the section transcript by 2 spaces
     for (const line of sectionLines.split("\n")) {
       lines.push(`  ${line}`);
@@ -13,11 +33,26 @@ export function buildCourseTranscript(coursePath: string, sections: Section[]) {
   return lines.join("\n");
 }
 
-export function buildSectionTranscript(sectionPath: string, lessons: Lesson[]) {
+export function buildSectionTranscript(
+  sectionPath: string,
+  lessons: Lesson[],
+  options: TranscriptOptions = defaultOptions
+) {
   const realLessons = lessons.filter((l) => l.fsStatus !== "ghost");
   const lines: string[] = [`<section title="${escapeAttr(sectionPath)}">`];
   for (const lesson of realLessons) {
-    lines.push(`  <lesson title="${escapeAttr(lesson.path)}">`);
+    const lessonAttrs = [
+      `title="${escapeAttr(lesson.path)}"`,
+      ...(options.includeLessonTitles && lesson.title
+        ? [`name="${escapeAttr(lesson.title)}"`]
+        : []),
+    ].join(" ");
+    lines.push(`  <lesson ${lessonAttrs}>`);
+    if (options.includeLessonDescriptions && lesson.description) {
+      lines.push(
+        `    <description>${escapeAttr(lesson.description)}</description>`
+      );
+    }
     if (lesson.videos.length === 0) {
       lines.push("    (no videos)");
       lines.push("  </lesson>");
@@ -25,16 +60,18 @@ export function buildSectionTranscript(sectionPath: string, lessons: Lesson[]) {
     }
     for (const video of lesson.videos) {
       lines.push(`    <video title="${escapeAttr(video.path)}">`);
-      if (video.clips.length === 0) {
-        lines.push("      (no clips)");
-        lines.push("    </video>");
-        continue;
+      if (options.includeTranscripts) {
+        if (video.clips.length === 0) {
+          lines.push("      (no clips)");
+          lines.push("    </video>");
+          continue;
+        }
+        const transcript = video.clips
+          .map((c) => c.text)
+          .filter(Boolean)
+          .join(" ");
+        lines.push(`      ${transcript || "(no transcript)"}`);
       }
-      const transcript = video.clips
-        .map((c) => c.text)
-        .filter(Boolean)
-        .join(" ");
-      lines.push(`      ${transcript || "(no transcript)"}`);
       lines.push("    </video>");
     }
     lines.push("  </lesson>");
