@@ -4,12 +4,16 @@ export type TranscriptOptions = {
   includeTranscripts: boolean;
   includeLessonDescriptions: boolean;
   includeLessonTitles: boolean;
+  includePriority: boolean;
+  includeExerciseType: boolean;
 };
 
 const defaultOptions: TranscriptOptions = {
   includeTranscripts: false,
   includeLessonDescriptions: true,
   includeLessonTitles: true,
+  includePriority: false,
+  includeExerciseType: false,
 };
 
 export function buildCourseTranscript(
@@ -49,6 +53,12 @@ export function buildSectionTranscript(
       `title="${escapeAttr(lesson.path)}"`,
       ...(options.includeLessonTitles && lesson.title
         ? [`name="${escapeAttr(lesson.title)}"`]
+        : []),
+      ...(options.includePriority
+        ? [`priority="p${lesson.priority ?? 2}"`]
+        : []),
+      ...(options.includeExerciseType && lesson.icon
+        ? [`type="${escapeAttr(lesson.icon)}"`]
         : []),
     ].join(" ");
     lines.push(`  <lesson ${lessonAttrs}>`);

@@ -28,6 +28,8 @@ export function CopyTranscriptModal(props: {
     includeTranscripts: false,
     includeLessonDescriptions: true,
     includeLessonTitles: true,
+    includePriority: false,
+    includeExerciseType: false,
   });
 
   const preview = useMemo(
@@ -124,6 +126,44 @@ export function CopyTranscriptModal(props: {
               </Label>
               <span className="text-xs text-muted-foreground">
                 Clip text content
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="include-priority"
+                checked={options.includePriority}
+                onCheckedChange={(checked) =>
+                  setOptions((o) => ({
+                    ...o,
+                    includePriority: checked === true,
+                  }))
+                }
+              />
+              <Label htmlFor="include-priority" className="cursor-pointer">
+                Priority
+              </Label>
+              <span className="text-xs text-muted-foreground">
+                P1, P2, P3 labels
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="include-exercise-type"
+                checked={options.includeExerciseType}
+                onCheckedChange={(checked) =>
+                  setOptions((o) => ({
+                    ...o,
+                    includeExerciseType: checked === true,
+                  }))
+                }
+              />
+              <Label htmlFor="include-exercise-type" className="cursor-pointer">
+                Exercise type
+              </Label>
+              <span className="text-xs text-muted-foreground">
+                Watch, code, or discussion
               </span>
             </div>
           </div>
