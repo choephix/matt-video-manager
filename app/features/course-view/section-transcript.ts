@@ -7,9 +7,9 @@ export type TranscriptOptions = {
 };
 
 const defaultOptions: TranscriptOptions = {
-  includeTranscripts: true,
-  includeLessonDescriptions: false,
-  includeLessonTitles: false,
+  includeTranscripts: false,
+  includeLessonDescriptions: true,
+  includeLessonTitles: true,
 };
 
 export function buildCourseTranscript(

@@ -25,9 +25,9 @@ export function CopyTranscriptModal(props: {
   sections: Section[];
 }) {
   const [options, setOptions] = useState<TranscriptOptions>({
-    includeTranscripts: true,
-    includeLessonDescriptions: false,
-    includeLessonTitles: false,
+    includeTranscripts: false,
+    includeLessonDescriptions: true,
+    includeLessonTitles: true,
   });
 
   const preview = useMemo(
@@ -69,25 +69,6 @@ export function CopyTranscriptModal(props: {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Checkbox
-                id="include-transcripts"
-                checked={options.includeTranscripts}
-                onCheckedChange={(checked) =>
-                  setOptions((o) => ({
-                    ...o,
-                    includeTranscripts: checked === true,
-                  }))
-                }
-              />
-              <Label htmlFor="include-transcripts" className="cursor-pointer">
-                Transcripts
-              </Label>
-              <span className="text-xs text-muted-foreground">
-                Clip text content
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox
                 id="include-lesson-titles"
                 checked={options.includeLessonTitles}
                 onCheckedChange={(checked) =>
@@ -124,6 +105,25 @@ export function CopyTranscriptModal(props: {
               </Label>
               <span className="text-xs text-muted-foreground">
                 Description metadata
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="include-transcripts"
+                checked={options.includeTranscripts}
+                onCheckedChange={(checked) =>
+                  setOptions((o) => ({
+                    ...o,
+                    includeTranscripts: checked === true,
+                  }))
+                }
+              />
+              <Label htmlFor="include-transcripts" className="cursor-pointer">
+                Transcripts
+              </Label>
+              <span className="text-xs text-muted-foreground">
+                Clip text content
               </span>
             </div>
           </div>
