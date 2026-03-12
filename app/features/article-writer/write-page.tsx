@@ -295,11 +295,22 @@ export function WritePage({ videoId, loaderData }: WritePageProps) {
 
   const prevStatusRef = useRef(status);
   useEffect(() => {
-    if (prevStatusRef.current === "streaming" && status === "ready") {
+    const transitionedToReady =
+      prevStatusRef.current === "streaming" && status === "ready";
+    prevStatusRef.current = status;
+
+    if (transitionedToReady) {
       saveMessagesToStorage(videoId, mode, messages);
       if (isDocumentMode) saveDocument();
+      return;
     }
-    prevStatusRef.current = status;
+
+    // In document mode, tool outputs are added client-side via addToolOutput()
+    // after streaming completes. Save messages when they change while already
+    // ready so tool results persist across page refreshes.
+    if (isDocumentMode && status === "ready" && messages.length > 0) {
+      saveMessagesToStorage(videoId, mode, messages);
+    }
   }, [status, videoId, mode, messages, isDocumentMode, saveDocument]);
 
   const handleModeChange = (newMode: Mode) => {
