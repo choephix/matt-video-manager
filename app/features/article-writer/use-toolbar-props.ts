@@ -1,9 +1,8 @@
 import { useMemo } from "react";
-import type { UIMessage } from "ai";
 import { marked } from "marked";
 import type { FetcherWithComponents } from "react-router";
 import type { LintViolation } from "./lint-rules";
-import type { Mode, Model } from "./types";
+import type { DocumentAgentMessage, Mode, Model } from "./types";
 import type { WriteToolbarProps } from "./write-toolbar";
 import { hasUnresolvedScreenshots } from "./choose-screenshot-mutations";
 import { partsToText, formatConversationAsQA } from "./write-utils";
@@ -32,7 +31,7 @@ export function useToolbarProps({
   onClearChat,
   onOpenBannedPhrases,
 }: {
-  messages: UIMessage[];
+  messages: DocumentAgentMessage[];
   mode: Mode;
   model: Model;
   status: "streaming" | "submitted" | "ready" | "error";

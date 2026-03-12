@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { UIMessage } from "ai";
+import type { DocumentAgentMessage } from "./types";
 import { loadDocumentFromStorage, saveDocumentToStorage } from "./write-utils";
 import { applyEdits, type DocumentEdit } from "./document-editing-engine";
 
@@ -11,12 +11,12 @@ import { applyEdits, type DocumentEdit } from "./document-editing-engine";
 export function useDocumentFlow(opts: {
   videoId: string;
   isDocumentMode: boolean;
-  messages: UIMessage[];
+  messages: DocumentAgentMessage[];
   status: "streaming" | "submitted" | "ready" | "error";
   addToolOutput: (args: {
-    tool: never;
+    tool: "writeDocument" | "editDocument";
     toolCallId: string;
-    output: never;
+    output: string;
   }) => Promise<void>;
 }) {
   const { videoId, isDocumentMode, messages, status, addToolOutput } = opts;
@@ -34,13 +34,9 @@ export function useDocumentFlow(opts: {
       if (message.role !== "assistant") continue;
       for (const part of message.parts) {
         if (
-          "toolCallId" in part &&
           part.type === "tool-writeDocument" &&
-          "input" in part &&
+          part.state !== "input-streaming" &&
           part.input &&
-          typeof part.input === "object" &&
-          "content" in part.input &&
-          typeof part.input.content === "string" &&
           !processedToolCallsRef.current.has(part.toolCallId)
         ) {
           processedToolCallsRef.current.add(part.toolCallId);
@@ -48,9 +44,9 @@ export function useDocumentFlow(opts: {
           setDocument(content);
           saveDocumentToStorage(videoId, content);
           addToolOutput({
-            tool: "writeDocument" as never,
+            tool: "writeDocument",
             toolCallId: part.toolCallId,
-            output: "Document written successfully." as never,
+            output: "Document written successfully.",
           });
         }
       }
@@ -64,13 +60,9 @@ export function useDocumentFlow(opts: {
       if (message.role !== "assistant") continue;
       for (const part of message.parts) {
         if (
-          "toolCallId" in part &&
           part.type === "tool-editDocument" &&
-          "input" in part &&
+          part.state !== "input-streaming" &&
           part.input &&
-          typeof part.input === "object" &&
-          "edits" in part.input &&
-          Array.isArray(part.input.edits) &&
           !processedToolCallsRef.current.has(part.toolCallId)
         ) {
           processedToolCallsRef.current.add(part.toolCallId);
@@ -79,17 +71,17 @@ export function useDocumentFlow(opts: {
           const result = applyEdits(currentDoc, edits);
           if ("error" in result) {
             addToolOutput({
-              tool: "editDocument" as never,
+              tool: "editDocument",
               toolCallId: part.toolCallId,
-              output: result.error as never,
+              output: result.error,
             });
           } else {
             setDocument(result.document);
             saveDocumentToStorage(videoId, result.document);
             addToolOutput({
-              tool: "editDocument" as never,
+              tool: "editDocument",
               toolCallId: part.toolCallId,
-              output: "Document edited successfully." as never,
+              output: "Document edited successfully.",
             });
           }
         }
@@ -105,15 +97,9 @@ export function useDocumentFlow(opts: {
       if (message.role !== "assistant") continue;
       for (const part of message.parts) {
         if (
-          "toolCallId" in part &&
           part.type === "tool-writeDocument" &&
-          "state" in part &&
           part.state === "input-streaming" &&
-          "input" in part &&
-          part.input &&
-          typeof part.input === "object" &&
-          "content" in part.input &&
-          typeof part.input.content === "string"
+          part.input?.content
         ) {
           setDocument(part.input.content);
         }

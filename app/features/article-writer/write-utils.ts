@@ -1,7 +1,6 @@
-import type { UIMessage } from "ai";
-import type { Mode } from "./types";
+import type { DocumentAgentMessage, Mode } from "./types";
 
-export const partsToText = (parts: UIMessage["parts"]) => {
+export const partsToText = (parts: DocumentAgentMessage["parts"]) => {
   return parts
     .map((part) => {
       if (part.type === "text") {
@@ -74,12 +73,12 @@ export const getMessagesStorageKey = (videoId: string, mode: Mode) =>
 export const loadMessagesFromStorage = (
   videoId: string,
   mode: Mode
-): UIMessage[] => {
+): DocumentAgentMessage[] => {
   if (typeof localStorage === "undefined") return [];
   try {
     const saved = localStorage.getItem(getMessagesStorageKey(videoId, mode));
     if (saved) {
-      return JSON.parse(saved) as UIMessage[];
+      return JSON.parse(saved) as DocumentAgentMessage[];
     }
   } catch (e) {
     console.error("Failed to load messages from localStorage:", e);
@@ -90,7 +89,7 @@ export const loadMessagesFromStorage = (
 export const saveMessagesToStorage = (
   videoId: string,
   mode: Mode,
-  messages: UIMessage[]
+  messages: DocumentAgentMessage[]
 ) => {
   if (typeof localStorage === "undefined") return;
   try {
@@ -135,7 +134,7 @@ export const saveDocumentToStorage = (
   }
 };
 
-export const formatConversationAsQA = (messages: UIMessage[]) => {
+export const formatConversationAsQA = (messages: DocumentAgentMessage[]) => {
   const qaMessages: string[] = [];
 
   for (const message of messages) {

@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import type { UIMessage } from "ai";
+import type { DocumentAgentMessage } from "./types";
 import {
   AIConversation,
   AIConversationContent,
@@ -28,8 +28,8 @@ import {
 } from "./choose-screenshot-mutations";
 
 export interface WriteChatProps {
-  messages: UIMessage[];
-  setMessages: (messages: UIMessage[]) => void;
+  messages: DocumentAgentMessage[];
+  setMessages: (messages: DocumentAgentMessage[]) => void;
   error: Error | undefined;
   fullPath: string;
   onSubmit: (text: string) => void;
@@ -225,15 +225,11 @@ export const WriteChat = memo(function WriteChat(props: WriteChatProps) {
                     );
                   }
                   if (part.type === "tool-editDocument") {
-                    const input = "input" in part ? part.input : undefined;
-                    const editCount =
-                      input &&
-                      typeof input === "object" &&
-                      "edits" in input &&
-                      Array.isArray(input.edits)
-                        ? input.edits.length
-                        : 0;
-                    const result = "result" in part ? part.result : undefined;
+                    const editCount = part.input?.edits?.length ?? 0;
+                    const result =
+                      part.state === "output-available"
+                        ? part.output
+                        : undefined;
                     const failed =
                       typeof result === "string" &&
                       !result.includes("successfully");

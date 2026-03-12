@@ -1,4 +1,20 @@
 import type { TextWritingAgentMode } from "@/routes/videos.$videoId.completions";
+import type {
+  writeDocumentTool,
+  editDocumentTool,
+} from "@/services/document-writing-agent";
+import type { InferUITools, UIMessage } from "ai";
+
+export type DocumentAgentTools = {
+  writeDocument: typeof writeDocumentTool;
+  editDocument: typeof editDocumentTool;
+};
+
+export type DocumentAgentMessage = UIMessage<
+  unknown,
+  never,
+  InferUITools<DocumentAgentTools>
+>;
 
 /**
  * Represents clip sections with calculated word counts for UI display.

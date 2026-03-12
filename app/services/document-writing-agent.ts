@@ -12,6 +12,43 @@ import type {
   TextWritingAgentImageFile,
 } from "./text-writing-agent";
 
+export const writeDocumentTool = tool({
+  description:
+    "Write the full article document. Use this to create the initial article.",
+  inputSchema: z.object({
+    content: z.string().describe("The full markdown content of the article"),
+  }),
+  outputSchema: z.string(),
+});
+
+export const editDocumentTool = tool({
+  description:
+    "Edit the existing document with surgical changes. Use replace for targeted text changes, insert_after to add content after an anchor, or rewrite to replace the entire document.",
+  inputSchema: z.object({
+    edits: z.array(
+      z.object({
+        type: z
+          .enum(["replace", "insert_after", "rewrite"])
+          .describe("The type of edit to apply"),
+        old_text: z
+          .string()
+          .optional()
+          .describe(
+            "For replace: the exact text to find and replace. Include enough context for a unique match."
+          ),
+        anchor: z
+          .string()
+          .optional()
+          .describe(
+            "For insert_after: the exact text after which to insert new content."
+          ),
+        new_text: z.string().describe("The new text to insert or replace with"),
+      })
+    ),
+  }),
+  outputSchema: z.string(),
+});
+
 export const createDocumentWritingAgent = (props: {
   model: LanguageModel;
   document: string | undefined;
@@ -64,43 +101,6 @@ After calling writeDocument, you may add a brief conversational message explaini
   const memorySection = props.memory
     ? `\n\n## Course Memory\n\nThe following is course-level context provided by the author. Use it to inform your response:\n\n<memory>\n${props.memory}\n</memory>`
     : "";
-
-  const writeDocumentTool = tool({
-    description:
-      "Write the full article document. Use this to create the initial article.",
-    inputSchema: z.object({
-      content: z.string().describe("The full markdown content of the article"),
-    }),
-  });
-
-  const editDocumentTool = tool({
-    description:
-      "Edit the existing document with surgical changes. Use replace for targeted text changes, insert_after to add content after an anchor, or rewrite to replace the entire document.",
-    inputSchema: z.object({
-      edits: z.array(
-        z.object({
-          type: z
-            .enum(["replace", "insert_after", "rewrite"])
-            .describe("The type of edit to apply"),
-          old_text: z
-            .string()
-            .optional()
-            .describe(
-              "For replace: the exact text to find and replace. Include enough context for a unique match."
-            ),
-          anchor: z
-            .string()
-            .optional()
-            .describe(
-              "For insert_after: the exact text after which to insert new content."
-            ),
-          new_text: z
-            .string()
-            .describe("The new text to insert or replace with"),
-        })
-      ),
-    }),
-  });
 
   if (props.document) {
     return new Agent({
