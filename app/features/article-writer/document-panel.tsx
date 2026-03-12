@@ -95,7 +95,7 @@ export const DocumentPanel = memo(function DocumentPanel({
               wordWrap: "on",
               lineNumbers: "off",
               fontSize: 14,
-              padding: { top: 16 },
+              padding: { top: 16, bottom: 16 },
               scrollBeyondLastLine: false,
             }}
           />
