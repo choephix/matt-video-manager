@@ -65,7 +65,21 @@
       "Bash(npx react-router:*)",
       "Bash(git log:*)",
       "Bash(npm run build *)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "WebFetch(domain:fabianhertwig.com)",
+      "WebFetch(domain:aider.chat)",
+      "WebFetch(domain:ai-sdk.dev)",
+      "WebFetch(domain:cursor.com)",
+      "WebFetch(domain:www.morphllm.com)",
+      "WebFetch(domain:vercel.com)",
+      "WebFetch(domain:deepwiki.com)",
+      "WebFetch(domain:docs.continue.dev)",
+      "WebFetch(domain:app.pointy.ai)",
+      "WebFetch(domain:pashpashpash.substack.com)",
+      "WebFetch(domain:waleedk.medium.com)",
+      "WebFetch(domain:tiptap.dev)",
+      "WebFetch(domain:baoyu.io)",
+      "WebFetch(domain:hyperdev.matsuoka.com)"
     ],
     "deny": [],
     "ask": []
