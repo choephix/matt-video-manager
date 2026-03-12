@@ -21,6 +21,7 @@ export interface ChooseScreenshotProps {
     videoFilename: string
   ) => void;
   isCapturing?: boolean;
+  isStreaming?: boolean;
 }
 
 export function ChooseScreenshot({
@@ -30,6 +31,7 @@ export function ChooseScreenshot({
   onClipIndexChange,
   onCapture,
   isCapturing,
+  isStreaming,
 }: ChooseScreenshotProps) {
   const clip = clips.find((c) => c.index === clipIndex);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -81,6 +83,22 @@ export function ChooseScreenshot({
   }
 
   const duration = clip.sourceEndTime - clip.sourceStartTime;
+
+  if (isStreaming) {
+    return (
+      <div className="my-4 rounded-lg border border-border bg-muted/50 p-4">
+        <p className="mb-2 text-xs text-muted-foreground">
+          Clip {clipIndex} — {alt}
+        </p>
+        <div className="w-full aspect-video rounded-md bg-muted flex items-center justify-center">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <LoaderIcon className="h-4 w-4 animate-spin" />
+            <span className="text-sm">Waiting for response to complete…</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="my-4 rounded-lg border border-border bg-muted/50 p-4">

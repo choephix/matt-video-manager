@@ -147,11 +147,19 @@ export function WriteChat(props: WriteChatProps) {
               handleCapture(msgId, ci, a, timestamp, videoFilename)
             }
             isCapturing={capturingKey === key}
+            isStreaming={status === "streaming" || status === "submitted"}
           />
         );
       }) as unknown,
     } as Options["components"];
-  }, [indexedClips, mode, handleClipIndexChange, handleCapture, capturingKey]);
+  }, [
+    indexedClips,
+    mode,
+    handleClipIndexChange,
+    handleCapture,
+    capturingKey,
+    status,
+  ]);
 
   const preprocessMarkdown = useMemo(() => {
     if (!extraComponents) return undefined;
