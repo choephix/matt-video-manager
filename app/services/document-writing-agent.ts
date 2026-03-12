@@ -110,6 +110,8 @@ export const createDocumentWritingAgent = (props: {
 
 A document already exists. The user will provide it in a <current-document> tag. You MUST use the \`editDocument\` tool to make changes. Do not output the full content as plain text.
 
+IMPORTANT: The user may have manually edited the document since your last tool call. The <current-document> tag always contains the latest version of the document. Do NOT assume your previous tool call inputs reflect the current state — always reference <current-document> as the single source of truth when planning edits.
+
 Use minimal, surgical edits:
 - \`replace\`: Find a unique passage of old_text and replace it with new_text. Include enough surrounding context in old_text to ensure a unique match.
 - \`insert_after\`: Find a unique anchor string and insert new_text immediately after it.

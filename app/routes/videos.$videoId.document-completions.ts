@@ -53,58 +53,6 @@ const chatSchema = Schema.Struct({
   memory: Schema.optional(Schema.String),
 });
 
-const DOCUMENT_TOOL_TYPES = new Set([
-  "tool-writeDocument",
-  "tool-editDocument",
-]);
-
-/**
- * Remove writeDocument/editDocument tool call parts and their
- * corresponding tool-result parts from the message history so
- * the LLM only sees the current document via <current-document>.
- */
-function filterDocumentToolCalls(messages: UIMessage[]): UIMessage[] {
-  // Collect toolCallIds from document tool parts
-  const documentToolCallIds = new Set<string>();
-  for (const msg of messages) {
-    for (const part of msg.parts) {
-      if (
-        "type" in part &&
-        DOCUMENT_TOOL_TYPES.has(part.type) &&
-        "toolCallId" in part
-      ) {
-        documentToolCallIds.add(part.toolCallId as string);
-      }
-    }
-  }
-
-  if (documentToolCallIds.size === 0) return messages;
-
-  return messages
-    .map((msg) => {
-      const filteredParts = msg.parts.filter((part) => {
-        // Remove document tool call parts from assistant messages
-        if ("type" in part && DOCUMENT_TOOL_TYPES.has(part.type)) {
-          return false;
-        }
-        // Remove tool-result parts that correspond to document tool calls
-        if (
-          "type" in part &&
-          part.type === "tool-result" &&
-          "toolCallId" in part &&
-          documentToolCallIds.has(part.toolCallId as string)
-        ) {
-          return false;
-        }
-        return true;
-      });
-
-      if (filteredParts.length === msg.parts.length) return msg;
-      return { ...msg, parts: filteredParts };
-    })
-    .filter((msg) => msg.parts.length > 0);
-}
-
 export const action = async (args: Route.ActionArgs) => {
   const body = await args.request.json();
   const videoId = args.params.videoId;
@@ -152,14 +100,9 @@ export const action = async (args: Route.ActionArgs) => {
       courseStructureText = lines.join("\n");
     }
 
-    // Filter out writeDocument/editDocument tool calls from messages
-    // so the only source of truth for document content is the
-    // <current-document> block appended below
-    const filteredMessages = filterDocumentToolCalls(messages);
-
     const modelMessages = yield* Effect.tryPromise(() =>
       createModelMessagesForTextWritingAgent({
-        messages: filteredMessages,
+        messages,
         imageFiles: videoContext.imageFiles,
       })
     );
