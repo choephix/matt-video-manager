@@ -118,7 +118,7 @@ export function ChooseScreenshot({
       <video
         ref={videoRef}
         src={`/view-video?videoPath=${encodeURIComponent(clip.videoFilename)}#t=${clip.sourceStartTime},${clip.sourceEndTime}`}
-        className="w-full rounded-md"
+        className="w-full rounded-md aspect-video"
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={() => {
           if (videoRef.current) {
