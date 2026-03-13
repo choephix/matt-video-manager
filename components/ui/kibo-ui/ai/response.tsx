@@ -6,6 +6,7 @@ import { memo, useMemo } from "react";
 import ReactMarkdown, { type Options } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
+import { GlobeIcon, HardDriveIcon } from "lucide-react";
 import {
   type BundledLanguage,
   CodeBlock,
@@ -182,7 +183,30 @@ const getComponents = (imageBasePath: string): Options["components"] => ({
       ? props.src
       : `/view-image?imagePath=${imageBasePath}/${props.src}`;
     return (
-      <img {...props} className={cn("max-w-full my-6", className)} src={src} />
+      <div className="relative inline-block my-6">
+        <img {...props} className={cn("max-w-full", className)} src={src} />
+        <div
+          className={cn(
+            "absolute top-2 right-2 flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium shadow-sm",
+            isExternalUrl
+              ? "bg-blue-500/80 text-white"
+              : "bg-amber-500/80 text-white"
+          )}
+          title={isExternalUrl ? "External image (web)" : "Local image"}
+        >
+          {isExternalUrl ? (
+            <>
+              <GlobeIcon className="size-3" />
+              <span>Web</span>
+            </>
+          ) : (
+            <>
+              <HardDriveIcon className="size-3" />
+              <span>Local</span>
+            </>
+          )}
+        </div>
+      </div>
     );
   },
 });
