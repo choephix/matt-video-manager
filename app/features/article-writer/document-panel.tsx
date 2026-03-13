@@ -1,4 +1,12 @@
-import { lazy, memo, Suspense, useCallback, useRef, useState } from "react";
+import {
+  lazy,
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { AIResponse } from "components/ui/kibo-ui/ai/response";
 import { Button } from "@/components/ui/button";
 import {
@@ -81,7 +89,57 @@ export const DocumentPanel = memo(function DocumentPanel({
   const onDocumentChangeRef = useRef(onDocumentChange);
   onDocumentChangeRef.current = onDocumentChange;
 
+  // Scroll position preservation between edit/preview
+  const scrollFractionRef = useRef(0);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
+
+  const handleToggleEditing = useCallback(() => {
+    // Capture scroll fraction from the outgoing view
+    if (isEditing) {
+      // Leaving edit mode → capture Monaco scroll fraction
+      const editor = editorRef.current;
+      if (editor) {
+        const scrollTop = editor.getScrollTop();
+        const scrollHeight = editor.getScrollHeight();
+        const clientHeight = editor.getLayoutInfo().height;
+        const maxScroll = scrollHeight - clientHeight;
+        scrollFractionRef.current = maxScroll > 0 ? scrollTop / maxScroll : 0;
+      }
+    } else {
+      // Leaving preview mode → capture preview div scroll fraction
+      const el = previewRef.current;
+      if (el) {
+        const maxScroll = el.scrollHeight - el.clientHeight;
+        scrollFractionRef.current =
+          maxScroll > 0 ? el.scrollTop / maxScroll : 0;
+      }
+    }
+    setIsEditing(!isEditing);
+  }, [isEditing]);
+
+  // Apply scroll fraction to preview div after switching to preview
+  useEffect(() => {
+    if (!isEditing && previewRef.current) {
+      const el = previewRef.current;
+      const maxScroll = el.scrollHeight - el.clientHeight;
+      el.scrollTop = maxScroll * scrollFractionRef.current;
+    }
+  }, [isEditing]);
+
   const handleEditorMount = useCallback<OnMount>((editor, monaco) => {
+    editorRef.current = editor;
+
+    // Apply saved scroll fraction after Monaco lays out
+    requestAnimationFrame(() => {
+      const scrollHeight = editor.getScrollHeight();
+      const clientHeight = editor.getLayoutInfo().height;
+      const maxScroll = scrollHeight - clientHeight;
+      if (maxScroll > 0) {
+        editor.setScrollTop(maxScroll * scrollFractionRef.current);
+      }
+    });
+
     // Register Prettier as Monaco's native document formatter for Markdown
     monaco.languages.registerDocumentFormattingEditProvider("markdown", {
       provideDocumentFormattingEdits: async (
@@ -290,11 +348,7 @@ export const DocumentPanel = memo(function DocumentPanel({
         )}
 
         {/* Edit / Preview toggle */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsEditing(!isEditing)}
-        >
+        <Button variant="ghost" size="sm" onClick={handleToggleEditing}>
           {isEditing ? (
             <>
               <EyeIcon className="h-4 w-4 mr-1" />
@@ -334,7 +388,10 @@ export const DocumentPanel = memo(function DocumentPanel({
           />
         </Suspense>
       ) : (
-        <div className="flex-1 overflow-y-auto scrollbar scrollbar-track-transparent scrollbar-thumb-gray-700 hover:scrollbar-thumb-gray-600 p-6">
+        <div
+          ref={previewRef}
+          className="flex-1 overflow-y-auto scrollbar scrollbar-track-transparent scrollbar-thumb-gray-700 hover:scrollbar-thumb-gray-600 p-6"
+        >
           <div className="max-w-[75ch] mx-auto">
             <AIResponse
               imageBasePath={fullPath}
