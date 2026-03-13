@@ -45,6 +45,90 @@ function truncate(text: string, maxLen: number): string {
   return text.slice(0, maxLen) + "…";
 }
 
+type DiffLine = { type: "same" | "add" | "remove"; text: string };
+
+/**
+ * Compute a line-level unified diff between two strings using LCS.
+ */
+function computeLineDiff(oldText: string, newText: string): DiffLine[] {
+  const oldLines = oldText.split("\n");
+  const newLines = newText.split("\n");
+
+  // Build LCS table
+  const m = oldLines.length;
+  const n = newLines.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () =>
+    Array(n + 1).fill(0)
+  );
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i]![j] =
+        oldLines[i - 1] === newLines[j - 1]
+          ? dp[i - 1]![j - 1]! + 1
+          : Math.max(dp[i - 1]![j]!, dp[i]![j - 1]!);
+    }
+  }
+
+  // Backtrack to produce diff
+  const result: DiffLine[] = [];
+  let i = m;
+  let j = n;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
+      result.push({ type: "same", text: oldLines[i - 1]! });
+      i--;
+      j--;
+    } else if (j > 0 && (i === 0 || dp[i]![j - 1]! >= dp[i - 1]![j]!)) {
+      result.push({ type: "add", text: newLines[j - 1]! });
+      j--;
+    } else {
+      result.push({ type: "remove", text: oldLines[i - 1]! });
+      i--;
+    }
+  }
+  return result.reverse();
+}
+
+function UnifiedDiff({
+  oldText,
+  newText,
+}: {
+  oldText: string;
+  newText: string;
+}) {
+  const lines = computeLineDiff(oldText, newText);
+  // Truncate display if too many lines
+  const maxLines = 60;
+  const truncated = lines.length > maxLines;
+  const displayLines = truncated ? lines.slice(0, maxLines) : lines;
+
+  return (
+    <div className="rounded-md border border-border overflow-hidden font-mono text-xs leading-relaxed">
+      {displayLines.map((line, i) => (
+        <div
+          key={i}
+          className={cn(
+            "px-2 whitespace-pre-wrap break-words",
+            line.type === "remove" && "bg-red-500/10 text-red-300",
+            line.type === "add" && "bg-green-500/10 text-green-300",
+            line.type === "same" && "text-muted-foreground"
+          )}
+        >
+          <span className="select-none inline-block w-4 mr-1 text-muted-foreground/50">
+            {line.type === "remove" ? "−" : line.type === "add" ? "+" : " "}
+          </span>
+          {line.text || " "}
+        </div>
+      ))}
+      {truncated && (
+        <div className="px-2 py-1 text-muted-foreground/50 italic">
+          …{lines.length - maxLines} more lines
+        </div>
+      )}
+    </div>
+  );
+}
+
 const editTypeConfig = {
   replace: {
     label: "Replace",
@@ -204,38 +288,47 @@ function EditItem({
         >
           {edit.type === "replace" &&
             typeof edit.old_text === "string" &&
-            edit.old_text && (
-              <div className="rounded-md border border-red-500/20 bg-red-500/5 p-2">
-                <div className="text-[10px] uppercase tracking-wide text-red-400 mb-1 font-medium">
-                  Remove
-                </div>
-                <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-words font-mono leading-relaxed">
-                  {truncate(edit.old_text, 500)}
-                </pre>
-              </div>
+            edit.old_text &&
+            typeof edit.new_text === "string" &&
+            edit.new_text && (
+              <UnifiedDiff oldText={edit.old_text} newText={edit.new_text} />
             )}
-          {edit.type === "insert_after" &&
-            typeof edit.anchor === "string" &&
-            edit.anchor && (
-              <div className="rounded-md border border-muted bg-muted/30 p-2">
-                <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 font-medium">
-                  After
+          {edit.type === "insert_after" && (
+            <>
+              {typeof edit.anchor === "string" && edit.anchor && (
+                <div className="rounded-md border border-muted bg-muted/30 p-2">
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 font-medium">
+                    After
+                  </div>
+                  <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-words font-mono leading-relaxed">
+                    {truncate(edit.anchor, 300)}
+                  </pre>
                 </div>
-                <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-words font-mono leading-relaxed">
-                  {truncate(edit.anchor, 300)}
-                </pre>
-              </div>
-            )}
-          {typeof edit.new_text === "string" && edit.new_text && (
-            <div className="rounded-md border border-green-500/20 bg-green-500/5 p-2">
-              <div className="text-[10px] uppercase tracking-wide text-green-400 mb-1 font-medium">
-                {edit.type === "rewrite" ? "New content" : "Add"}
-              </div>
-              <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-words font-mono leading-relaxed">
-                {truncate(edit.new_text, 500)}
-              </pre>
-            </div>
+              )}
+              {typeof edit.new_text === "string" && edit.new_text && (
+                <div className="rounded-md border border-green-500/20 bg-green-500/5 p-2">
+                  <div className="text-[10px] uppercase tracking-wide text-green-400 mb-1 font-medium">
+                    Add
+                  </div>
+                  <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-words font-mono leading-relaxed">
+                    {truncate(edit.new_text, 500)}
+                  </pre>
+                </div>
+              )}
+            </>
           )}
+          {edit.type === "rewrite" &&
+            typeof edit.new_text === "string" &&
+            edit.new_text && (
+              <div className="rounded-md border border-green-500/20 bg-green-500/5 p-2">
+                <div className="text-[10px] uppercase tracking-wide text-green-400 mb-1 font-medium">
+                  New content
+                </div>
+                <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-words font-mono leading-relaxed">
+                  {truncate(edit.new_text, 500)}
+                </pre>
+              </div>
+            )}
         </div>
       </CollapsibleContent>
     </Collapsible>
