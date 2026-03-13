@@ -5,7 +5,12 @@ export namespace uploadReducer {
     | "retrying"
     | "success"
     | "error";
-  export type UploadType = "youtube" | "buffer" | "ai-hero" | "export";
+  export type UploadType =
+    | "youtube"
+    | "buffer"
+    | "ai-hero"
+    | "export"
+    | "dropbox-publish";
   export type BufferStage = "copying" | "syncing" | "sending-webhook";
   export type ExportStage =
     | "queued"
@@ -44,11 +49,17 @@ export namespace uploadReducer {
     isBatchEntry: boolean;
   }
 
+  export interface DropboxPublishUploadEntry extends BaseUploadEntry {
+    uploadType: "dropbox-publish";
+    missingVideoCount: number | null;
+  }
+
   export type UploadEntry =
     | YouTubeUploadEntry
     | BufferUploadEntry
     | AiHeroUploadEntry
-    | ExportUploadEntry;
+    | ExportUploadEntry
+    | DropboxPublishUploadEntry;
 
   export interface State {
     uploads: Record<string, UploadEntry>;
@@ -83,7 +94,12 @@ export namespace uploadReducer {
       }
     | { type: "UPLOAD_ERROR"; uploadId: string; errorMessage: string }
     | { type: "RETRY"; uploadId: string }
-    | { type: "DISMISS"; uploadId: string };
+    | { type: "DISMISS"; uploadId: string }
+    | {
+        type: "UPDATE_DROPBOX_PUBLISH_MISSING_COUNT";
+        uploadId: string;
+        missingVideoCount: number;
+      };
 }
 
 export const createInitialUploadState = (): uploadReducer.State => ({
@@ -124,6 +140,13 @@ export const uploadReducer = (
             uploadType: "export",
             exportStage: "queued",
             isBatchEntry: action.isBatchEntry ?? false,
+          };
+          break;
+        case "dropbox-publish":
+          entry = {
+            ...base,
+            uploadType: "dropbox-publish",
+            missingVideoCount: null,
           };
           break;
         default:
@@ -195,6 +218,22 @@ export const uploadReducer = (
       };
     }
 
+    case "UPDATE_DROPBOX_PUBLISH_MISSING_COUNT": {
+      const upload = state.uploads[action.uploadId];
+      if (!upload || upload.uploadType !== "dropbox-publish") return state;
+
+      return {
+        ...state,
+        uploads: {
+          ...state.uploads,
+          [action.uploadId]: {
+            ...upload,
+            missingVideoCount: action.missingVideoCount,
+          },
+        },
+      };
+    }
+
     case "UPLOAD_SUCCESS": {
       const upload = state.uploads[action.uploadId];
       if (!upload) return state;
@@ -231,6 +270,13 @@ export const uploadReducer = (
             uploadType: "export",
             exportStage: null,
             isBatchEntry: upload.isBatchEntry,
+          };
+          break;
+        case "dropbox-publish":
+          entry = {
+            ...base,
+            uploadType: "dropbox-publish",
+            missingVideoCount: upload.missingVideoCount,
           };
           break;
       }
@@ -325,6 +371,13 @@ export const uploadReducer = (
             uploadType: "export",
             exportStage: "queued",
             isBatchEntry: upload.isBatchEntry,
+          };
+          break;
+        case "dropbox-publish":
+          entry = {
+            ...base,
+            uploadType: "dropbox-publish",
+            missingVideoCount: null,
           };
           break;
         default:

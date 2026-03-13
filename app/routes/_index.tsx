@@ -262,7 +262,6 @@ export default function Component(props: Route.ComponentProps) {
   } = viewState;
 
   const [nextUpDismissed, setNextUpDismissed] = useState(false);
-  const publishRepoFetcher = useFetcher();
   const { startExportUpload, startBatchExportUpload } =
     useContext(UploadContext);
 
@@ -499,7 +498,6 @@ export default function Component(props: Route.ComponentProps) {
                   currentRepo={currentRepo}
                   data={loaderData}
                   dispatch={dispatch}
-                  publishRepoFetcher={publishRepoFetcher}
                   archiveRepoFetcher={archiveRepoFetcher}
                   gitPushFetcher={gitPushFetcher}
                   handleBatchExport={handleBatchExport}

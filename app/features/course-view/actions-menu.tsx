@@ -24,7 +24,6 @@ import {
   FileText,
   FileX,
   GitBranch,
-  Loader2,
   PencilIcon,
   Send,
   Trash2,
@@ -33,12 +32,13 @@ import {
 } from "lucide-react";
 import { Link, useFetcher } from "react-router";
 import { toast } from "sonner";
+import { useContext } from "react";
+import { UploadContext } from "@/features/upload-manager/upload-context";
 
 export function ActionsDropdown({
   currentRepo,
   data,
   dispatch,
-  publishRepoFetcher,
   archiveRepoFetcher,
   gitPushFetcher,
   handleBatchExport,
@@ -46,21 +46,16 @@ export function ActionsDropdown({
   currentRepo: NonNullable<LoaderData["selectedRepo"]>;
   data: LoaderData;
   dispatch: (action: courseViewReducer.Action) => void;
-  publishRepoFetcher: ReturnType<typeof useFetcher>;
   archiveRepoFetcher: ReturnType<typeof useFetcher>;
   gitPushFetcher: ReturnType<typeof useFetcher>;
   handleBatchExport: () => void;
 }) {
+  const { startDropboxPublish } = useContext(UploadContext);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          disabled={publishRepoFetcher.state === "submitting"}
-        >
-          {publishRepoFetcher.state === "submitting" ? (
-            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-          ) : null}
+        <Button variant="ghost">
           Actions
           <ChevronDown className="w-4 h-4 ml-1" />
         </Button>
@@ -82,33 +77,7 @@ export function ActionsDropdown({
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() => {
-            publishRepoFetcher
-              .submit(
-                { repoId: currentRepo.id },
-                {
-                  method: "post",
-                  action: "/api/repos/publish-to-dropbox",
-                }
-              )
-              .then((data) => {
-                const result = data as
-                  | {
-                      missingVideos: { videoId: string }[];
-                    }
-                  | undefined;
-                const missingCount = result?.missingVideos?.length ?? 0;
-                if (missingCount > 0) {
-                  toast.warning(
-                    `Published to Dropbox, but ${missingCount} video${missingCount === 1 ? " was" : "s were"} not exported`
-                  );
-                } else {
-                  toast.success("Published to Dropbox");
-                }
-              })
-              .catch((e) => {
-                console.error("Publish failed", e);
-                toast.error("Publish failed");
-              });
+            startDropboxPublish(currentRepo.id, currentRepo.name);
           }}
         >
           <Send className="w-4 h-4 mr-2" />

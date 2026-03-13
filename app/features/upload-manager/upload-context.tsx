@@ -12,6 +12,7 @@ import { startSSESocialPost } from "./sse-social-client";
 import { startSSEAiHeroPost } from "./sse-ai-hero-client";
 import { startSSEExport } from "./sse-export-client";
 import { startSSEBatchExport } from "./sse-batch-export-client";
+import { startSSEDropboxPublish } from "./sse-dropbox-publish-client";
 
 export interface UploadContextType {
   uploads: uploadReducer.State["uploads"];
@@ -37,6 +38,7 @@ export interface UploadContextType {
   ) => string;
   startExportUpload: (videoId: string, title: string) => string;
   startBatchExportUpload: (versionId: string) => void;
+  startDropboxPublish: (repoId: string, repoName: string) => string;
   dismissUpload: (uploadId: string) => void;
 }
 
@@ -253,6 +255,58 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const initiateSSEDropboxPublishConnection = useCallback(
+    (uploadId: string, repoId: string) => {
+      const existing = abortControllersRef.current.get(uploadId);
+      if (existing) {
+        existing.abort();
+      }
+
+      const abortController = startSSEDropboxPublish(
+        { repoId },
+        {
+          onProgress: (percentage) => {
+            dispatch({
+              type: "UPDATE_PROGRESS",
+              uploadId,
+              progress: percentage,
+            });
+          },
+          onComplete: (missingVideoCount) => {
+            if (missingVideoCount > 0) {
+              dispatch({
+                type: "UPDATE_DROPBOX_PUBLISH_MISSING_COUNT",
+                uploadId,
+                missingVideoCount,
+              });
+            }
+            dispatch({
+              type: "UPLOAD_SUCCESS",
+              uploadId,
+            });
+            abortControllersRef.current.delete(uploadId);
+          },
+          onError: (message) => {
+            dispatch({
+              type: "UPLOAD_ERROR",
+              uploadId,
+              errorMessage: message,
+            });
+            abortControllersRef.current.delete(uploadId);
+          },
+        }
+      );
+
+      abortControllersRef.current.set(uploadId, abortController);
+    },
+    []
+  );
+
+  // Stores repoId for Dropbox publish retries
+  const dropboxPublishParamsRef = useRef<Map<string, { repoId: string }>>(
+    new Map()
+  );
+
   const startUpload = useCallback(
     (
       videoId: string,
@@ -434,6 +488,27 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     abortControllersRef.current.set(`batch-${versionId}`, abortController);
   }, []);
 
+  const startDropboxPublish = useCallback(
+    (repoId: string, repoName: string) => {
+      const uploadId = generateUploadId();
+
+      dropboxPublishParamsRef.current.set(uploadId, { repoId });
+
+      dispatch({
+        type: "START_UPLOAD",
+        uploadId,
+        videoId: "",
+        title: repoName,
+        uploadType: "dropbox-publish",
+      });
+
+      initiateSSEDropboxPublishConnection(uploadId, repoId);
+
+      return uploadId;
+    },
+    [initiateSSEDropboxPublishConnection]
+  );
+
   const dismissUpload = useCallback((uploadId: string) => {
     const abortController = abortControllersRef.current.get(uploadId);
     if (abortController) {
@@ -443,6 +518,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     uploadParamsRef.current.delete(uploadId);
     socialParamsRef.current.delete(uploadId);
     aiHeroParamsRef.current.delete(uploadId);
+    dropboxPublishParamsRef.current.delete(uploadId);
     dispatch({ type: "DISMISS", uploadId });
   }, []);
 
@@ -523,6 +599,18 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
               },
             },
           });
+        } else if (upload.uploadType === "dropbox-publish") {
+          const missingCount = upload.missingVideoCount ?? 0;
+          if (missingCount > 0) {
+            toast.warning(
+              `"${upload.title}" published to Dropbox, but ${missingCount} video${missingCount === 1 ? " was" : "s were"} not exported`,
+              { duration: Infinity }
+            );
+          } else {
+            toast.success(`"${upload.title}" published to Dropbox`, {
+              duration: Infinity,
+            });
+          }
         }
       }
 
@@ -577,6 +665,11 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           }
         } else if (upload.uploadType === "export") {
           initiateSSEExportConnection(uploadId, upload.videoId);
+        } else if (upload.uploadType === "dropbox-publish") {
+          const params = dropboxPublishParamsRef.current.get(uploadId);
+          if (params) {
+            initiateSSEDropboxPublishConnection(uploadId, params.repoId);
+          }
         }
       }
 
@@ -627,6 +720,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     initiateSSESocialConnection,
     initiateSSEAiHeroConnection,
     initiateSSEExportConnection,
+    initiateSSEDropboxPublishConnection,
   ]);
 
   // Clean up abort controllers on unmount
@@ -647,6 +741,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
         startAiHeroUpload,
         startExportUpload,
         startBatchExportUpload,
+        startDropboxPublish,
         dismissUpload,
       }}
     >
