@@ -260,6 +260,20 @@ export interface CreateClipSectionAtPositionInput {
   targetItemType: TargetItemType;
 }
 
+export interface CreateEffectClipAtPositionInput {
+  videoId: string;
+  position: Position;
+  targetItemId: string;
+  targetItemType: TargetItemType;
+  videoFilename: string;
+  sourceStartTime: number;
+  sourceEndTime: number;
+  text: string;
+  scene: string;
+  profile: string;
+  beatType: string;
+}
+
 // ============================================================================
 // Create Video From Selection Types
 // ============================================================================
@@ -338,6 +352,11 @@ export interface ClipService {
     direction: ReorderDirection
   ): Promise<void>;
 
+  // Effect clip operations
+  createEffectClipAtPosition(
+    input: CreateEffectClipAtPositionInput
+  ): Promise<Clip>;
+
   // Video creation from selection
   createVideoFromSelection(
     input: CreateVideoFromSelectionInput
@@ -376,6 +395,10 @@ export type ClipServiceEvent =
       type: "reorder-clip-section";
       clipSectionId: string;
       direction: ReorderDirection;
+    }
+  | {
+      type: "create-effect-clip-at-position";
+      input: CreateEffectClipAtPositionInput;
     }
   | {
       type: "create-video-from-selection";
@@ -487,6 +510,13 @@ export function createClipService(send: ClipServiceTransport): ClipService {
 
     async reorderClipSection(clipSectionId, direction) {
       await send({ type: "reorder-clip-section", clipSectionId, direction });
+    },
+
+    async createEffectClipAtPosition(input) {
+      return send({
+        type: "create-effect-clip-at-position",
+        input,
+      }) as Promise<Clip>;
     },
 
     async createVideoFromSelection(input) {

@@ -539,6 +539,83 @@ export const handleClipServiceEvent = Effect.fn("handleClipServiceEvent")(
         return;
       }
 
+      case "create-effect-clip-at-position": {
+        const {
+          videoId,
+          position,
+          targetItemId,
+          targetItemType,
+          videoFilename,
+          sourceStartTime,
+          sourceEndTime,
+          text,
+          scene,
+          profile,
+          beatType,
+        } = event.input;
+        const allItems = yield* getOrderedItems(db, videoId);
+
+        const targetIndex = allItems.findIndex(
+          (item) => item.type === targetItemType && item.id === targetItemId
+        );
+
+        if (targetIndex === -1) {
+          throw new Error(
+            `Could not find target ${targetItemType}: ${targetItemId}`
+          );
+        }
+
+        let prevOrder: string | null = null;
+        let nextOrder: string | null = null;
+
+        if (position === "before") {
+          nextOrder = allItems[targetIndex]?.order ?? null;
+          const prevItem = allItems[targetIndex - 1];
+          prevOrder = prevItem?.order ?? null;
+        } else {
+          prevOrder = allItems[targetIndex]?.order ?? null;
+          const nextItem = allItems[targetIndex + 1];
+          nextOrder = nextItem?.order ?? null;
+        }
+
+        const [order] = generateNKeysBetween(prevOrder, nextOrder, 1);
+
+        const [clip] = yield* Effect.promise(() =>
+          db
+            .insert(clips)
+            .values({
+              videoId,
+              videoFilename,
+              sourceStartTime,
+              sourceEndTime,
+              text,
+              scene,
+              profile,
+              beatType,
+              order: order!,
+              archived: false,
+              transcribedAt: new Date(),
+            })
+            .returning()
+        );
+
+        if (!clip) {
+          throw new Error("Failed to create effect clip");
+        }
+
+        yield* touchVideoUpdatedAt(db, videoId);
+
+        logger.log(videoId, {
+          type: "effect-clip-created",
+          clipId: clip.id,
+          text,
+          scene,
+          order: order!,
+        });
+
+        return clip;
+      }
+
       case "create-video-from-selection": {
         return yield* handleCreateVideoFromSelection(db, event.input, logger);
       }

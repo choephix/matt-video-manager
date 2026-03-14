@@ -73,6 +73,20 @@ const CreateClipSectionAtPositionInputSchema = Schema.Struct({
   targetItemType: TargetItemTypeSchema,
 });
 
+const CreateEffectClipAtPositionInputSchema = Schema.Struct({
+  videoId: Schema.String,
+  position: PositionSchema,
+  targetItemId: Schema.String,
+  targetItemType: TargetItemTypeSchema,
+  videoFilename: Schema.String,
+  sourceStartTime: Schema.Number,
+  sourceEndTime: Schema.Number,
+  text: Schema.String,
+  scene: Schema.String,
+  profile: Schema.String,
+  beatType: Schema.String,
+});
+
 const CreateVideoFromSelectionModeSchema = Schema.Union(
   Schema.Literal("copy"),
   Schema.Literal("move")
@@ -150,6 +164,10 @@ export const ClipServiceEventSchema = Schema.Union(
     type: Schema.Literal("reorder-clip-section"),
     clipSectionId: Schema.String,
     direction: ReorderDirectionSchema,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("create-effect-clip-at-position"),
+    input: CreateEffectClipAtPositionInputSchema,
   }),
   Schema.Struct({
     type: Schema.Literal("create-video-from-selection"),

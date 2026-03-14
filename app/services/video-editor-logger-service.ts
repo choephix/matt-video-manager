@@ -70,6 +70,13 @@ export type LogEvent =
       direction: "up" | "down";
     }
   | {
+      type: "effect-clip-created";
+      clipId: string;
+      text: string;
+      scene: string;
+      order: string;
+    }
+  | {
       type: "transcription-requested";
       clipIds: string[];
     }
