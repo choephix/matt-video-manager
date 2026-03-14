@@ -6,6 +6,7 @@ import { runtimeLive } from "@/services/layer.server";
 import { Console, Effect } from "effect";
 import { ArrowLeft } from "lucide-react";
 import Markdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
 import { data, Link, useNavigate } from "react-router";
 import type { Route } from "./+types/repos.$repoId.changelog";
 
@@ -60,7 +61,7 @@ export default function Component(props: Route.ComponentProps) {
         </div>
 
         <div className="prose prose-invert max-w-none">
-          <Markdown>{changelog}</Markdown>
+          <Markdown rehypePlugins={[rehypeRaw]}>{changelog}</Markdown>
         </div>
       </div>
     </div>
