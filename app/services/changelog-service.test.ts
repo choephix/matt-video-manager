@@ -2,6 +2,19 @@ import { describe, expect, it } from "vitest";
 import { generateChangelog } from "./changelog-service";
 
 type VersionWithStructure = Parameters<typeof generateChangelog>[0][number];
+type Video =
+  VersionWithStructure["sections"][number]["lessons"][number]["videos"][number];
+
+function makeVideo(videoPath: string, clipTexts: string[] = []): Video {
+  return {
+    id: `video-${videoPath}`,
+    path: videoPath,
+    clips: clipTexts.map((text, i) => ({
+      id: `clip-${videoPath}-${i}`,
+      text,
+    })),
+  };
+}
 
 function makeLesson(
   id: string,
@@ -13,19 +26,21 @@ function makeLesson(
     id,
     path,
     previousVersionLessonId,
-    videos:
-      clipTexts.length > 0
-        ? [
-            {
-              id: `video-${id}`,
-              path: `${path}.mp4`,
-              clips: clipTexts.map((text, i) => ({
-                id: `clip-${id}-${i}`,
-                text,
-              })),
-            },
-          ]
-        : [],
+    videos: clipTexts.length > 0 ? [makeVideo("Problem", clipTexts)] : [],
+  };
+}
+
+function makeLessonWithVideos(
+  id: string,
+  path: string,
+  previousVersionLessonId: string | null,
+  videos: Video[]
+): VersionWithStructure["sections"][number]["lessons"][number] {
+  return {
+    id,
+    path,
+    previousVersionLessonId,
+    videos,
   };
 }
 
@@ -38,13 +53,7 @@ function makeLessonWithEmptyVideo(
     id,
     path,
     previousVersionLessonId,
-    videos: [
-      {
-        id: `video-${id}`,
-        path: `${path}.mp4`,
-        clips: [],
-      },
-    ],
+    videos: [makeVideo("Problem")],
   };
 }
 
@@ -463,6 +472,161 @@ describe("changelog-service", () => {
       const changelog = generateChangelog([currentVersion, prevVersion]);
 
       expect(changelog).toContain("No significant changes");
+    });
+  });
+
+  describe("video-level changelog tracking", () => {
+    it("shows the video path when a video is updated", () => {
+      const prevVersion = makeVersion("v1", "v1.0", [
+        makeSection("s1", "01-intro", [
+          makeLessonWithVideos("l1", "01.01-welcome", null, [
+            makeVideo("Problem", ["Hello", "World"]),
+          ]),
+        ]),
+      ]);
+
+      const currentVersion = makeVersion("v2", "v2.0", [
+        makeSection(
+          "s2",
+          "01-intro",
+          [
+            makeLessonWithVideos("l2", "01.01-welcome", "l1", [
+              makeVideo("Problem", ["Hello", "World", "Updated"]),
+            ]),
+          ],
+          "s1"
+        ),
+      ]);
+
+      const changelog = generateChangelog([currentVersion, prevVersion]);
+
+      expect(changelog).toContain("Updated");
+      expect(changelog).toContain("01.01-welcome");
+      expect(changelog).toContain("Problem");
+      expect(changelog).toContain("updated");
+    });
+    it("shows new video added to existing lesson", () => {
+      const prevVersion = makeVersion("v1", "v1.0", [
+        makeSection("s1", "01-intro", [
+          makeLessonWithVideos("l1", "01.01-welcome", null, [
+            makeVideo("Problem", ["What is TypeScript?"]),
+          ]),
+        ]),
+      ]);
+
+      const currentVersion = makeVersion("v2", "v2.0", [
+        makeSection(
+          "s2",
+          "01-intro",
+          [
+            makeLessonWithVideos("l2", "01.01-welcome", "l1", [
+              makeVideo("Problem", ["What is TypeScript?"]),
+              makeVideo("Solution", ["TypeScript is a typed superset."]),
+            ]),
+          ],
+          "s1"
+        ),
+      ]);
+
+      const changelog = generateChangelog([currentVersion, prevVersion]);
+
+      expect(changelog).toContain("Updated");
+      expect(changelog).toContain("01.01-welcome");
+      expect(changelog).toContain("Solution");
+      expect(changelog).toContain("new video");
+    });
+
+    it("shows deleted video within an existing lesson", () => {
+      const prevVersion = makeVersion("v1", "v1.0", [
+        makeSection("s1", "01-intro", [
+          makeLessonWithVideos("l1", "01.01-welcome", null, [
+            makeVideo("Problem", ["What is TypeScript?"]),
+            makeVideo("Solution", ["TypeScript is a typed superset."]),
+          ]),
+        ]),
+      ]);
+
+      const currentVersion = makeVersion("v2", "v2.0", [
+        makeSection(
+          "s2",
+          "01-intro",
+          [
+            makeLessonWithVideos("l2", "01.01-welcome", "l1", [
+              makeVideo("Problem", ["What is TypeScript?"]),
+              // Solution video removed
+            ]),
+          ],
+          "s1"
+        ),
+      ]);
+
+      const changelog = generateChangelog([currentVersion, prevVersion]);
+
+      expect(changelog).toContain("Updated");
+      expect(changelog).toContain("01.01-welcome");
+      expect(changelog).toContain("Solution");
+      expect(changelog).toContain("deleted");
+    });
+
+    it("lists videos under new lessons", () => {
+      const prevVersion = makeVersion("v1", "v1.0", [
+        makeSection("s1", "01-intro", [
+          makeLesson("l1", "01.01-welcome", null, ["Hello"]),
+        ]),
+      ]);
+
+      const currentVersion = makeVersion("v2", "v2.0", [
+        makeSection(
+          "s2",
+          "01-intro",
+          [
+            makeLesson("l2", "01.01-welcome", "l1", ["Hello"]),
+            makeLessonWithVideos("l3", "01.02-setup", null, [
+              makeVideo("Problem", ["Set up your env"]),
+              makeVideo("Solution", ["Install node"]),
+            ]),
+          ],
+          "s1"
+        ),
+      ]);
+
+      const changelog = generateChangelog([currentVersion, prevVersion]);
+
+      expect(changelog).toContain("New Lessons");
+      expect(changelog).toContain("01.02-setup");
+      expect(changelog).toContain("Problem");
+      expect(changelog).toContain("Solution");
+    });
+
+    it("lists videos under deleted lessons", () => {
+      const prevVersion = makeVersion("v1", "v1.0", [
+        makeSection("s1", "01-intro", [
+          makeLesson("l1", "01.01-welcome", null, ["Hello"]),
+          makeLessonWithVideos("l2", "01.02-setup", null, [
+            makeVideo("Problem", ["Set up"]),
+            makeVideo("Solution", ["Done"]),
+          ]),
+        ]),
+      ]);
+
+      const currentVersion = makeVersion("v2", "v2.0", [
+        makeSection(
+          "s2",
+          "01-intro",
+          [
+            makeLesson("l3", "01.01-welcome", "l1", ["Hello"]),
+            // l2 removed entirely
+          ],
+          "s1"
+        ),
+      ]);
+
+      const changelog = generateChangelog([currentVersion, prevVersion]);
+
+      expect(changelog).toContain("Deleted");
+      expect(changelog).toContain("01.02-setup");
+      expect(changelog).toContain("Problem");
+      expect(changelog).toContain("Solution");
     });
   });
 });
