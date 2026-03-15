@@ -40,7 +40,7 @@ const PendingClipRow = ({
     <div
       className={cn(
         "flex items-center gap-3 px-3 py-2 rounded text-sm",
-        isOrphaned ? "bg-amber-950/30" : "bg-gray-800/50"
+        isOrphaned ? "bg-amber-950/30" : "bg-card/50"
       )}
     >
       {isOrphaned ? (
@@ -51,7 +51,7 @@ const PendingClipRow = ({
       <span
         className={cn(
           "flex-1",
-          isOrphaned ? "text-amber-300" : "text-gray-400"
+          isOrphaned ? "text-amber-300" : "text-muted-foreground"
         )}
       >
         {isOrphaned
@@ -60,12 +60,12 @@ const PendingClipRow = ({
             ? "Detecting silence..."
             : "Processing..."}
       </span>
-      <span className="text-[10px] text-gray-500">
+      <span className="text-[10px] text-muted-foreground">
         #{clip.insertionOrder} · {clip.scene} / {clip.profile}
       </span>
       <button
         onClick={onDelete}
-        className="text-gray-500 hover:text-red-400 p-1 rounded hover:bg-gray-700/50 transition-colors"
+        className="text-muted-foreground hover:text-red-400 p-1 rounded hover:bg-muted/50 transition-colors"
         title="Delete clip"
       >
         <Trash2Icon className="size-3.5" />
@@ -107,7 +107,10 @@ const ArchivedClipRow = ({
           "flex-1",
           isOrphaned
             ? "text-amber-300/70"
-            : "line-through " + (isResolved ? "text-gray-400" : "text-gray-500")
+            : "line-through " +
+                (isResolved
+                  ? "text-muted-foreground"
+                  : "text-muted-foreground/70")
         )}
       >
         {isOrphaned
@@ -117,13 +120,13 @@ const ArchivedClipRow = ({
               (!clip.transcribedAt ? "Transcribing..." : "No transcript")
             : "Awaiting clip..."}
       </span>
-      <span className="text-[10px] text-gray-600">
+      <span className="text-[10px] text-muted-foreground/70">
         #{clip.insertionOrder ?? "?"}
       </span>
       {!isOrphaned && (
         <button
           onClick={onRestore}
-          className="text-gray-500 hover:text-green-400 p-1 rounded hover:bg-gray-700/50 transition-colors"
+          className="text-muted-foreground hover:text-green-400 p-1 rounded hover:bg-muted/50 transition-colors"
           title="Restore clip"
         >
           <Undo2Icon className="size-3.5" />
@@ -171,11 +174,11 @@ export const SessionPanel = ({ panel }: { panel: SessionPanelData }) => {
   return (
     <div
       data-session-recording={panel.isRecording ? "true" : undefined}
-      className="rounded-lg border border-gray-700 overflow-hidden"
+      className="rounded-lg border border-border overflow-hidden"
     >
       {/* Header */}
-      <div className="bg-gray-800/80 px-4 py-2.5 flex items-center gap-3">
-        <span className="text-sm font-medium text-gray-200">
+      <div className="bg-card/80 px-4 py-2.5 flex items-center gap-3">
+        <span className="text-sm font-medium text-card-foreground">
           Session {panel.displayNumber}
         </span>
         {panel.isRecording && (
@@ -210,7 +213,7 @@ export const SessionPanel = ({ panel }: { panel: SessionPanelData }) => {
 
       {/* Archived sub-section — always visible when items exist */}
       {hasArchived && (
-        <div className="border-t border-gray-700/50">
+        <div className="border-t border-border/50">
           <div className="px-4 py-2 bg-red-950/20 flex items-center justify-between">
             <span className="text-xs text-red-300/70">
               {panel.archivedClips.length} to clear

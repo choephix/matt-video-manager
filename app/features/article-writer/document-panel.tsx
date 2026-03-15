@@ -418,7 +418,7 @@ export const DocumentPanel = memo(function DocumentPanel({
       ) : (
         <div
           ref={previewRef}
-          className="flex-1 overflow-y-auto scrollbar scrollbar-track-transparent scrollbar-thumb-gray-700 hover:scrollbar-thumb-gray-600 p-6"
+          className="flex-1 overflow-y-auto scrollbar scrollbar-track-transparent scrollbar-thumb-muted hover:scrollbar-thumb-muted-foreground p-6"
         >
           <div className="max-w-[75ch] mx-auto">
             <AIResponse

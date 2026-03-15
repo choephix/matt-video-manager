@@ -280,9 +280,9 @@ export const VideoPlayerPanel = () => {
             </div>
 
             {!liveMediaStream && clips.length === 0 ? (
-              <div className="w-full aspect-[16/9] bg-gray-800 rounded-lg flex flex-col items-center justify-center gap-3">
-                <VideoOffIcon className="size-10 text-gray-500" />
-                <p className="text-gray-400 text-sm text-center px-4">
+              <div className="w-full aspect-[16/9] bg-card rounded-lg flex flex-col items-center justify-center gap-3">
+                <VideoOffIcon className="size-10 text-muted-foreground" />
+                <p className="text-muted-foreground text-sm text-center px-4">
                   No video stream or clips yet. Connect OBS to start recording.
                 </p>
               </div>
@@ -421,15 +421,15 @@ export const VideoPlayerPanel = () => {
             </div>
 
             {/* Tabbed panel for Suggestions and Table of Contents */}
-            <div className="mt-6 border-t border-gray-700 pt-4">
+            <div className="mt-6 border-t border-border pt-4">
               <div className="flex gap-2 mb-3">
                 <button
                   onClick={() => setActiveTab("suggestions")}
                   className={cn(
                     "px-3 py-1.5 text-sm font-medium rounded transition-colors",
                     activeTab === "suggestions"
-                      ? "bg-gray-700 text-white"
-                      : "text-gray-400 hover:text-gray-200"
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   Suggestions
@@ -440,8 +440,8 @@ export const VideoPlayerPanel = () => {
                     className={cn(
                       "px-3 py-1.5 text-sm font-medium rounded transition-colors",
                       activeTab === "toc"
-                        ? "bg-gray-700 text-white"
-                        : "text-gray-400 hover:text-gray-200"
+                        ? "bg-muted text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                   >
                     Sections
@@ -452,8 +452,8 @@ export const VideoPlayerPanel = () => {
                   className={cn(
                     "px-3 py-1.5 text-sm font-medium rounded transition-colors",
                     activeTab === "links"
-                      ? "bg-gray-700 text-white"
-                      : "text-gray-400 hover:text-gray-200"
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   Links

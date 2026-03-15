@@ -167,7 +167,7 @@ export const NewsletterPagePanel = (props: NewsletterPagePanelProps) => {
   };
 
   return (
-    <div className="w-3/4 flex flex-col p-6 overflow-y-auto scrollbar scrollbar-track-transparent scrollbar-thumb-gray-700 hover:scrollbar-thumb-gray-600">
+    <div className="w-3/4 flex flex-col p-6 overflow-y-auto scrollbar scrollbar-track-transparent scrollbar-thumb-muted hover:scrollbar-thumb-muted-foreground">
       <div className="max-w-2xl mx-auto w-full space-y-6">
         {/* AI Hero URL input */}
         <div className="space-y-2">

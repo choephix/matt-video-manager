@@ -392,7 +392,7 @@ export default function AiHeroPostPage(props: Route.ComponentProps) {
         />
 
         {/* Right panel: AI Hero post form */}
-        <div className="w-3/4 flex flex-col p-6 overflow-y-auto scrollbar scrollbar-track-transparent scrollbar-thumb-gray-700 hover:scrollbar-thumb-gray-600">
+        <div className="w-3/4 flex flex-col p-6 overflow-y-auto scrollbar scrollbar-track-transparent scrollbar-thumb-muted hover:scrollbar-thumb-muted-foreground">
           <AiHeroPage
             videoId={videoId}
             aiHero={aiHero}

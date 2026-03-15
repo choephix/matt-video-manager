@@ -11,22 +11,22 @@ import {
  */
 export const PreRecordingChecklist = () => {
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <h2 className="text-xl font-bold text-gray-100 mb-4 flex items-center gap-2">
+    <div className="bg-card rounded-lg p-6">
+      <h2 className="text-xl font-bold text-card-foreground mb-4 flex items-center gap-2">
         <CircleQuestionMarkIcon className="size-6" />
         Pre-recording checklist
       </h2>
       <ol className="space-y-3 text-base">
         <li className="flex items-center gap-3">
-          <MonitorIcon className="size-5 flex-shrink-0 text-gray-300" />
+          <MonitorIcon className="size-5 flex-shrink-0 text-muted-foreground" />
           <span>Close the windows</span>
         </li>
         <li className="flex items-center gap-3">
-          <Columns2 className="size-5 flex-shrink-0 text-gray-300" />
+          <Columns2 className="size-5 flex-shrink-0 text-muted-foreground" />
           <span>Close the blinds</span>
         </li>
         <li className="flex items-center gap-3">
-          <UserRound className="size-5 flex-shrink-0 text-gray-300" />
+          <UserRound className="size-5 flex-shrink-0 text-muted-foreground" />
           <span>Check bookshelf books are standing up properly</span>
         </li>
       </ol>

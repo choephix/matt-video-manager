@@ -199,7 +199,7 @@ export const WriteChat = memo(function WriteChat(props: WriteChatProps) {
         className ? `${className} flex flex-col` : "w-3/4 flex flex-col"
       }
     >
-      <AIConversation className="flex-1 overflow-y-auto scrollbar scrollbar-track-transparent scrollbar-thumb-gray-700 hover:scrollbar-thumb-gray-600">
+      <AIConversation className="flex-1 overflow-y-auto scrollbar scrollbar-track-transparent scrollbar-thumb-muted hover:scrollbar-thumb-muted-foreground">
         <AIConversationContent className="max-w-[75ch] mx-auto">
           {error && (
             <Card className="p-4 mb-4 border-red-500 bg-red-50 dark:bg-red-950">

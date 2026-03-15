@@ -51,13 +51,13 @@ export const LiveMediaStream = (props: LiveMediaStreamProps) => {
         </div>
       )}
       {!isRecording && (
-        <div className="absolute top-4 left-4 bg-gray-300 rounded-full size-8 flex items-center justify-center">
-          <MicOffIcon className="size-4 text-gray-900" />
+        <div className="absolute top-4 left-4 bg-muted rounded-full size-8 flex items-center justify-center">
+          <MicOffIcon className="size-4 text-foreground" />
         </div>
       )}
       {props.showCenterLine && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="border-l-2 border-dashed border-gray-300/50 h-full"></div>
+          <div className="border-l-2 border-dashed border-border/50 h-full"></div>
         </div>
       )}
 

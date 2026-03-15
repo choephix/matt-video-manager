@@ -227,7 +227,7 @@ export const FileTree = ({
   };
 
   return (
-    <div className="max-h-96 overflow-y-auto scrollbar scrollbar-track-transparent scrollbar-thumb-gray-700 hover:scrollbar-thumb-gray-600">
+    <div className="max-h-96 overflow-y-auto scrollbar scrollbar-track-transparent scrollbar-thumb-muted hover:scrollbar-thumb-muted-foreground">
       {tree.map((node) => (
         <FileTreeNode
           key={node.path}

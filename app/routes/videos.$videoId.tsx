@@ -192,8 +192,8 @@ export default function VideoLayout({ loaderData }: Route.ComponentProps) {
                   className={cn(
                     "px-3 py-1.5 text-sm font-medium rounded transition-colors flex items-center gap-1.5",
                     isActive
-                      ? "bg-gray-700 text-white"
-                      : "text-gray-400 hover:text-gray-200"
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                   onClick={(e) => e.preventDefault()}
                   onMouseDown={(e) => {
@@ -268,8 +268,8 @@ export default function VideoLayout({ loaderData }: Route.ComponentProps) {
               className={cn(
                 "px-3 py-1.5 text-sm font-medium rounded transition-colors flex items-center gap-1.5",
                 activeTab === tab.id
-                  ? "bg-gray-700 text-white"
-                  : "text-gray-400 hover:text-gray-200"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               <tab.icon className="size-4" />

@@ -80,7 +80,7 @@ export function AiHeroConnectCard() {
     <Card className="max-w-md w-full">
       <CardHeader className="text-center">
         <div className="flex items-center justify-center gap-2">
-          <XCircleIcon className="h-5 w-5 text-gray-400" />
+          <XCircleIcon className="h-5 w-5 text-muted-foreground" />
           <CardTitle>Connect AI Hero Account</CardTitle>
         </div>
         <CardDescription>
@@ -96,11 +96,11 @@ export function AiHeroConnectCard() {
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-gray-300">
+            <p className="text-sm text-muted-foreground">
               Enter this code on AI Hero to connect your account:
             </p>
             <div className="flex items-center gap-2">
-              <code className="bg-gray-800 px-4 py-2 rounded text-lg font-mono tracking-wider">
+              <code className="bg-muted px-4 py-2 rounded text-lg font-mono tracking-wider">
                 {deviceFlow.userCode}
               </code>
               <Button variant="ghost" size="icon" onClick={copyUserCode}>
@@ -122,7 +122,7 @@ export function AiHeroConnectCard() {
                 </a>
               </Button>
               {polling && (
-                <span className="flex items-center gap-1.5 text-sm text-gray-400">
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   <Loader2Icon className="size-4 animate-spin" />
                   Waiting for authorization...
                 </span>
