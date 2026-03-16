@@ -81,6 +81,10 @@ jobs:
         run: |
           PR_TITLE=$(cat /tmp/pr_title.txt)
           PR_DESCRIPTION=$(cat /tmp/pr_description.txt)
+          echo "PR title (${#PR_TITLE} chars): $PR_TITLE"
+          echo "PR description (${#PR_DESCRIPTION} chars)"
+          # Truncate title to 256 chars as a safety net
+          PR_TITLE="${PR_TITLE:0:256}"
           gh pr create \
             --base main \
             --head "$BRANCH_NAME" \

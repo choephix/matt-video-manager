@@ -73,7 +73,8 @@ echo "$FULL_PROMPT" | claude -p \
 
 RESULT=$(jq -r "$final_result" "$tmpfile")
 
-PR_TITLE=$(echo "$RESULT" | sed -n '/<pr_title>/,/<\/pr_title>/p' | sed '1d;$d')
+# Extract content between XML tags, handling both inline and multiline formats
+PR_TITLE=$(echo "$RESULT" | grep -oP '(?<=<pr_title>).*?(?=</pr_title>)' || echo "$RESULT" | sed -n '/<pr_title>/,/<\/pr_title>/p' | sed '1d;$d')
 PR_DESCRIPTION=$(echo "$RESULT" | sed -n '/<pr_description>/,/<\/pr_description>/p' | sed '1d;$d')
 
 if [ -z "$PR_TITLE" ] || [ -z "$PR_DESCRIPTION" ]; then
