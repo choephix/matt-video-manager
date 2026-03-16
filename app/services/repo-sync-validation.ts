@@ -18,7 +18,7 @@ export class RepoSyncValidationService extends Effect.Service<RepoSyncValidation
       const fs = yield* FileSystem.FileSystem;
 
       const validate = Effect.fn("validateRepoSync")(function* () {
-        const repos = yield* db.getRepos();
+        const repos = yield* db.getCourses();
         const mismatches: string[] = [];
 
         for (const repo of repos) {
@@ -30,7 +30,7 @@ export class RepoSyncValidationService extends Effect.Service<RepoSyncValidation
             continue;
           }
 
-          const repoData = yield* db.getRepoWithSectionsById(repo.id);
+          const repoData = yield* db.getCourseWithSectionsById(repo.id);
 
           // Only validate the latest version (versions are ordered newest-first).
           // The filesystem only represents one version's state at a time, so

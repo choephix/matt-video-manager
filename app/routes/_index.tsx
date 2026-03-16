@@ -70,39 +70,39 @@ export const loader = async (args: Route.LoaderArgs) => {
     const featureFlags = yield* FeatureFlagService;
 
     // First get repos and versions for the selected repo
-    const repos = yield* db.getRepos();
+    const repos = yield* db.getCourses();
     const standaloneVideos = yield* db.getStandaloneVideos();
     const plans = yield* db.getPlans();
 
     let versions: Awaited<
-      ReturnType<typeof db.getRepoVersions>
+      ReturnType<typeof db.getCourseVersions>
     > extends Effect.Effect<infer R, any, any>
       ? R
       : never = [];
     let selectedVersion: Awaited<
-      ReturnType<typeof db.getLatestRepoVersion>
+      ReturnType<typeof db.getLatestCourseVersion>
     > extends Effect.Effect<infer R, any, any>
       ? R
       : never = undefined;
 
     if (selectedRepoId) {
-      versions = yield* db.getRepoVersions(selectedRepoId);
+      versions = yield* db.getCourseVersions(selectedRepoId);
 
       // If versionId provided, use it; otherwise use latest
       if (selectedVersionId) {
         selectedVersion = yield* db
-          .getRepoVersionById(selectedVersionId)
+          .getCourseVersionById(selectedVersionId)
           .pipe(
             Effect.catchTag("NotFoundError", () => Effect.succeed(undefined))
           );
       } else {
-        selectedVersion = yield* db.getLatestRepoVersion(selectedRepoId);
+        selectedVersion = yield* db.getLatestCourseVersion(selectedRepoId);
       }
     }
 
     const selectedRepo = yield* !selectedRepoId
       ? Effect.succeed(undefined)
-      : db.getRepoWithSectionsById(selectedRepoId).pipe(
+      : db.getCourseWithSectionsById(selectedRepoId).pipe(
           Effect.andThen((repo) => {
             if (!repo) {
               return undefined;

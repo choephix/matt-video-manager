@@ -27,7 +27,7 @@ const makeDbCall = <T>(fn: () => Promise<T>) => {
 };
 
 export const createVersionOperations = (db: DrizzleDB) => {
-  const getRepoVersions = Effect.fn("getRepoVersions")(function* (
+  const getCourseVersions = Effect.fn("getCourseVersions")(function* (
     repoId: string
   ) {
     const versions = yield* makeDbCall(() =>
@@ -39,7 +39,7 @@ export const createVersionOperations = (db: DrizzleDB) => {
     return versions;
   });
 
-  const getLatestRepoVersion = Effect.fn("getLatestRepoVersion")(function* (
+  const getLatestCourseVersion = Effect.fn("getLatestCourseVersion")(function* (
     repoId: string
   ) {
     const version = yield* makeDbCall(() =>
@@ -51,7 +51,7 @@ export const createVersionOperations = (db: DrizzleDB) => {
     return version;
   });
 
-  const getRepoVersionById = Effect.fn("getRepoVersionById")(function* (
+  const getCourseVersionById = Effect.fn("getCourseVersionById")(function* (
     versionId: string
   ) {
     const version = yield* makeDbCall(() =>
@@ -62,7 +62,7 @@ export const createVersionOperations = (db: DrizzleDB) => {
 
     if (!version) {
       return yield* new NotFoundError({
-        type: "getRepoVersionById",
+        type: "getCourseVersionById",
         params: { versionId },
       });
     }
@@ -70,8 +70,8 @@ export const createVersionOperations = (db: DrizzleDB) => {
     return version;
   });
 
-  const getRepoWithSectionsByVersion = Effect.fn(
-    "getRepoWithSectionsByVersion"
+  const getCourseWithSectionsByVersion = Effect.fn(
+    "getCourseWithSectionsByVersion"
   )(function* (opts: { repoId: string; versionId: string }) {
     const { repoId, versionId } = opts;
     const repo = yield* makeDbCall(() =>
@@ -82,7 +82,7 @@ export const createVersionOperations = (db: DrizzleDB) => {
 
     if (!repo) {
       return yield* new NotFoundError({
-        type: "getRepoWithSectionsByVersion",
+        type: "getCourseWithSectionsByVersion",
         params: { repoId, versionId },
       });
     }
@@ -157,48 +157,45 @@ export const createVersionOperations = (db: DrizzleDB) => {
     return version;
   });
 
-  const createRepoVersion = Effect.fn("createRepoVersion")(function* (input: {
-    repoId: string;
-    name: string;
-  }) {
-    const [version] = yield* makeDbCall(() =>
-      db.insert(repoVersions).values(input).returning()
-    );
+  const createCourseVersion = Effect.fn("createCourseVersion")(
+    function* (input: { repoId: string; name: string }) {
+      const [version] = yield* makeDbCall(() =>
+        db.insert(repoVersions).values(input).returning()
+      );
 
-    if (!version) {
-      return yield* new UnknownDBServiceError({
-        cause: "No version was returned from the database",
-      });
+      if (!version) {
+        return yield* new UnknownDBServiceError({
+          cause: "No version was returned from the database",
+        });
+      }
+
+      return version;
     }
+  );
 
-    return version;
-  });
+  const updateCourseVersion = Effect.fn("updateCourseVersion")(
+    function* (opts: { versionId: string; name: string; description: string }) {
+      const { versionId, name, description } = opts;
+      const [updated] = yield* makeDbCall(() =>
+        db
+          .update(repoVersions)
+          .set({ name, description })
+          .where(eq(repoVersions.id, versionId))
+          .returning()
+      );
 
-  const updateRepoVersion = Effect.fn("updateRepoVersion")(function* (opts: {
-    versionId: string;
-    name: string;
-    description: string;
-  }) {
-    const { versionId, name, description } = opts;
-    const [updated] = yield* makeDbCall(() =>
-      db
-        .update(repoVersions)
-        .set({ name, description })
-        .where(eq(repoVersions.id, versionId))
-        .returning()
-    );
+      if (!updated) {
+        return yield* new NotFoundError({
+          type: "updateCourseVersion",
+          params: { versionId },
+        });
+      }
 
-    if (!updated) {
-      return yield* new NotFoundError({
-        type: "updateRepoVersion",
-        params: { versionId },
-      });
+      return updated;
     }
+  );
 
-    return updated;
-  });
-
-  const deleteRepoVersion = Effect.fn("deleteRepoVersion")(function* (
+  const deleteCourseVersion = Effect.fn("deleteCourseVersion")(function* (
     versionId: string
   ) {
     const version = yield* makeDbCall(() =>
@@ -209,7 +206,7 @@ export const createVersionOperations = (db: DrizzleDB) => {
 
     if (!version) {
       return yield* new NotFoundError({
-        type: "deleteRepoVersion",
+        type: "deleteCourseVersion",
         params: { versionId },
       });
     }
@@ -549,14 +546,14 @@ export const createVersionOperations = (db: DrizzleDB) => {
   );
 
   return {
-    getRepoVersions,
-    getLatestRepoVersion,
-    getRepoVersionById,
-    getRepoWithSectionsByVersion,
+    getCourseVersions,
+    getLatestCourseVersion,
+    getCourseVersionById,
+    getCourseWithSectionsByVersion,
     getVersionWithSections,
-    createRepoVersion,
-    updateRepoVersion,
-    deleteRepoVersion,
+    createCourseVersion,
+    updateCourseVersion,
+    deleteCourseVersion,
     copyVersionStructure,
     getVideoIdsForVersion,
     getAllVersionsWithStructure,

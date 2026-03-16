@@ -70,7 +70,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
         const repoParserService = yield* RepoParserService;
         const db = yield* DBFunctionsService;
 
-        const latestVersion = yield* db.getLatestRepoVersion(result.repoId);
+        const latestVersion = yield* db.getLatestCourseVersion(result.repoId);
 
         if (!latestVersion) {
           return yield* new DoesNotExistOnDbError({
@@ -80,7 +80,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
           });
         }
 
-        const repoWithSections = yield* db.getRepoWithSectionsByVersion({
+        const repoWithSections = yield* db.getCourseWithSectionsByVersion({
           repoId: result.repoId,
           versionId: latestVersion.id,
         });

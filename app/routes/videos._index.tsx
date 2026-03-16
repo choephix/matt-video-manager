@@ -41,7 +41,7 @@ export const loader = async () => {
     const db = yield* DBFunctionsService;
     const fs = yield* FileSystem.FileSystem;
 
-    const repos = yield* db.getRepos();
+    const repos = yield* db.getCourses();
     const videos = yield* db.getAllStandaloneVideos();
     const sidebarVideos = yield* db.getStandaloneVideos();
     const archivedVideos = yield* db.getArchivedStandaloneVideos();

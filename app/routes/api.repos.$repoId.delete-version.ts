@@ -18,7 +18,7 @@ export const action = async (args: Route.ActionArgs) => {
 
     const db = yield* DBFunctionsService;
 
-    const newLatestVersion = yield* db.deleteRepoVersion(versionId);
+    const newLatestVersion = yield* db.deleteCourseVersion(versionId);
 
     return { success: true, newLatestVersionId: newLatestVersion?.id };
   }).pipe(

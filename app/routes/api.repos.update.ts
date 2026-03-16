@@ -77,10 +77,10 @@ export const action = async (args: Route.ActionArgs) => {
     const db = yield* DBFunctionsService;
 
     // Fetch the current repo
-    const baseRepo = yield* db.getRepoByFilePath(decoded.filePath);
+    const baseRepo = yield* db.getCourseByFilePath(decoded.filePath);
 
     // Get the latest version - updates should only affect latest version
-    const latestVersion = yield* db.getLatestRepoVersion(baseRepo.id);
+    const latestVersion = yield* db.getLatestCourseVersion(baseRepo.id);
 
     if (!latestVersion) {
       return yield* new NotLatestVersionError({
@@ -89,7 +89,7 @@ export const action = async (args: Route.ActionArgs) => {
     }
 
     // Fetch the repo with sections for only the latest version
-    const repo = yield* db.getRepoWithSectionsByVersion({
+    const repo = yield* db.getCourseWithSectionsByVersion({
       repoId: baseRepo.id,
       versionId: latestVersion.id,
     });
@@ -259,7 +259,7 @@ export const action = async (args: Route.ActionArgs) => {
     // 5. After all updates, check for any sections that have no lessons left
     //    - Delete or archive empty sections as needed (only for the latest version)
 
-    const repoAfterUpdates = yield* db.getRepoWithSectionsByVersion({
+    const repoAfterUpdates = yield* db.getCourseWithSectionsByVersion({
       repoId: repo.id,
       versionId: latestVersion.id,
     });

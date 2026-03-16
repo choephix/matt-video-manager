@@ -11,7 +11,7 @@ export const action = async (args: Route.ActionArgs) => {
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
 
-    const repo = yield* db.getRepoById(repoId);
+    const repo = yield* db.getCourseById(repoId);
 
     if (!repo) {
       return Effect.die(data("Repo not found", { status: 404 }));

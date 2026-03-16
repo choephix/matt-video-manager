@@ -35,10 +35,10 @@ export const loader = async (args: Route.LoaderArgs) => {
     const db = yield* DBFunctionsService;
 
     const video = yield* db.getVideoWithClipsById(videoId);
-    const repos = yield* db.getRepos();
+    const repos = yield* db.getCourses();
 
     const reposWithSections = yield* Effect.all(
-      repos.map((repo) => db.getRepoWithSectionsById(repo.id))
+      repos.map((repo) => db.getCourseWithSectionsById(repo.id))
     );
 
     return { video, repos: reposWithSections };

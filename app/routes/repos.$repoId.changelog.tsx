@@ -16,7 +16,7 @@ export const loader = async (args: Route.LoaderArgs) => {
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
 
-    const repo = yield* db.getRepoById(repoId);
+    const repo = yield* db.getCourseById(repoId);
     const versions = yield* db.getAllVersionsWithStructure(repoId);
     const changelog = generateChangelog(versions);
 

@@ -18,10 +18,10 @@ const makeDbCall = <T>(fn: () => Promise<T>) => {
 export const createVideoOperations = (
   db: DrizzleDB,
   deps: {
-    getRepoWithSectionsById: (id: string) => Effect.Effect<any, any>;
+    getCourseWithSectionsById: (id: string) => Effect.Effect<any, any>;
   }
 ) => {
-  const { getRepoWithSectionsById } = deps;
+  const { getCourseWithSectionsById } = deps;
 
   const getVideoDeepById = Effect.fn("getVideoById")(function* (id: string) {
     const video = yield* makeDbCall(() =>
@@ -335,7 +335,7 @@ export const createVideoOperations = (
     }
 
     // Need to get all sections and lessons to find next
-    const repoWithVersions = yield* getRepoWithSectionsById(repo.id);
+    const repoWithVersions = yield* getCourseWithSectionsById(repo.id);
     const latestVersionSections = repoWithVersions.versions[0]?.sections ?? [];
 
     // Build a flat list of real lessons in order
@@ -386,7 +386,7 @@ export const createVideoOperations = (
     }
 
     // Need to get all sections and lessons to find previous
-    const repoWithVersions = yield* getRepoWithSectionsById(repo.id);
+    const repoWithVersions = yield* getCourseWithSectionsById(repo.id);
     const latestVersionSections = repoWithVersions.versions[0]?.sections ?? [];
 
     // Build a flat list of real lessons in order
@@ -429,7 +429,7 @@ export const createVideoOperations = (
       const repo = currentSection.repoVersion.repo;
 
       // Need to get all sections and lessons to find next lesson without video
-      const repoWithVersions = yield* getRepoWithSectionsById(repo.id);
+      const repoWithVersions = yield* getCourseWithSectionsById(repo.id);
       const latestVersionSections =
         repoWithVersions.versions[0]?.sections ?? [];
 

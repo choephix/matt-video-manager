@@ -22,7 +22,7 @@ export const action = async (args: Route.ActionArgs) => {
 
     const db = yield* DBFunctionsService;
 
-    yield* db.updateRepoName({ repoId, name: name.trim() });
+    yield* db.updateCourseName({ repoId, name: name.trim() });
 
     return { success: true };
   }).pipe(

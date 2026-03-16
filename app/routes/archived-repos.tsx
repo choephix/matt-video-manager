@@ -20,8 +20,8 @@ export const meta: Route.MetaFunction = () => {
 export const loader = async (_args: Route.LoaderArgs) => {
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
-    const archivedRepos = yield* db.getArchivedRepos();
-    const repos = yield* db.getRepos();
+    const archivedRepos = yield* db.getArchivedCourses();
+    const repos = yield* db.getCourses();
     const standaloneVideos = yield* db.getStandaloneVideos();
     const plans = yield* db.getPlans();
 

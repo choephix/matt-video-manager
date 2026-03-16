@@ -23,7 +23,7 @@ export const action = async (args: Route.ActionArgs) => {
 
     const db = yield* DBFunctionsService;
 
-    yield* db.updateRepoVersion({
+    yield* db.updateCourseVersion({
       versionId,
       name: name.trim(),
       description: description.trim(),

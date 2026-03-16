@@ -56,7 +56,7 @@ export const loader = async ({ params }: Route.LoaderArgs) => {
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
     const [repos, standaloneVideos, plans] = yield* Effect.all([
-      db.getRepos(),
+      db.getCourses(),
       db.getStandaloneVideos(),
       db.getPlans(),
     ]);

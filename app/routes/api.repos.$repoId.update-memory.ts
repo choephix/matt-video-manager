@@ -20,7 +20,7 @@ export const action = async (args: Route.ActionArgs) => {
 
     const db = yield* DBFunctionsService;
 
-    yield* db.updateRepoMemory({ repoId, memory });
+    yield* db.updateCourseMemory({ repoId, memory });
 
     return { success: true };
   }).pipe(

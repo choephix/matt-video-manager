@@ -40,7 +40,7 @@ export const action = async (args: Route.ActionArgs) => {
 
     const db = yield* DBFunctionsService;
 
-    yield* db.updateRepoFilePath({ repoId, filePath: trimmedPath });
+    yield* db.updateCourseFilePath({ repoId, filePath: trimmedPath });
 
     return { success: true };
   }).pipe(
@@ -52,7 +52,7 @@ export const action = async (args: Route.ActionArgs) => {
     Effect.catchTag("InvalidPathError", (e) => {
       return Effect.succeed({ success: false, error: e.message });
     }),
-    Effect.catchTag("AmbiguousRepoUpdateError", (e) => {
+    Effect.catchTag("AmbiguousCourseUpdateError", (e) => {
       return Effect.succeed({
         success: false,
         error: `Cannot update: ${e.repoCount} repos share path "${e.filePath}"`,

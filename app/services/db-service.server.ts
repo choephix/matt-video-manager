@@ -2,7 +2,7 @@ import { DrizzleService } from "@/services/drizzle-service.server";
 import { createClipOperations } from "@/services/db-clip-operations.server";
 import { createVideoOperations } from "@/services/db-video-operations.server";
 import { createPlanOperations } from "@/services/db-plan-operations.server";
-import { createRepoOperations } from "@/services/db-repo-operations.server";
+import { createCourseOperations } from "@/services/db-course-operations.server";
 import { createVersionOperations } from "@/services/db-version-operations.server";
 import { createLessonSectionOperations } from "@/services/db-lesson-section-operations.server";
 import { createLinkAuthOperations } from "@/services/db-link-auth-operations.server";
@@ -32,19 +32,19 @@ export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
       } = createClipOperations(db);
 
       const {
-        getRepoById,
-        getRepoByFilePath,
-        getRepoWithSectionsById,
-        getRepoWithSectionsByFilePath,
-        getRepos,
-        getArchivedRepos,
-        createRepo,
-        updateRepoName,
-        updateRepoMemory,
-        updateRepoArchiveStatus,
-        updateRepoFilePath,
-        deleteRepo,
-      } = createRepoOperations(db);
+        getCourseById,
+        getCourseByFilePath,
+        getCourseWithSectionsById,
+        getCourseWithSectionsByFilePath,
+        getCourses,
+        getArchivedCourses,
+        createCourse,
+        updateCourseName,
+        updateCourseMemory,
+        updateCourseArchiveStatus,
+        updateCourseFilePath,
+        deleteCourse,
+      } = createCourseOperations(db);
 
       const {
         getVideoDeepById,
@@ -64,7 +64,7 @@ export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
         getPreviousVideoId,
         getNextLessonWithoutVideo,
         getVideosForFewShotExamples,
-      } = createVideoOperations(db, { getRepoWithSectionsById });
+      } = createVideoOperations(db, { getCourseWithSectionsById });
 
       const {
         getPlans,
@@ -76,14 +76,14 @@ export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
       } = createPlanOperations(db);
 
       const {
-        getRepoVersions,
-        getLatestRepoVersion,
-        getRepoVersionById,
-        getRepoWithSectionsByVersion,
+        getCourseVersions,
+        getLatestCourseVersion,
+        getCourseVersionById,
+        getCourseWithSectionsByVersion,
         getVersionWithSections,
-        createRepoVersion,
-        updateRepoVersion,
-        deleteRepoVersion,
+        createCourseVersion,
+        updateCourseVersion,
+        deleteCourseVersion,
         copyVersionStructure,
         getVideoIdsForVersion,
         getAllVersionsWithStructure,
@@ -155,18 +155,18 @@ export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
         deleteVideo,
         updateVideoPath,
         updateVideoLesson,
-        getRepoById,
-        getRepoByFilePath,
-        getRepoWithSectionsById,
-        getRepoWithSectionsByFilePath,
-        getRepos,
-        getArchivedRepos,
+        getCourseById,
+        getCourseByFilePath,
+        getCourseWithSectionsById,
+        getCourseWithSectionsByFilePath,
+        getCourses,
+        getArchivedCourses,
         getVideoById: getVideoDeepById,
         getVideoWithClipsById: getVideoWithClipsById,
         getStandaloneVideos,
         getAllStandaloneVideos,
         getArchivedStandaloneVideos,
-        createRepo,
+        createCourse,
         createSections,
         createLessons,
         createGhostLesson,
@@ -181,20 +181,20 @@ export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
         getNextVideoId,
         getPreviousVideoId,
         getNextLessonWithoutVideo,
-        getRepoVersions,
-        getLatestRepoVersion,
-        getRepoVersionById,
-        getRepoWithSectionsByVersion,
+        getCourseVersions,
+        getLatestCourseVersion,
+        getCourseVersionById,
+        getCourseWithSectionsByVersion,
         getVersionWithSections,
-        createRepoVersion,
-        updateRepoVersion,
-        updateRepoName,
-        updateRepoMemory,
-        updateRepoArchiveStatus,
+        createCourseVersion,
+        updateCourseVersion,
+        updateCourseName,
+        updateCourseMemory,
+        updateCourseArchiveStatus,
         updateVideoArchiveStatus,
-        updateRepoFilePath,
-        deleteRepo,
-        deleteRepoVersion,
+        updateCourseFilePath,
+        deleteCourse,
+        deleteCourseVersion,
         copyVersionStructure,
         getVideoIdsForVersion,
         getAllVersionsWithStructure,

@@ -25,7 +25,7 @@ export const action = async (args: Route.ActionArgs) => {
 
     const db = yield* DBFunctionsService;
 
-    yield* db.updateRepoArchiveStatus({ repoId, archived });
+    yield* db.updateCourseArchiveStatus({ repoId, archived });
 
     return { success: true };
   }).pipe(

@@ -49,12 +49,12 @@ const setup = async () => {
 
   const repo = await Effect.gen(function* () {
     const db = yield* DBFunctionsService;
-    return yield* db.createRepo({ filePath: tempDir, name: "test-repo" });
+    return yield* db.createCourse({ filePath: tempDir, name: "test-repo" });
   }).pipe(Effect.provide(dbLayer), Effect.runPromise);
 
   const version = await Effect.gen(function* () {
     const db = yield* DBFunctionsService;
-    return yield* db.createRepoVersion({ repoId: repo.id, name: "v1" });
+    return yield* db.createCourseVersion({ repoId: repo.id, name: "v1" });
   }).pipe(Effect.provide(dbLayer), Effect.runPromise);
 
   const createSection = async (sectionPath: string, order: number) => {

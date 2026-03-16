@@ -25,12 +25,12 @@ export const action = async ({ request }: Route.ActionArgs) => {
     const parsedSections = yield* repoParserService.parseRepo(result.repoPath);
     console.log(parsedSections);
 
-    const repo = yield* db.createRepo({
+    const repo = yield* db.createCourse({
       filePath: result.repoPath,
       name: result.name,
     });
 
-    const version = yield* db.createRepoVersion({
+    const version = yield* db.createCourseVersion({
       repoId: repo.id,
       name: "v1.0",
     });

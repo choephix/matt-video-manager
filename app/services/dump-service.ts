@@ -12,10 +12,10 @@ export class DatabaseDumpService extends Effect.Service<DatabaseDumpService>()(
       const DUMP_FILE_LOCATION = yield* Config.string("DUMP_FILE_LOCATION");
 
       const dump = Effect.fn("dump")(function* () {
-        const repos = yield* db.getRepos();
+        const repos = yield* db.getCourses();
 
         const repoDumps = yield* Effect.all(
-          repos.map((repo) => db.getRepoWithSectionsById(repo.id))
+          repos.map((repo) => db.getCourseWithSectionsById(repo.id))
         );
 
         yield* fs.writeFileString(

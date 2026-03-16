@@ -8,7 +8,7 @@ import {
   videos,
 } from "@/db/schema";
 import {
-  AmbiguousRepoUpdateError,
+  AmbiguousCourseUpdateError,
   NotFoundError,
   UnknownDBServiceError,
 } from "@/services/db-service-errors";
@@ -22,8 +22,8 @@ const makeDbCall = <T>(fn: () => Promise<T>) => {
   });
 };
 
-export const createRepoOperations = (db: DrizzleDB) => {
-  const getRepoById = Effect.fn("getRepoById")(function* (id: string) {
+export const createCourseOperations = (db: DrizzleDB) => {
+  const getCourseById = Effect.fn("getCourseById")(function* (id: string) {
     const repo = yield* makeDbCall(() =>
       db.query.repos.findFirst({
         where: eq(repos.id, id),
@@ -32,7 +32,7 @@ export const createRepoOperations = (db: DrizzleDB) => {
 
     if (!repo) {
       return yield* new NotFoundError({
-        type: "getRepo",
+        type: "getCourse",
         params: { id },
       });
     }
@@ -40,7 +40,7 @@ export const createRepoOperations = (db: DrizzleDB) => {
     return repo;
   });
 
-  const getRepoByFilePath = Effect.fn("getRepoByFilePath")(function* (
+  const getCourseByFilePath = Effect.fn("getCourseByFilePath")(function* (
     filePath: string
   ) {
     const repo = yield* makeDbCall(() =>
@@ -51,7 +51,7 @@ export const createRepoOperations = (db: DrizzleDB) => {
 
     if (!repo) {
       return yield* new NotFoundError({
-        type: "getRepoByFilePath",
+        type: "getCourseByFilePath",
         params: { filePath },
       });
     }
@@ -59,7 +59,7 @@ export const createRepoOperations = (db: DrizzleDB) => {
     return repo;
   });
 
-  const getRepoWithSectionsById = Effect.fn("getRepoWithSectionsById")(
+  const getCourseWithSectionsById = Effect.fn("getCourseWithSectionsById")(
     function* (id: string) {
       const repo = yield* makeDbCall(() =>
         db.query.repos.findFirst({
@@ -96,7 +96,7 @@ export const createRepoOperations = (db: DrizzleDB) => {
 
       if (!repo) {
         return yield* new NotFoundError({
-          type: "getRepoWithSections",
+          type: "getCourseWithSections",
           params: { id },
         });
       }
@@ -105,14 +105,14 @@ export const createRepoOperations = (db: DrizzleDB) => {
     }
   );
 
-  const getRepoWithSectionsByFilePath = Effect.fn(
-    "getRepoWithSectionsByFilePath"
+  const getCourseWithSectionsByFilePath = Effect.fn(
+    "getCourseWithSectionsByFilePath"
   )(function* (filePath: string) {
-    const repo = yield* getRepoByFilePath(filePath);
-    return yield* getRepoWithSectionsById(repo.id);
+    const repo = yield* getCourseByFilePath(filePath);
+    return yield* getCourseWithSectionsById(repo.id);
   });
 
-  const getRepos = Effect.fn("getRepos")(function* () {
+  const getCourses = Effect.fn("getCourses")(function* () {
     const reposResult = yield* makeDbCall(() =>
       db.query.repos.findMany({
         where: eq(repos.archived, false),
@@ -121,7 +121,7 @@ export const createRepoOperations = (db: DrizzleDB) => {
     return reposResult;
   });
 
-  const getArchivedRepos = Effect.fn("getArchivedRepos")(function* () {
+  const getArchivedCourses = Effect.fn("getArchivedCourses")(function* () {
     const reposResult = yield* makeDbCall(() =>
       db.query.repos.findMany({
         where: eq(repos.archived, true),
@@ -130,7 +130,7 @@ export const createRepoOperations = (db: DrizzleDB) => {
     return reposResult;
   });
 
-  const createRepo = Effect.fn("createRepo")(function* (input: {
+  const createCourse = Effect.fn("createCourse")(function* (input: {
     filePath: string;
     name: string;
   }) {
@@ -142,14 +142,14 @@ export const createRepoOperations = (db: DrizzleDB) => {
 
     if (!repo) {
       return yield* new UnknownDBServiceError({
-        cause: "No repo was returned from the database",
+        cause: "No course was returned from the database",
       });
     }
 
     return repo;
   });
 
-  const updateRepoName = Effect.fn("updateRepoName")(function* (opts: {
+  const updateCourseName = Effect.fn("updateCourseName")(function* (opts: {
     repoId: string;
     name: string;
   }) {
@@ -160,7 +160,7 @@ export const createRepoOperations = (db: DrizzleDB) => {
 
     if (!updated) {
       return yield* new NotFoundError({
-        type: "updateRepoName",
+        type: "updateCourseName",
         params: { repoId },
       });
     }
@@ -168,7 +168,7 @@ export const createRepoOperations = (db: DrizzleDB) => {
     return updated;
   });
 
-  const updateRepoMemory = Effect.fn("updateRepoMemory")(function* (opts: {
+  const updateCourseMemory = Effect.fn("updateCourseMemory")(function* (opts: {
     repoId: string;
     memory: string;
   }) {
@@ -179,7 +179,7 @@ export const createRepoOperations = (db: DrizzleDB) => {
 
     if (!updated) {
       return yield* new NotFoundError({
-        type: "updateRepoMemory",
+        type: "updateCourseMemory",
         params: { repoId },
       });
     }
@@ -187,7 +187,7 @@ export const createRepoOperations = (db: DrizzleDB) => {
     return updated;
   });
 
-  const updateRepoArchiveStatus = Effect.fn("updateRepoArchiveStatus")(
+  const updateCourseArchiveStatus = Effect.fn("updateCourseArchiveStatus")(
     function* (opts: { repoId: string; archived: boolean }) {
       const { repoId, archived } = opts;
       const [updated] = yield* makeDbCall(() =>
@@ -200,7 +200,7 @@ export const createRepoOperations = (db: DrizzleDB) => {
 
       if (!updated) {
         return yield* new NotFoundError({
-          type: "updateRepoArchiveStatus",
+          type: "updateCourseArchiveStatus",
           params: { repoId },
         });
       }
@@ -209,68 +209,71 @@ export const createRepoOperations = (db: DrizzleDB) => {
     }
   );
 
-  const updateRepoFilePath = Effect.fn("updateRepoFilePath")(function* (opts: {
-    repoId: string;
-    filePath: string;
-  }) {
-    const { repoId, filePath } = opts;
+  const updateCourseFilePath = Effect.fn("updateCourseFilePath")(
+    function* (opts: { repoId: string; filePath: string }) {
+      const { repoId, filePath } = opts;
 
-    const currentRepo = yield* makeDbCall(() =>
-      db.query.repos.findFirst({
-        where: eq(repos.id, repoId),
-      })
-    );
+      const currentRepo = yield* makeDbCall(() =>
+        db.query.repos.findFirst({
+          where: eq(repos.id, repoId),
+        })
+      );
 
-    if (!currentRepo) {
-      return yield* new NotFoundError({
-        type: "updateRepoFilePath",
-        params: { repoId },
-      });
+      if (!currentRepo) {
+        return yield* new NotFoundError({
+          type: "updateCourseFilePath",
+          params: { repoId },
+        });
+      }
+
+      const reposWithSamePath = yield* makeDbCall(() =>
+        db.query.repos.findMany({
+          where: eq(repos.filePath, currentRepo.filePath),
+        })
+      );
+
+      if (reposWithSamePath.length > 1) {
+        return yield* new AmbiguousCourseUpdateError({
+          filePath: currentRepo.filePath,
+          repoCount: reposWithSamePath.length,
+        });
+      }
+
+      const [updated] = yield* makeDbCall(() =>
+        db
+          .update(repos)
+          .set({ filePath })
+          .where(eq(repos.id, repoId))
+          .returning()
+      );
+
+      if (!updated) {
+        return yield* new NotFoundError({
+          type: "updateCourseFilePath",
+          params: { repoId },
+        });
+      }
+
+      return updated;
     }
+  );
 
-    const reposWithSamePath = yield* makeDbCall(() =>
-      db.query.repos.findMany({
-        where: eq(repos.filePath, currentRepo.filePath),
-      })
-    );
-
-    if (reposWithSamePath.length > 1) {
-      return yield* new AmbiguousRepoUpdateError({
-        filePath: currentRepo.filePath,
-        repoCount: reposWithSamePath.length,
-      });
-    }
-
-    const [updated] = yield* makeDbCall(() =>
-      db.update(repos).set({ filePath }).where(eq(repos.id, repoId)).returning()
-    );
-
-    if (!updated) {
-      return yield* new NotFoundError({
-        type: "updateRepoFilePath",
-        params: { repoId },
-      });
-    }
-
-    return updated;
-  });
-
-  const deleteRepo = Effect.fn("deleteRepo")(function* (repoId: string) {
+  const deleteCourse = Effect.fn("deleteCourse")(function* (repoId: string) {
     yield* makeDbCall(() => db.delete(repos).where(eq(repos.id, repoId)));
   });
 
   return {
-    getRepoById,
-    getRepoByFilePath,
-    getRepoWithSectionsById,
-    getRepoWithSectionsByFilePath,
-    getRepos,
-    getArchivedRepos,
-    createRepo,
-    updateRepoName,
-    updateRepoMemory,
-    updateRepoArchiveStatus,
-    updateRepoFilePath,
-    deleteRepo,
+    getCourseById,
+    getCourseByFilePath,
+    getCourseWithSectionsById,
+    getCourseWithSectionsByFilePath,
+    getCourses,
+    getArchivedCourses,
+    createCourse,
+    updateCourseName,
+    updateCourseMemory,
+    updateCourseArchiveStatus,
+    updateCourseFilePath,
+    deleteCourse,
   };
 };

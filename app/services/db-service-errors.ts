@@ -33,8 +33,8 @@ export class CannotDeleteNonLatestVersionError extends Data.TaggedError(
   latestVersionId: string;
 }> {}
 
-export class AmbiguousRepoUpdateError extends Data.TaggedError(
-  "AmbiguousRepoUpdateError"
+export class AmbiguousCourseUpdateError extends Data.TaggedError(
+  "AmbiguousCourseUpdateError"
 )<{
   filePath: string;
   repoCount: number;

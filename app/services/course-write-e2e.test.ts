@@ -49,12 +49,12 @@ const setup = async () => {
 
   const repo = await Effect.gen(function* () {
     const db = yield* DBFunctionsService;
-    return yield* db.createRepo({ filePath: tempDir, name: "test-repo" });
+    return yield* db.createCourse({ filePath: tempDir, name: "test-repo" });
   }).pipe(Effect.provide(dbLayer), Effect.runPromise);
 
   const version = await Effect.gen(function* () {
     const db = yield* DBFunctionsService;
-    return yield* db.createRepoVersion({ repoId: repo.id, name: "v1" });
+    return yield* db.createCourseVersion({ repoId: repo.id, name: "v1" });
   }).pipe(Effect.provide(dbLayer), Effect.runPromise);
 
   const createSection = async (sectionPath: string, order: number) => {
@@ -501,7 +501,10 @@ describe("CourseWriteService", () => {
       const repo = await dbRun(
         Effect.gen(function* () {
           const db = yield* DBFunctionsService;
-          return yield* db.createRepo({ filePath: tempDir, name: "test-repo" });
+          return yield* db.createCourse({
+            filePath: tempDir,
+            name: "test-repo",
+          });
         })
       );
 
@@ -509,7 +512,7 @@ describe("CourseWriteService", () => {
       const oldVersion = await dbRun(
         Effect.gen(function* () {
           const db = yield* DBFunctionsService;
-          return yield* db.createRepoVersion({
+          return yield* db.createCourseVersion({
             repoId: repo.id,
             name: "v1-stale",
           });
@@ -531,7 +534,7 @@ describe("CourseWriteService", () => {
       const currentVersion = await dbRun(
         Effect.gen(function* () {
           const db = yield* DBFunctionsService;
-          return yield* db.createRepoVersion({
+          return yield* db.createCourseVersion({
             repoId: repo.id,
             name: "v2-current",
           });

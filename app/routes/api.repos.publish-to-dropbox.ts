@@ -65,7 +65,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
     const db = yield* DBFunctionsService;
 
     // Get the latest version - only publish sections from the latest version
-    const latestVersion = yield* db.getLatestRepoVersion(result.repoId);
+    const latestVersion = yield* db.getLatestCourseVersion(result.repoId);
 
     if (!latestVersion) {
       return yield* new DoesNotExistOnDbError({
@@ -75,7 +75,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
       });
     }
 
-    const repoWithSections = yield* db.getRepoWithSectionsByVersion({
+    const repoWithSections = yield* db.getCourseWithSectionsByVersion({
       repoId: result.repoId,
       versionId: latestVersion.id,
     });
