@@ -3,8 +3,8 @@ import {
   clips,
   clipSections,
   lessons,
-  repos,
-  repoVersions,
+  courses,
+  courseVersions,
   sections,
   thumbnails,
   videos,
@@ -31,9 +31,9 @@ export const createVersionOperations = (db: DrizzleDB) => {
     repoId: string
   ) {
     const versions = yield* makeDbCall(() =>
-      db.query.repoVersions.findMany({
-        where: eq(repoVersions.repoId, repoId),
-        orderBy: desc(repoVersions.createdAt),
+      db.query.courseVersions.findMany({
+        where: eq(courseVersions.repoId, repoId),
+        orderBy: desc(courseVersions.createdAt),
       })
     );
     return versions;
@@ -43,9 +43,9 @@ export const createVersionOperations = (db: DrizzleDB) => {
     repoId: string
   ) {
     const version = yield* makeDbCall(() =>
-      db.query.repoVersions.findFirst({
-        where: eq(repoVersions.repoId, repoId),
-        orderBy: desc(repoVersions.createdAt),
+      db.query.courseVersions.findFirst({
+        where: eq(courseVersions.repoId, repoId),
+        orderBy: desc(courseVersions.createdAt),
       })
     );
     return version;
@@ -55,8 +55,8 @@ export const createVersionOperations = (db: DrizzleDB) => {
     versionId: string
   ) {
     const version = yield* makeDbCall(() =>
-      db.query.repoVersions.findFirst({
-        where: eq(repoVersions.id, versionId),
+      db.query.courseVersions.findFirst({
+        where: eq(courseVersions.id, versionId),
       })
     );
 
@@ -74,13 +74,13 @@ export const createVersionOperations = (db: DrizzleDB) => {
     "getCourseWithSectionsByVersion"
   )(function* (opts: { repoId: string; versionId: string }) {
     const { repoId, versionId } = opts;
-    const repo = yield* makeDbCall(() =>
-      db.query.repos.findFirst({
-        where: eq(repos.id, repoId),
+    const course = yield* makeDbCall(() =>
+      db.query.courses.findFirst({
+        where: eq(courses.id, repoId),
       })
     );
 
-    if (!repo) {
+    if (!course) {
       return yield* new NotFoundError({
         type: "getCourseWithSectionsByVersion",
         params: { repoId, versionId },
@@ -111,7 +111,7 @@ export const createVersionOperations = (db: DrizzleDB) => {
     );
 
     return {
-      ...repo,
+      ...course,
       sections: versionSections,
     };
   });
@@ -120,8 +120,8 @@ export const createVersionOperations = (db: DrizzleDB) => {
     versionId: string
   ) {
     const version = yield* makeDbCall(() =>
-      db.query.repoVersions.findFirst({
-        where: eq(repoVersions.id, versionId),
+      db.query.courseVersions.findFirst({
+        where: eq(courseVersions.id, versionId),
         with: {
           repo: true,
           sections: {
@@ -160,7 +160,7 @@ export const createVersionOperations = (db: DrizzleDB) => {
   const createCourseVersion = Effect.fn("createCourseVersion")(
     function* (input: { repoId: string; name: string }) {
       const [version] = yield* makeDbCall(() =>
-        db.insert(repoVersions).values(input).returning()
+        db.insert(courseVersions).values(input).returning()
       );
 
       if (!version) {
@@ -178,9 +178,9 @@ export const createVersionOperations = (db: DrizzleDB) => {
       const { versionId, name, description } = opts;
       const [updated] = yield* makeDbCall(() =>
         db
-          .update(repoVersions)
+          .update(courseVersions)
           .set({ name, description })
-          .where(eq(repoVersions.id, versionId))
+          .where(eq(courseVersions.id, versionId))
           .returning()
       );
 
@@ -199,8 +199,8 @@ export const createVersionOperations = (db: DrizzleDB) => {
     versionId: string
   ) {
     const version = yield* makeDbCall(() =>
-      db.query.repoVersions.findFirst({
-        where: eq(repoVersions.id, versionId),
+      db.query.courseVersions.findFirst({
+        where: eq(courseVersions.id, versionId),
       })
     );
 
@@ -212,9 +212,9 @@ export const createVersionOperations = (db: DrizzleDB) => {
     }
 
     const allVersions = yield* makeDbCall(() =>
-      db.query.repoVersions.findMany({
-        where: eq(repoVersions.repoId, version.repoId),
-        orderBy: desc(repoVersions.createdAt),
+      db.query.courseVersions.findMany({
+        where: eq(courseVersions.repoId, version.repoId),
+        orderBy: desc(courseVersions.createdAt),
       })
     );
 
@@ -234,7 +234,7 @@ export const createVersionOperations = (db: DrizzleDB) => {
     }
 
     yield* makeDbCall(() =>
-      db.delete(repoVersions).where(eq(repoVersions.id, versionId))
+      db.delete(courseVersions).where(eq(courseVersions.id, versionId))
     );
 
     const newLatestVersion = allVersions[1];
@@ -248,9 +248,9 @@ export const createVersionOperations = (db: DrizzleDB) => {
       newVersionName: string;
     }) {
       const latestVersion = yield* makeDbCall(() =>
-        db.query.repoVersions.findFirst({
-          where: eq(repoVersions.repoId, input.repoId),
-          orderBy: desc(repoVersions.createdAt),
+        db.query.courseVersions.findFirst({
+          where: eq(courseVersions.repoId, input.repoId),
+          orderBy: desc(courseVersions.createdAt),
         })
       );
 
@@ -263,7 +263,7 @@ export const createVersionOperations = (db: DrizzleDB) => {
 
       const newVersion = yield* makeDbCall(() =>
         db
-          .insert(repoVersions)
+          .insert(courseVersions)
           .values({
             repoId: input.repoId,
             name: input.newVersionName,
@@ -458,9 +458,9 @@ export const createVersionOperations = (db: DrizzleDB) => {
   const getAllVersionsWithStructure = Effect.fn("getAllVersionsWithStructure")(
     function* (repoId: string) {
       const versions = yield* makeDbCall(() =>
-        db.query.repoVersions.findMany({
-          where: eq(repoVersions.repoId, repoId),
-          orderBy: desc(repoVersions.createdAt),
+        db.query.courseVersions.findMany({
+          where: eq(courseVersions.repoId, repoId),
+          orderBy: desc(courseVersions.createdAt),
         })
       );
 

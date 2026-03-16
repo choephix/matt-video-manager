@@ -20,24 +20,26 @@ export class CourseRepoSyncValidationService extends Effect.Service<CourseRepoSy
       const fs = yield* FileSystem.FileSystem;
 
       const validate = Effect.fn("validateRepoSync")(function* () {
-        const repos = yield* db.getCourses();
+        const courses = yield* db.getCourses();
         const mismatches: string[] = [];
 
-        for (const repo of repos) {
-          const repoPath = repo.filePath;
+        for (const course of courses) {
+          const repoPath = course.filePath;
           const repoExists = yield* fs.exists(repoPath);
 
           if (!repoExists) {
-            mismatches.push(`Repo directory missing on disk: ${repoPath}`);
+            mismatches.push(
+              `Course repo directory missing on disk: ${repoPath}`
+            );
             continue;
           }
 
-          const repoData = yield* db.getCourseWithSectionsById(repo.id);
+          const courseData = yield* db.getCourseWithSectionsById(course.id);
 
           // Only validate the latest version (versions are ordered newest-first).
           // The filesystem only represents one version's state at a time, so
           // older versions may have stale section paths that no longer match.
-          const latestVersion = repoData.versions[0];
+          const latestVersion = courseData.versions[0];
           if (!latestVersion) continue;
 
           {
@@ -127,7 +129,7 @@ export class CourseRepoSyncValidationService extends Effect.Service<CourseRepoSy
         if (mismatches.length > 0) {
           return yield* new CourseRepoSyncError({
             cause: null,
-            message: `Repo out of sync with filesystem:\n${mismatches.join("\n")}`,
+            message: `Course repo out of sync with filesystem:\n${mismatches.join("\n")}`,
           });
         }
       });

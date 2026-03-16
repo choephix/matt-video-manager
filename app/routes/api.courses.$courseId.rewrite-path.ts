@@ -55,7 +55,7 @@ export const action = async (args: Route.ActionArgs) => {
     Effect.catchTag("AmbiguousCourseUpdateError", (e) => {
       return Effect.succeed({
         success: false,
-        error: `Cannot update: ${e.repoCount} repos share path "${e.filePath}"`,
+        error: `Cannot update: ${e.repoCount} courses share path "${e.filePath}"`,
       });
     }),
     Effect.catchAll(() => {

@@ -42,12 +42,12 @@ import {
 import { NextTodoCard } from "@/features/course-view/next-todo-card";
 
 export const meta: Route.MetaFunction = ({ data }) => {
-  const selectedRepo = data?.selectedRepo;
+  const selectedCourse = data?.selectedCourse;
 
-  if (selectedRepo) {
+  if (selectedCourse) {
     return [
       {
-        title: `CVM - ${selectedRepo.name}`,
+        title: `CVM - ${selectedCourse.name}`,
       },
     ];
   }
@@ -61,7 +61,7 @@ export const meta: Route.MetaFunction = ({ data }) => {
 
 export const loader = async (args: Route.LoaderArgs) => {
   const url = new URL(args.request.url);
-  const selectedRepoId = url.searchParams.get("courseId");
+  const selectedCourseId = url.searchParams.get("courseId");
   const selectedVersionId = url.searchParams.get("versionId");
 
   return Effect.gen(function* () {
@@ -69,8 +69,7 @@ export const loader = async (args: Route.LoaderArgs) => {
     const fs = yield* FileSystem.FileSystem;
     const featureFlags = yield* FeatureFlagService;
 
-    // First get repos and versions for the selected repo
-    const repos = yield* db.getCourses();
+    const courses = yield* db.getCourses();
     const standaloneVideos = yield* db.getStandaloneVideos();
     const plans = yield* db.getPlans();
 
@@ -85,8 +84,8 @@ export const loader = async (args: Route.LoaderArgs) => {
       ? R
       : never = undefined;
 
-    if (selectedRepoId) {
-      versions = yield* db.getCourseVersions(selectedRepoId);
+    if (selectedCourseId) {
+      versions = yield* db.getCourseVersions(selectedCourseId);
 
       // If versionId provided, use it; otherwise use latest
       if (selectedVersionId) {
@@ -96,26 +95,26 @@ export const loader = async (args: Route.LoaderArgs) => {
             Effect.catchTag("NotFoundError", () => Effect.succeed(undefined))
           );
       } else {
-        selectedVersion = yield* db.getLatestCourseVersion(selectedRepoId);
+        selectedVersion = yield* db.getLatestCourseVersion(selectedCourseId);
       }
     }
 
-    const selectedRepo = yield* !selectedRepoId
+    const selectedCourse = yield* !selectedCourseId
       ? Effect.succeed(undefined)
-      : db.getCourseWithSectionsById(selectedRepoId).pipe(
-          Effect.andThen((repo) => {
-            if (!repo) {
+      : db.getCourseWithSectionsById(selectedCourseId).pipe(
+          Effect.andThen((course) => {
+            if (!course) {
               return undefined;
             }
 
             // Get sections from selected version only (or latest if none selected)
             const versionData =
-              repo.versions.find((v) => v.id === selectedVersion?.id) ??
-              repo.versions[0];
+              course.versions.find((v) => v.id === selectedVersion?.id) ??
+              course.versions[0];
             const allSections = versionData?.sections ?? [];
 
             return {
-              ...repo,
+              ...course,
               sections: allSections.filter((section) => {
                 return !section.path.endsWith("ARCHIVE");
               }),
@@ -125,7 +124,7 @@ export const loader = async (args: Route.LoaderArgs) => {
 
     const hasExportedVideoMap: Record<string, boolean> = {};
 
-    const videos = selectedRepo?.sections.flatMap((section) =>
+    const videos = selectedCourse?.sections.flatMap((section) =>
       section.lessons.flatMap((lesson) => lesson.videos)
     );
 
@@ -141,12 +140,12 @@ export const loader = async (args: Route.LoaderArgs) => {
     const hasExplainerFolderMap: Record<string, boolean> = {};
 
     const lessons =
-      selectedRepo?.sections.flatMap((section) =>
+      selectedCourse?.sections.flatMap((section) =>
         section.lessons
           .filter((lesson) => lesson.fsStatus !== "ghost")
           .map((lesson) => ({
             id: lesson.id,
-            fullPath: `${selectedRepo.filePath}/${section.path}/${lesson.path}`,
+            fullPath: `${selectedCourse.filePath}/${section.path}/${lesson.path}`,
           }))
       ) ?? [];
 
@@ -206,14 +205,14 @@ export const loader = async (args: Route.LoaderArgs) => {
       selectedVersion.id === latestVersion.id
     );
 
-    const gitStatus = selectedRepo?.filePath
-      ? getGitStatus(selectedRepo.filePath)
+    const gitStatus = selectedCourse?.filePath
+      ? getGitStatus(selectedCourse.filePath)
       : null;
 
     return {
-      repos,
+      courses,
       standaloneVideos,
-      selectedRepo,
+      selectedCourse,
       versions,
       selectedVersion,
       isLatestVersion,
@@ -240,7 +239,7 @@ export const loader = async (args: Route.LoaderArgs) => {
 export default function Component(props: Route.ComponentProps) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const selectedRepoId = searchParams.get("courseId");
+  const selectedCourseId = searchParams.get("courseId");
   const { state: viewState, dispatch } = useCourseViewReducer();
   const {
     isAddCourseModalOpen,
@@ -265,13 +264,13 @@ export default function Component(props: Route.ComponentProps) {
   const { startExportUpload, startBatchExportUpload } =
     useContext(UploadContext);
 
-  useFocusRevalidate({ enabled: !!selectedRepoId, intervalMs: 5000 });
+  useFocusRevalidate({ enabled: !!selectedCourseId, intervalMs: 5000 });
 
   const deleteVideoFetcher = useFetcher();
   const deleteVideoFileFetcher = useFetcher();
   const deleteLessonFetcher = useFetcher();
   const revealVideoFetcher = useFetcher();
-  const archiveRepoFetcher = useFetcher();
+  const archiveCourseFetcher = useFetcher();
   const gitPushFetcher = useFetcher();
   const reorderLessonFetcher = useFetcher();
   const reorderSectionFetcher = useFetcher();
@@ -374,12 +373,12 @@ export default function Component(props: Route.ComponentProps) {
   );
 
   const loaderData = props.loaderData;
-  const repos = loaderData.repos;
-  const currentRepo = loaderData.selectedRepo;
+  const courses = loaderData.courses;
+  const currentCourse = loaderData.selectedCourse;
 
   const allFlatLessons = useMemo(
     () =>
-      (currentRepo?.sections ?? []).flatMap((section, sectionIdx) =>
+      (currentCourse?.sections ?? []).flatMap((section, sectionIdx) =>
         section.lessons.map((lesson, lessonIdx) => ({
           id: lesson.id,
           number: `${sectionIdx + 1}.${lessonIdx + 1}`,
@@ -392,12 +391,12 @@ export default function Component(props: Route.ComponentProps) {
           sectionNumber: sectionIdx + 1,
         }))
       ),
-    [currentRepo?.sections]
+    [currentCourse?.sections]
   );
 
   const dependencyMap = useMemo(() => {
     const map: Record<string, string[]> = {};
-    for (const section of currentRepo?.sections ?? []) {
+    for (const section of currentCourse?.sections ?? []) {
       for (const lesson of section.lessons) {
         if (lesson.dependencies && lesson.dependencies.length > 0) {
           map[lesson.id] = lesson.dependencies;
@@ -405,11 +404,11 @@ export default function Component(props: Route.ComponentProps) {
       }
     }
     return map;
-  }, [currentRepo?.sections]);
+  }, [currentCourse?.sections]);
 
   const fsStatusCounts = useMemo(() => {
     const counts = { ghost: 0, real: 0, todo: 0 };
-    for (const section of currentRepo?.sections ?? []) {
+    for (const section of currentCourse?.sections ?? []) {
       for (const lesson of section.lessons) {
         const passesPriority =
           priorityFilter.length === 0 ||
@@ -445,7 +444,7 @@ export default function Component(props: Route.ComponentProps) {
       }
     }
     return counts;
-  }, [currentRepo?.sections, priorityFilter, iconFilter, searchQuery]);
+  }, [currentCourse?.sections, priorityFilter, iconFilter, searchQuery]);
 
   const handleBatchExport = () => {
     if (!loaderData.selectedVersion) return;
@@ -455,9 +454,9 @@ export default function Component(props: Route.ComponentProps) {
   return (
     <div className="flex h-screen bg-background text-foreground">
       <AppSidebar
-        repos={repos}
+        courses={courses}
         standaloneVideos={loaderData.standaloneVideos}
-        selectedCourseId={selectedRepoId}
+        selectedCourseId={selectedCourseId}
         isAddCourseModalOpen={isAddCourseModalOpen}
         setIsAddCourseModalOpen={(open) =>
           dispatch({ type: "set-add-course-modal-open", open })
@@ -473,12 +472,12 @@ export default function Component(props: Route.ComponentProps) {
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-6">
-          {currentRepo ? (
+          {currentCourse ? (
             <>
               {/* Title + version + actions */}
               <div className="flex items-center gap-2 mb-2">
                 <h1 className="text-2xl font-bold flex items-center gap-2">
-                  {currentRepo.name}
+                  {currentCourse.name}
                   {loaderData.selectedVersion &&
                     loaderData.versions.length > 1 && (
                       <button
@@ -495,10 +494,10 @@ export default function Component(props: Route.ComponentProps) {
                     )}
                 </h1>
                 <ActionsDropdown
-                  currentRepo={currentRepo}
+                  currentCourse={currentCourse}
                   data={loaderData}
                   dispatch={dispatch}
-                  archiveRepoFetcher={archiveRepoFetcher}
+                  archiveCourseFetcher={archiveCourseFetcher}
                   gitPushFetcher={gitPushFetcher}
                   handleBatchExport={handleBatchExport}
                 />
@@ -507,7 +506,7 @@ export default function Component(props: Route.ComponentProps) {
               {/* Stats */}
               <div className="mb-10">
                 <StatsBar
-                  selectedRepo={loaderData.selectedRepo}
+                  selectedCourse={loaderData.selectedCourse}
                   gitStatus={loaderData.gitStatus}
                 />
               </div>
@@ -515,7 +514,7 @@ export default function Component(props: Route.ComponentProps) {
               {/* Next Up */}
               <div className="mb-14">
                 <NextTodoCard
-                  sections={currentRepo.sections}
+                  sections={currentCourse.sections}
                   data={loaderData}
                   navigate={navigate}
                   addVideoToLessonId={addVideoToLessonId}
@@ -548,7 +547,7 @@ export default function Component(props: Route.ComponentProps) {
               </div>
 
               <SectionGrid
-                currentRepo={currentRepo}
+                currentCourse={currentCourse}
                 data={loaderData}
                 sensors={sensors}
                 handleSectionDragEnd={handleSectionDragEnd}
@@ -600,7 +599,7 @@ export default function Component(props: Route.ComponentProps) {
               {loaderData.selectedVersion && (
                 <CreateSectionModal
                   repoVersionId={loaderData.selectedVersion.id}
-                  maxOrder={currentRepo.sections.length}
+                  maxOrder={currentCourse.sections.length}
                   open={isCreateSectionModalOpen}
                   onOpenChange={(open) =>
                     dispatch({ type: "set-create-section-modal-open", open })
@@ -611,7 +610,7 @@ export default function Component(props: Route.ComponentProps) {
             </>
           ) : (
             <NoCourseView
-              repos={repos}
+              courses={courses}
               standaloneVideos={loaderData.standaloneVideos}
               dispatch={dispatch}
               navigate={navigate}
@@ -630,9 +629,9 @@ export default function Component(props: Route.ComponentProps) {
       />
 
       <RouteModals
-        currentRepo={currentRepo}
+        currentCourse={currentCourse}
         data={loaderData}
-        selectedCourseId={selectedRepoId}
+        selectedCourseId={selectedCourseId}
         viewState={viewState}
         dispatch={dispatch}
         navigate={navigate}

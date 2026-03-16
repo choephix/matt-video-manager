@@ -23,16 +23,16 @@ const lessonPathSchema = Schema.String.pipe(
   })
 );
 
-const updateRepoSchema = Schema.Struct({
+const updateCourseSchema = Schema.Struct({
   filePath: Schema.String,
   // The lesson files that have been modified, i.e. moved from one path to another
   modifiedLessons: Schema.Record({
     key: lessonPathSchema,
     value: lessonPathSchema,
   }),
-  // The lesson files that have been added, i.e. new files that have been added to the repo
+  // The lesson files that have been added, i.e. new files that have been added to the course repo
   addedLessons: Schema.Array(lessonPathSchema),
-  // The lesson files that have been deleted, i.e. files that have been removed from the repo
+  // The lesson files that have been deleted, i.e. files that have been removed from the course repo
   deletedLessons: Schema.Array(lessonPathSchema),
 });
 
@@ -40,7 +40,7 @@ const serializeSectionAndLesson = (sectionPath: string, lessonPath: string) => {
   return `${sectionPath}/${lessonPath}`;
 };
 
-export class UpdateRepoError extends Data.TaggedError("UpdateRepoError")<{
+export class UpdateCourseError extends Data.TaggedError("UpdateCourseError")<{
   cause: unknown;
 }> {}
 
@@ -56,7 +56,7 @@ const parseSectionAndLesson = (path: string) => {
 
   if (pathParseResult === notFound) {
     return Effect.die(
-      new UpdateRepoError({
+      new UpdateCourseError({
         cause: `Invalid lesson path: ${path}`,
       })
     );
@@ -68,7 +68,7 @@ const parseSectionAndLesson = (path: string) => {
 export const action = async (args: Route.ActionArgs) => {
   const body = await args.request.json();
   return Effect.gen(function* () {
-    const decoded = yield* Schema.decodeUnknown(updateRepoSchema)(body);
+    const decoded = yield* Schema.decodeUnknown(updateCourseSchema)(body);
 
     const addedLessons = [...decoded.addedLessons];
     const deletedLessons = [...decoded.deletedLessons];
@@ -76,21 +76,19 @@ export const action = async (args: Route.ActionArgs) => {
 
     const db = yield* DBFunctionsService;
 
-    // Fetch the current repo
-    const baseRepo = yield* db.getCourseByFilePath(decoded.filePath);
+    const baseCourse = yield* db.getCourseByFilePath(decoded.filePath);
 
     // Get the latest version - updates should only affect latest version
-    const latestVersion = yield* db.getLatestCourseVersion(baseRepo.id);
+    const latestVersion = yield* db.getLatestCourseVersion(baseCourse.id);
 
     if (!latestVersion) {
       return yield* new NotLatestVersionError({
-        message: `No version found for repo at path '${decoded.filePath}'`,
+        message: `No version found for course at path '${decoded.filePath}'`,
       });
     }
 
-    // Fetch the repo with sections for only the latest version
-    const repo = yield* db.getCourseWithSectionsByVersion({
-      repoId: baseRepo.id,
+    const courseWithSections = yield* db.getCourseWithSectionsByVersion({
+      repoId: baseCourse.id,
       versionId: latestVersion.id,
     });
 
@@ -98,7 +96,7 @@ export const action = async (args: Route.ActionArgs) => {
 
     const sectionPathToSectionId = new Map<string, string>();
 
-    for (const section of repo.sections) {
+    for (const section of courseWithSections.sections) {
       sectionPathToSectionId.set(section.path, section.id);
     }
 
@@ -122,7 +120,7 @@ export const action = async (args: Route.ActionArgs) => {
       return section!.id;
     });
 
-    for (const section of repo.sections) {
+    for (const section of courseWithSections.sections) {
       for (const lesson of section.lessons) {
         // Skip ghost lessons — they don't exist on the filesystem
         // and shouldn't be matched against filesystem changes
@@ -154,7 +152,7 @@ export const action = async (args: Route.ActionArgs) => {
 
       if (lesson && lesson.videos && lesson.videos.length > 0) {
         // Throw an error and abort the update if a deleted lesson has an attached video
-        return yield* new UpdateRepoError({
+        return yield* new UpdateCourseError({
           cause: `Cannot delete lesson at path '${lessonPath}' because it has attached videos.`,
         });
       }
@@ -171,7 +169,7 @@ export const action = async (args: Route.ActionArgs) => {
       if (!existingLessonId) {
         return yield* new LessonNotFoundError({
           lessonPath,
-          message: `Lesson in modifiedLessons not found in the repo`,
+          message: `Lesson in modifiedLessons not found in the course`,
         });
       }
 
@@ -259,12 +257,12 @@ export const action = async (args: Route.ActionArgs) => {
     // 5. After all updates, check for any sections that have no lessons left
     //    - Delete or archive empty sections as needed (only for the latest version)
 
-    const repoAfterUpdates = yield* db.getCourseWithSectionsByVersion({
-      repoId: repo.id,
+    const courseAfterUpdates = yield* db.getCourseWithSectionsByVersion({
+      repoId: courseWithSections.id,
       versionId: latestVersion.id,
     });
 
-    const sectionsWithNoLessons = repoAfterUpdates.sections.filter(
+    const sectionsWithNoLessons = courseAfterUpdates.sections.filter(
       (section) => section.lessons.length === 0
     );
 

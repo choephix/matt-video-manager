@@ -45,7 +45,7 @@ import { useNavigate, useFetcher } from "react-router";
 type Fetcher = ReturnType<typeof useFetcher>;
 
 export function SectionGrid({
-  currentRepo,
+  currentCourse,
   data,
   sensors,
   handleSectionDragEnd,
@@ -75,7 +75,7 @@ export function SectionGrid({
   deleteVideoFileFetcher,
   deleteVideoFetcher,
 }: {
-  currentRepo: NonNullable<LoaderData["selectedRepo"]>;
+  currentCourse: NonNullable<LoaderData["selectedCourse"]>;
   data: LoaderData;
   sensors: ReturnType<typeof useSensors>;
   handleSectionDragEnd: (
@@ -158,17 +158,17 @@ export function SectionGrid({
   }, []);
 
   // Optimistic section reordering
-  let displaySections = currentRepo.sections;
+  let displaySections = currentCourse.sections;
   const pendingSectionReorder = reorderSectionFetcher.formData;
   if (pendingSectionReorder) {
     const sectionIds = JSON.parse(
       pendingSectionReorder.get("sectionIds") as string
     ) as string[];
-    const sectionMap = new Map(currentRepo.sections.map((s) => [s.id, s]));
+    const sectionMap = new Map(currentCourse.sections.map((s) => [s.id, s]));
     const reordered = sectionIds
       .map((id) => sectionMap.get(id))
-      .filter(Boolean) as typeof currentRepo.sections;
-    if (reordered.length === currentRepo.sections.length) {
+      .filter(Boolean) as typeof currentCourse.sections;
+    if (reordered.length === currentCourse.sections.length) {
       displaySections = reordered;
     }
   }

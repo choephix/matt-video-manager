@@ -35,13 +35,13 @@ export const loader = async (args: Route.LoaderArgs) => {
     const db = yield* DBFunctionsService;
 
     const video = yield* db.getVideoWithClipsById(videoId);
-    const repos = yield* db.getCourses();
+    const courses = yield* db.getCourses();
 
-    const reposWithSections = yield* Effect.all(
-      repos.map((repo) => db.getCourseWithSectionsById(repo.id))
+    const coursesWithSections = yield* Effect.all(
+      courses.map((course) => db.getCourseWithSectionsById(course.id))
     );
 
-    return { video, repos: reposWithSections };
+    return { video, courses: coursesWithSections };
   }).pipe(
     Effect.tapErrorCause((e) => Console.dir(e, { depth: null })),
     Effect.catchTag("NotFoundError", () => {
@@ -217,17 +217,17 @@ export const action = async (args: Route.ActionArgs) => {
 };
 
 export default function Component(props: Route.ComponentProps) {
-  const { video, repos } = props.loaderData;
+  const { video, courses } = props.loaderData;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
-  const [selectedRepoId, setSelectedRepoId] = useState<string>("");
+  const [selectedCourseId, setSelectedCourseId] = useState<string>("");
   const [selectedSectionId, setSelectedSectionId] = useState<string>("");
   const [selectedLessonId, setSelectedLessonId] = useState<string>("");
   const [newLessonName, setNewLessonName] = useState<string>("");
 
-  const selectedRepo = repos.find((r) => r.id === selectedRepoId);
-  const selectedVersion = selectedRepo?.versions[0];
+  const selectedCourse = courses.find((r) => r.id === selectedCourseId);
+  const selectedVersion = selectedCourse?.versions[0];
   const sections = selectedVersion?.sections ?? [];
 
   const selectedSection = sections.find((s) => s.id === selectedSectionId);
@@ -241,7 +241,7 @@ export default function Component(props: Route.ComponentProps) {
 
   return (
     <div className="flex h-screen bg-background text-foreground">
-      <AppSidebar repos={repos} standaloneVideos={[]} plans={[]} />
+      <AppSidebar courses={courses} standaloneVideos={[]} plans={[]} />
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto p-6">
@@ -265,9 +265,9 @@ export default function Component(props: Route.ComponentProps) {
             <div className="space-y-2">
               <Label>Course</Label>
               <Select
-                value={selectedRepoId}
+                value={selectedCourseId}
                 onValueChange={(value) => {
-                  setSelectedRepoId(value);
+                  setSelectedCourseId(value);
                   setSelectedSectionId("");
                   setSelectedLessonId("");
                 }}
@@ -276,9 +276,9 @@ export default function Component(props: Route.ComponentProps) {
                   <SelectValue placeholder="Select a course..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {repos.map((repo) => (
-                    <SelectItem key={repo.id} value={repo.id}>
-                      {repo.name}
+                  {courses.map((course) => (
+                    <SelectItem key={course.id} value={course.id}>
+                      {course.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -293,7 +293,7 @@ export default function Component(props: Route.ComponentProps) {
                   setSelectedSectionId(value);
                   setSelectedLessonId("");
                 }}
-                disabled={!selectedRepoId}
+                disabled={!selectedCourseId}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a section..." />

@@ -34,7 +34,7 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useFetcher, useLocation, useNavigate } from "react-router";
 
 export interface AppSidebarProps {
-  repos: Array<{
+  courses: Array<{
     id: string;
     name: string;
   }>;
@@ -52,7 +52,7 @@ export interface AppSidebarProps {
 }
 
 export function AppSidebar({
-  repos,
+  courses,
   standaloneVideos,
   plans,
   showPlansSection = false,
@@ -64,7 +64,7 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const archiveRepoFetcher = useFetcher();
+  const archiveCourseFetcher = useFetcher();
   const archiveVideoFetcher = useFetcher();
   const revealVideoFetcher = useFetcher();
   const deletePlanFetcher = useFetcher();
@@ -131,33 +131,33 @@ export function AppSidebar({
           </Button>
         </div>
         <div className="space-y-0.5">
-          {repos.map((repo) => (
-            <ContextMenu key={repo.id}>
+          {courses.map((course) => (
+            <ContextMenu key={course.id}>
               <ContextMenuTrigger asChild>
                 <button
                   className={cn(
                     "w-full text-left text-sm px-2 py-1.5 rounded-md hover:bg-accent transition-colors",
-                    selectedCourseId === repo.id &&
+                    selectedCourseId === course.id &&
                       "bg-muted text-foreground/90"
                   )}
                   onMouseDown={(e) => {
                     if (!isLeftClick(e)) return;
-                    navigate(`/?courseId=${repo.id}`, {
+                    navigate(`/?courseId=${course.id}`, {
                       preventScrollReset: true,
                     });
                   }}
                 >
-                  {repo.name}
+                  {course.name}
                 </button>
               </ContextMenuTrigger>
               <ContextMenuContent>
                 <ContextMenuItem
                   onSelect={() => {
-                    archiveRepoFetcher.submit(
+                    archiveCourseFetcher.submit(
                       { archived: "true" },
                       {
                         method: "post",
-                        action: `/api/courses/${repo.id}/archive`,
+                        action: `/api/courses/${course.id}/archive`,
                       }
                     );
                   }}

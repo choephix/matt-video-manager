@@ -49,9 +49,6 @@ export const courses = createTable("course", {
     .default(sql`CURRENT_TIMESTAMP`),
 });
 
-/** @deprecated Use `courses` instead. Will be removed after repo-to-course rename is complete. */
-export const repos = courses;
-
 export const courseVersions = createTable("course_version", {
   id: varchar("id", { length: 255 })
     .notNull()
@@ -69,9 +66,6 @@ export const courseVersions = createTable("course_version", {
     .notNull()
     .default(sql`CURRENT_TIMESTAMP`),
 });
-
-/** @deprecated Use `courseVersions` instead. Will be removed after repo-to-course rename is complete. */
-export const repoVersions = courseVersions;
 
 export const sections = createTable("section", {
   id: varchar("id", { length: 255 })

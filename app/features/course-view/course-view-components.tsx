@@ -30,14 +30,14 @@ import { Input } from "@/components/ui/input";
 import type { LoaderData } from "./course-view-types";
 
 export function StatsBar({
-  selectedRepo,
+  selectedCourse,
   gitStatus,
 }: {
-  selectedRepo: LoaderData["selectedRepo"];
+  selectedCourse: LoaderData["selectedCourse"];
   gitStatus: LoaderData["gitStatus"];
 }) {
   const totalLessonsWithVideos =
-    selectedRepo?.sections.reduce((acc, section) => {
+    selectedCourse?.sections.reduce((acc, section) => {
       return (
         acc +
         section.lessons.filter(
@@ -47,7 +47,7 @@ export function StatsBar({
     }, 0) ?? 0;
 
   const totalLessons =
-    selectedRepo?.sections.reduce((acc, section) => {
+    selectedCourse?.sections.reduce((acc, section) => {
       return (
         acc +
         section.lessons.filter((lesson) => lesson.fsStatus !== "ghost").length
@@ -55,7 +55,7 @@ export function StatsBar({
     }, 0) ?? 0;
 
   const totalVideos =
-    selectedRepo?.sections.reduce((acc, section) => {
+    selectedCourse?.sections.reduce((acc, section) => {
       return (
         acc +
         section.lessons.reduce((lessonAcc, lesson) => {
@@ -65,7 +65,7 @@ export function StatsBar({
     }, 0) ?? 0;
 
   const totalDurationSeconds =
-    selectedRepo?.sections.reduce((acc, section) => {
+    selectedCourse?.sections.reduce((acc, section) => {
       return (
         acc +
         section.lessons.reduce((lessonAcc, lesson) => {
@@ -310,12 +310,12 @@ export function FilterBar({
 }
 
 export function NoCourseView({
-  repos,
+  courses,
   standaloneVideos,
   dispatch,
   navigate,
 }: {
-  repos: LoaderData["repos"];
+  courses: LoaderData["courses"];
   standaloneVideos: LoaderData["standaloneVideos"];
   dispatch: (action: courseViewReducer.Action) => void;
   navigate: ReturnType<typeof useNavigate>;
@@ -366,25 +366,25 @@ export function NoCourseView({
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {repos.map((repo) => (
+        {courses.map((course) => (
           <Link
-            key={repo.id}
-            to={`?courseId=${repo.id}`}
+            key={course.id}
+            to={`?courseId=${course.id}`}
             className="block border rounded-lg p-6 hover:border-primary/50 transition-colors cursor-pointer"
             onClick={(e) => e.preventDefault()}
             onMouseDown={(e) => {
-              if (e.button === 0) navigate(`?courseId=${repo.id}`);
+              if (e.button === 0) navigate(`?courseId=${course.id}`);
             }}
           >
             <div className="flex items-center justify-between mb-1">
-              <h3 className="text-lg font-semibold">{repo.name}</h3>
+              <h3 className="text-lg font-semibold">{course.name}</h3>
             </div>
-            <p className="text-sm text-muted-foreground">{repo.filePath}</p>
+            <p className="text-sm text-muted-foreground">{course.filePath}</p>
           </Link>
         ))}
       </div>
 
-      {repos.length === 0 && (
+      {courses.length === 0 && (
         <div className="text-center py-12">
           <div className="mb-4">
             <VideoIcon className="w-16 h-16 mx-auto text-muted-foreground/50" />
@@ -409,7 +409,7 @@ export function NoCourseView({
 }
 
 export function RouteModals({
-  currentRepo,
+  currentCourse,
   data,
   selectedCourseId,
   viewState,
@@ -417,7 +417,7 @@ export function RouteModals({
   navigate,
   moveLessonFetcher,
 }: {
-  currentRepo: NonNullable<LoaderData["selectedRepo"]> | undefined;
+  currentCourse: NonNullable<LoaderData["selectedCourse"]> | undefined;
   data: LoaderData;
   selectedCourseId: string | null;
   viewState: {
@@ -454,9 +454,9 @@ export function RouteModals({
 }) {
   return (
     <>
-      {currentRepo && data.selectedVersion && (
+      {currentCourse && data.selectedVersion && (
         <CreateVersionModal
-          repoId={currentRepo.id}
+          repoId={currentCourse.id}
           sourceVersionId={data.selectedVersion.id}
           isOpen={viewState.isCreateVersionModalOpen}
           onOpenChange={(open) =>
@@ -465,9 +465,9 @@ export function RouteModals({
         />
       )}
 
-      {currentRepo && data.selectedVersion && (
+      {currentCourse && data.selectedVersion && (
         <EditVersionModal
-          repoId={currentRepo.id}
+          repoId={currentCourse.id}
           versionId={data.selectedVersion.id}
           currentName={data.selectedVersion.name}
           currentDescription={data.selectedVersion.description}
@@ -478,10 +478,10 @@ export function RouteModals({
         />
       )}
 
-      {currentRepo && (
+      {currentCourse && (
         <RenameCourseModal
-          courseId={currentRepo.id}
-          currentName={currentRepo.name}
+          courseId={currentCourse.id}
+          currentName={currentCourse.name}
           open={viewState.isRenameCourseModalOpen}
           onOpenChange={(open) =>
             dispatch({ type: "set-rename-course-modal-open", open })
@@ -505,9 +505,9 @@ export function RouteModals({
         />
       )}
 
-      {currentRepo && data.selectedVersion && data.versions.length > 1 && (
+      {currentCourse && data.selectedVersion && data.versions.length > 1 && (
         <DeleteVersionModal
-          repoId={currentRepo.id}
+          repoId={currentCourse.id}
           versionId={data.selectedVersion.id}
           versionName={data.selectedVersion.name}
           open={viewState.isDeleteVersionModalOpen}
@@ -517,9 +517,9 @@ export function RouteModals({
         />
       )}
 
-      {currentRepo && data.selectedVersion && (
+      {currentCourse && data.selectedVersion && (
         <ClearVideoFilesModal
-          repoId={currentRepo.id}
+          repoId={currentCourse.id}
           versionId={data.selectedVersion.id}
           versionName={data.selectedVersion.name}
           open={viewState.isClearVideoFilesModalOpen}
@@ -529,10 +529,10 @@ export function RouteModals({
         />
       )}
 
-      {currentRepo && (
+      {currentCourse && (
         <RewriteCoursePathModal
-          courseId={currentRepo.id}
-          currentPath={currentRepo.filePath}
+          courseId={currentCourse.id}
+          currentPath={currentCourse.filePath}
           open={viewState.isRewriteCoursePathModalOpen}
           onOpenChange={(open) =>
             dispatch({ type: "set-rewrite-course-path-modal-open", open })
@@ -540,11 +540,11 @@ export function RouteModals({
         />
       )}
 
-      {currentRepo && (
+      {currentCourse && (
         <CopyTranscriptModal
           mode="course"
-          courseName={currentRepo.name}
-          sections={currentRepo.sections}
+          courseName={currentCourse.name}
+          sections={currentCourse.sections}
           open={viewState.isCopyTranscriptModalOpen}
           onOpenChange={(open) =>
             dispatch({ type: "set-copy-transcript-modal-open", open })
@@ -564,12 +564,12 @@ export function RouteModals({
         />
       )}
 
-      {viewState.moveLessonState && currentRepo && (
+      {viewState.moveLessonState && currentCourse && (
         <MoveLessonModal
           lessonId={viewState.moveLessonState.lessonId}
           lessonTitle={viewState.moveLessonState.lessonTitle}
           currentSectionId={viewState.moveLessonState.currentSectionId}
-          sections={currentRepo.sections}
+          sections={currentCourse.sections}
           open={true}
           onOpenChange={(open) => {
             if (!open) dispatch({ type: "close-move-lesson" });
@@ -578,12 +578,12 @@ export function RouteModals({
         />
       )}
 
-      {viewState.moveVideoState && currentRepo && (
+      {viewState.moveVideoState && currentCourse && (
         <MoveVideoModal
           videoId={viewState.moveVideoState.videoId}
           videoPath={viewState.moveVideoState.videoPath}
           currentLessonId={viewState.moveVideoState.currentLessonId}
-          sections={currentRepo.sections}
+          sections={currentCourse.sections}
           open={true}
           onOpenChange={(open) => {
             if (!open) dispatch({ type: "close-move-video" });

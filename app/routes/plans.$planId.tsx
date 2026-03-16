@@ -55,7 +55,7 @@ import {
 export const loader = async ({ params }: Route.LoaderArgs) => {
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
-    const [repos, standaloneVideos, plans] = yield* Effect.all([
+    const [courses, standaloneVideos, plans] = yield* Effect.all([
       db.getCourses(),
       db.getStandaloneVideos(),
       db.getPlans(),
@@ -69,7 +69,7 @@ export const loader = async ({ params }: Route.LoaderArgs) => {
         message: `Plan with id ${params.planId} not found`,
       });
     }
-    return { plan, plans, repos, standaloneVideos };
+    return { plan, plans, courses, standaloneVideos };
   }).pipe(
     Effect.tapErrorCause((e) => Console.dir(e, { depth: null })),
     Effect.catchTag("NotFoundError", (e) => {
@@ -158,7 +158,7 @@ function PlanDetailPageContent({ loaderData }: Route.ComponentProps) {
     return (
       <div className="flex h-screen bg-background text-foreground">
         <AppSidebar
-          repos={loaderData.repos}
+          courses={loaderData.courses}
           standaloneVideos={loaderData.standaloneVideos}
           plans={loaderData.plans}
         />
@@ -360,7 +360,7 @@ function PlanDetailPageContent({ loaderData }: Route.ComponentProps) {
   return (
     <div className="flex h-screen bg-background text-foreground">
       <AppSidebar
-        repos={loaderData.repos}
+        courses={loaderData.courses}
         standaloneVideos={loaderData.standaloneVideos}
         plans={loaderData.plans}
       />

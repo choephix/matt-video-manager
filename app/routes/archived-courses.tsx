@@ -20,14 +20,14 @@ export const meta: Route.MetaFunction = () => {
 export const loader = async (_args: Route.LoaderArgs) => {
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
-    const archivedRepos = yield* db.getArchivedCourses();
-    const repos = yield* db.getCourses();
+    const archivedCourses = yield* db.getArchivedCourses();
+    const courses = yield* db.getCourses();
     const standaloneVideos = yield* db.getStandaloneVideos();
     const plans = yield* db.getPlans();
 
     return {
-      archivedRepos,
-      repos,
+      archivedCourses,
+      courses,
       standaloneVideos,
       plans,
     };
@@ -37,8 +37,8 @@ export const loader = async (_args: Route.LoaderArgs) => {
   );
 };
 
-export default function ArchivedRepos(props: Route.ComponentProps) {
-  const unarchiveRepoFetcher = useFetcher();
+export default function ArchivedCourses(props: Route.ComponentProps) {
+  const unarchiveCourseFetcher = useFetcher();
   const data = props.loaderData;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -50,7 +50,7 @@ export default function ArchivedRepos(props: Route.ComponentProps) {
   return (
     <div className="flex h-screen bg-background text-foreground">
       <AppSidebar
-        repos={data.repos}
+        courses={data.courses}
         standaloneVideos={data.standaloneVideos}
         selectedCourseId={selectedCourseId}
         isAddCourseModalOpen={isAddCourseModalOpen}
@@ -65,13 +65,13 @@ export default function ArchivedRepos(props: Route.ComponentProps) {
         <div className="p-8">
           <h1 className="text-3xl font-bold mb-6">Archived Courses</h1>
 
-          {data.archivedRepos.length === 0 ? (
+          {data.archivedCourses.length === 0 ? (
             <p className="text-muted-foreground">No archived courses.</p>
           ) : (
             <div className="space-y-2">
-              {data.archivedRepos.map((repo) => (
+              {data.archivedCourses.map((course) => (
                 <div
-                  key={repo.id}
+                  key={course.id}
                   className="flex items-center justify-between p-4 border rounded-lg"
                 >
                   <div>
@@ -80,30 +80,30 @@ export default function ArchivedRepos(props: Route.ComponentProps) {
                       className="h-auto p-0 font-medium text-base"
                       onMouseDown={(e) => {
                         if (!isLeftClick(e)) return;
-                        navigate(`/?courseId=${repo.id}`, {
+                        navigate(`/?courseId=${course.id}`, {
                           preventScrollReset: true,
                         });
                       }}
                     >
-                      {repo.name}
+                      {course.name}
                     </Button>
                     <p className="text-sm text-muted-foreground">
-                      {repo.filePath}
+                      {course.filePath}
                     </p>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      unarchiveRepoFetcher.submit(
+                      unarchiveCourseFetcher.submit(
                         { archived: "false" },
                         {
                           method: "post",
-                          action: `/api/courses/${repo.id}/archive`,
+                          action: `/api/courses/${course.id}/archive`,
                         }
                       );
                     }}
-                    disabled={unarchiveRepoFetcher.state !== "idle"}
+                    disabled={unarchiveCourseFetcher.state !== "idle"}
                   >
                     <ArchiveRestore className="w-4 h-4 mr-2" />
                     Unarchive

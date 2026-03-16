@@ -313,16 +313,16 @@ describe("ClipService", () => {
       const sectionId = crypto.randomUUID();
       const lessonId = crypto.randomUUID();
 
-      // Insert repo, repoVersion, section, lesson directly
-      await testDb.insert(schema.repos).values({
+      // Insert course, courseVersion, section, lesson directly
+      await testDb.insert(schema.courses).values({
         id: crypto.randomUUID(),
         filePath: "/test",
-        name: "Test Repo",
+        name: "Test Course",
       });
 
-      await testDb.insert(schema.repoVersions).values({
+      await testDb.insert(schema.courseVersions).values({
         id: repoVersionId,
-        repoId: (await testDb.query.repos.findFirst())!.id,
+        repoId: (await testDb.query.courses.findFirst())!.id,
         name: "v1",
       });
 

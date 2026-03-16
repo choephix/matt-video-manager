@@ -21,13 +21,13 @@ export const loader = async (_args: Route.LoaderArgs) => {
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
     const archivedPlans = yield* db.getArchivedPlans();
-    const repos = yield* db.getCourses();
+    const courses = yield* db.getCourses();
     const standaloneVideos = yield* db.getStandaloneVideos();
     const plans = yield* db.getPlans();
 
     return {
       archivedPlans,
-      repos,
+      courses,
       standaloneVideos,
       plans,
     };
@@ -50,7 +50,7 @@ export default function ArchivedPlans(props: Route.ComponentProps) {
   return (
     <div className="flex h-screen bg-background text-foreground">
       <AppSidebar
-        repos={data.repos}
+        courses={data.courses}
         standaloneVideos={data.standaloneVideos}
         selectedCourseId={selectedCourseId}
         isAddCourseModalOpen={isAddCourseModalOpen}

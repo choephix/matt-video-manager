@@ -41,7 +41,7 @@ export const loader = async () => {
     const db = yield* DBFunctionsService;
     const fs = yield* FileSystem.FileSystem;
 
-    const repos = yield* db.getCourses();
+    const courses = yield* db.getCourses();
     const videos = yield* db.getAllStandaloneVideos();
     const sidebarVideos = yield* db.getStandaloneVideos();
     const archivedVideos = yield* db.getArchivedStandaloneVideos();
@@ -57,7 +57,7 @@ export const loader = async () => {
     });
 
     return {
-      repos,
+      courses,
       videos,
       sidebarVideos,
       archivedVideos,
@@ -75,7 +75,7 @@ export const loader = async () => {
 
 export default function Component(props: Route.ComponentProps) {
   const {
-    repos,
+    courses,
     videos,
     sidebarVideos,
     archivedVideos,
@@ -102,7 +102,7 @@ export default function Component(props: Route.ComponentProps) {
   return (
     <div className="flex h-screen bg-background text-foreground">
       <AppSidebar
-        repos={repos}
+        courses={courses}
         standaloneVideos={sidebarVideos}
         plans={plans}
         isAddStandaloneVideoModalOpen={isAddVideoOpen}

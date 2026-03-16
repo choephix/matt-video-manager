@@ -162,7 +162,7 @@ export function SortableLessonItem({
     .map((depId) => {
       const dep = allFlatLessons.find((l) => l.id === depId);
       if (!dep) return null;
-      const depLesson = data.selectedRepo?.sections
+      const depLesson = data.selectedCourse?.sections
         .flatMap((s) => s.lessons)
         .find((l) => l.id === depId);
       const depPriority = depLesson?.priority ?? 2;

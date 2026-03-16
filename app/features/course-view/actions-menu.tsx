@@ -36,17 +36,17 @@ import { useContext } from "react";
 import { UploadContext } from "@/features/upload-manager/upload-context";
 
 export function ActionsDropdown({
-  currentRepo,
+  currentCourse,
   data,
   dispatch,
-  archiveRepoFetcher,
+  archiveCourseFetcher,
   gitPushFetcher,
   handleBatchExport,
 }: {
-  currentRepo: NonNullable<LoaderData["selectedRepo"]>;
+  currentCourse: NonNullable<LoaderData["selectedCourse"]>;
   data: LoaderData;
   dispatch: (action: courseViewReducer.Action) => void;
-  archiveRepoFetcher: ReturnType<typeof useFetcher>;
+  archiveCourseFetcher: ReturnType<typeof useFetcher>;
   gitPushFetcher: ReturnType<typeof useFetcher>;
   handleBatchExport: () => void;
 }) {
@@ -77,7 +77,7 @@ export function ActionsDropdown({
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() => {
-            startDropboxPublish(currentRepo.id, currentRepo.name);
+            startDropboxPublish(currentCourse.id, currentCourse.name);
           }}
         >
           <Send className="w-4 h-4 mr-2" />
@@ -98,7 +98,7 @@ export function ActionsDropdown({
                   {},
                   {
                     method: "post",
-                    action: `/api/courses/${currentRepo.id}/git-push`,
+                    action: `/api/courses/${currentCourse.id}/git-push`,
                   }
                 )
                 .then(() => {
@@ -156,7 +156,7 @@ export function ActionsDropdown({
               </span>
             </div>
           </DropdownMenuItem>
-          {currentRepo.sections.some((s) =>
+          {currentCourse.sections.some((s) =>
             s.lessons.some((l) => l.fsStatus !== "ghost" && l.videos.length > 0)
           ) && (
             <DropdownMenuItem
@@ -178,13 +178,13 @@ export function ActionsDropdown({
           )}
           <DropdownMenuItem
             onSelect={() => {
-              archiveRepoFetcher.submit(
+              archiveCourseFetcher.submit(
                 {
-                  archived: currentRepo.archived ? "false" : "true",
+                  archived: currentCourse.archived ? "false" : "true",
                 },
                 {
                   method: "post",
-                  action: `/api/courses/${currentRepo.id}/archive`,
+                  action: `/api/courses/${currentCourse.id}/archive`,
                 }
               );
             }}
@@ -192,11 +192,11 @@ export function ActionsDropdown({
             <Archive className="w-4 h-4 mr-2" />
             <div className="flex flex-col">
               <span className="font-medium">
-                {currentRepo.archived ? "Unarchive" : "Archive"} Course
+                {currentCourse.archived ? "Unarchive" : "Archive"} Course
               </span>
               <span className="text-xs text-muted-foreground">
-                {currentRepo.archived
-                  ? "Restore course to active repos"
+                {currentCourse.archived
+                  ? "Restore course to active list"
                   : "Hide course from main view"}
               </span>
             </div>
@@ -245,7 +245,7 @@ export function ActionsDropdown({
               {data.showMediaFilesList && (
                 <DropdownMenuItem asChild>
                   <Link
-                    to={`/courses/${currentRepo.id}/versions/${data.selectedVersion.id}/media-files`}
+                    to={`/courses/${currentCourse.id}/versions/${data.selectedVersion.id}/media-files`}
                   >
                     <Film className="w-4 h-4 mr-2" />
                     <div className="flex flex-col">
@@ -259,7 +259,7 @@ export function ActionsDropdown({
               )}
               {data.versions.length > 1 && (
                 <DropdownMenuItem asChild>
-                  <Link to={`/courses/${currentRepo.id}/changelog`}>
+                  <Link to={`/courses/${currentCourse.id}/changelog`}>
                     <FileText className="w-4 h-4 mr-2" />
                     <div className="flex flex-col">
                       <span className="font-medium">Preview Changelog</span>
