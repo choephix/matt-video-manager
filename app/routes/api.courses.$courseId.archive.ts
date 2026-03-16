@@ -1,5 +1,5 @@
 import { Console, Effect, Schema } from "effect";
-import type { Route } from "./+types/api.repos.$repoId.archive";
+import type { Route } from "./+types/api.courses.$courseId.archive";
 import { DBFunctionsService } from "@/services/db-service.server";
 import { runtimeLive } from "@/services/layer.server";
 import { withDatabaseDump } from "@/services/dump-service";
@@ -17,7 +17,7 @@ const archiveRepoSchema = Schema.Struct({
 export const action = async (args: Route.ActionArgs) => {
   const formData = await args.request.formData();
   const formDataObject = Object.fromEntries(formData);
-  const repoId = args.params.repoId;
+  const repoId = args.params.courseId;
 
   return Effect.gen(function* () {
     const { archived } =

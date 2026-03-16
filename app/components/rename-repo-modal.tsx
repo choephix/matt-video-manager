@@ -26,7 +26,7 @@ export function RenameRepoModal(props: {
         </DialogHeader>
         <fetcher.Form
           method="post"
-          action={`/api/repos/${props.repoId}/rename-repo`}
+          action={`/api/courses/${props.repoId}/rename-repo`}
           className="space-y-4 py-4"
           onSubmit={async (e) => {
             e.preventDefault();

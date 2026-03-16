@@ -29,7 +29,7 @@ export function EditVersionModal(props: {
         </DialogHeader>
         <fetcher.Form
           method="post"
-          action={`/api/repos/${props.repoId}/rename-version`}
+          action={`/api/courses/${props.repoId}/rename-version`}
           className="space-y-4 py-4"
           onSubmit={async (e) => {
             e.preventDefault();

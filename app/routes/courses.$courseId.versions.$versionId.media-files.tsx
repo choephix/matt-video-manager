@@ -6,10 +6,10 @@ import { Console, Effect } from "effect";
 import { ArrowLeft, Check, Copy } from "lucide-react";
 import { useState } from "react";
 import { data, Link, useNavigate } from "react-router";
-import type { Route } from "./+types/repos.$repoId.versions.$versionId.media-files";
+import type { Route } from "./+types/courses.$courseId.versions.$versionId.media-files";
 
 export const loader = async (args: Route.LoaderArgs) => {
-  const { repoId, versionId } = args.params;
+  const { courseId: repoId, versionId } = args.params;
 
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
@@ -71,11 +71,11 @@ export default function Component(props: Route.ComponentProps) {
       <div className="max-w-4xl mx-auto p-6">
         <div className="mb-6 flex items-center justify-between">
           <Link
-            to={`/?repoId=${repo.id}&versionId=${version.id}`}
+            to={`/?courseId=${repo.id}&versionId=${version.id}`}
             onClick={(e) => e.preventDefault()}
             onMouseDown={(e) => {
               if (e.button === 0)
-                navigate(`/?repoId=${repo.id}&versionId=${version.id}`);
+                navigate(`/?courseId=${repo.id}&versionId=${version.id}`);
             }}
           >
             <Button variant="ghost" size="sm">

@@ -403,7 +403,7 @@ describe("getShouldShowLastFrameOverlay", () => {
 describe("getBackButtonUrl", () => {
   it("returns lesson-specific URL when repoId and lessonId exist", () => {
     expect(getBackButtonUrl("repo-1", "lesson-1")).toBe(
-      "/?repoId=repo-1#lesson-1"
+      "/?courseId=repo-1#lesson-1"
     );
   });
 

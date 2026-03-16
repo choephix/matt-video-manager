@@ -37,7 +37,7 @@ const performSSEDropboxPublish = async (
   callbacks: SSEDropboxPublishCallbacks,
   signal: AbortSignal
 ): Promise<void> => {
-  const response = await fetch("/api/repos/publish-to-dropbox-sse", {
+  const response = await fetch("/api/courses/publish-to-dropbox-sse", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ repoId: params.repoId }),

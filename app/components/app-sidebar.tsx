@@ -141,7 +141,7 @@ export function AppSidebar({
                   )}
                   onMouseDown={(e) => {
                     if (!isLeftClick(e)) return;
-                    navigate(`/?repoId=${repo.id}`, {
+                    navigate(`/?courseId=${repo.id}`, {
                       preventScrollReset: true,
                     });
                   }}
@@ -156,7 +156,7 @@ export function AppSidebar({
                       { archived: "true" },
                       {
                         method: "post",
-                        action: `/api/repos/${repo.id}/archive`,
+                        action: `/api/courses/${repo.id}/archive`,
                       }
                     );
                   }}

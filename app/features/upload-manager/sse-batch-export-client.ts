@@ -43,7 +43,7 @@ const performSSEBatchExport = async (
   signal: AbortSignal
 ): Promise<void> => {
   const response = await fetch(
-    `/api/repoVersions/${params.versionId}/batch-export-sse`,
+    `/api/courseVersions/${params.versionId}/batch-export-sse`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -42,7 +42,7 @@ export function RewriteRepoPathModal(props: {
         </DialogHeader>
         <fetcher.Form
           method="post"
-          action={`/api/repos/${props.repoId}/rewrite-path`}
+          action={`/api/courses/${props.repoId}/rewrite-path`}
           className="space-y-4 py-4"
           onSubmit={() => {
             setError(null);

@@ -98,7 +98,7 @@ export function ActionsDropdown({
                   {},
                   {
                     method: "post",
-                    action: `/api/repos/${currentRepo.id}/git-push`,
+                    action: `/api/courses/${currentRepo.id}/git-push`,
                   }
                 )
                 .then(() => {
@@ -184,7 +184,7 @@ export function ActionsDropdown({
                 },
                 {
                   method: "post",
-                  action: `/api/repos/${currentRepo.id}/archive`,
+                  action: `/api/courses/${currentRepo.id}/archive`,
                 }
               );
             }}

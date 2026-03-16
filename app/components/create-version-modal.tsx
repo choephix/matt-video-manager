@@ -39,7 +39,7 @@ export function CreateVersionModal({
         </DialogHeader>
         <fetcher.Form
           method="post"
-          action={`/api/repos/${repoId}/create-version`}
+          action={`/api/courses/${repoId}/create-version`}
           className="space-y-4 py-4"
         >
           <input type="hidden" name="sourceVersionId" value={sourceVersionId} />

@@ -369,11 +369,11 @@ export function NoRepoView({
         {repos.map((repo) => (
           <Link
             key={repo.id}
-            to={`?repoId=${repo.id}`}
+            to={`?courseId=${repo.id}`}
             className="block border rounded-lg p-6 hover:border-primary/50 transition-colors cursor-pointer"
             onClick={(e) => e.preventDefault()}
             onMouseDown={(e) => {
-              if (e.button === 0) navigate(`?repoId=${repo.id}`);
+              if (e.button === 0) navigate(`?courseId=${repo.id}`);
             }}
           >
             <div className="flex items-center justify-between mb-1">
@@ -498,7 +498,7 @@ export function RouteModals({
             dispatch({ type: "set-version-selector-modal-open", open })
           }
           onSelectVersion={(versionId) => {
-            navigate(`?repoId=${selectedRepoId}&versionId=${versionId}`, {
+            navigate(`?courseId=${selectedRepoId}&versionId=${versionId}`, {
               preventScrollReset: true,
             });
           }}

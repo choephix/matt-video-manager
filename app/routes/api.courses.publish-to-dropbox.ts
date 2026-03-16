@@ -1,6 +1,6 @@
 import { CourseRepoParserService } from "@/services/course-repo-parser";
 import { resolveSectionsWithVideos } from "@/services/publish-to-dropbox";
-import type { Route } from "./+types/api.repos.add";
+import type { Route } from "./+types/api.courses.publish-to-dropbox";
 import {
   Array,
   Config,

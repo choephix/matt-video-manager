@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:5173/api/repos/update";
+const API_URL = "http://localhost:5173/api/courses/update";
 
 const payload = {
   filePath: "/home/mattpocock/repos/ai/ai-typescript-toolkit/exercises",

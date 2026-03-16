@@ -8,10 +8,10 @@ import { ArrowLeft } from "lucide-react";
 import Markdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import { data, Link, useNavigate } from "react-router";
-import type { Route } from "./+types/repos.$repoId.changelog";
+import type { Route } from "./+types/courses.$courseId.changelog";
 
 export const loader = async (args: Route.LoaderArgs) => {
-  const { repoId } = args.params;
+  const { courseId: repoId } = args.params;
 
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
@@ -47,10 +47,10 @@ export default function Component(props: Route.ComponentProps) {
       <div className="max-w-3xl mx-auto p-6">
         <div className="mb-6">
           <Link
-            to={`/?repoId=${repo.id}`}
+            to={`/?courseId=${repo.id}`}
             onClick={(e) => e.preventDefault()}
             onMouseDown={(e) => {
-              if (e.button === 0) navigate(`/?repoId=${repo.id}`);
+              if (e.button === 0) navigate(`/?courseId=${repo.id}`);
             }}
           >
             <Button variant="ghost" size="sm">

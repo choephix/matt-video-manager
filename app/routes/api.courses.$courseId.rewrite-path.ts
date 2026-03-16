@@ -1,5 +1,5 @@
 import { Console, Effect, Schema } from "effect";
-import type { Route } from "./+types/api.repos.$repoId.rewrite-path";
+import type { Route } from "./+types/api.courses.$courseId.rewrite-path";
 import { DBFunctionsService } from "@/services/db-service.server";
 import { runtimeLive } from "@/services/layer.server";
 import { withDatabaseDump } from "@/services/dump-service";
@@ -20,7 +20,7 @@ const rewritePathSchema = Schema.Struct({
 export const action = async (args: Route.ActionArgs) => {
   const formData = await args.request.formData();
   const formDataObject = Object.fromEntries(formData);
-  const repoId = args.params.repoId;
+  const repoId = args.params.courseId;
 
   return Effect.gen(function* () {
     const { filePath } =

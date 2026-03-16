@@ -3,7 +3,7 @@ import { withDatabaseDump } from "@/services/dump-service";
 import { runtimeLive } from "@/services/layer.server";
 import { Config, Console, Effect, Schema } from "effect";
 import { FileSystem } from "@effect/platform";
-import type { Route } from "./+types/api.repos.$repoId.create-version";
+import type { Route } from "./+types/api.courses.$courseId.create-version";
 import path from "node:path";
 import { data } from "react-router";
 
@@ -28,7 +28,7 @@ export const action = async ({ request, params }: Route.ActionArgs) => {
     const { version: newVersion, videoIdMappings } =
       yield* db.copyVersionStructure({
         sourceVersionId: result.sourceVersionId,
-        repoId: params.repoId,
+        repoId: params.courseId,
         newVersionName: result.name,
       });
 

@@ -42,7 +42,7 @@ export default function ArchivedPlans(props: Route.ComponentProps) {
   const data = props.loaderData;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const selectedRepoId = searchParams.get("repoId");
+  const selectedRepoId = searchParams.get("courseId");
   const [isAddRepoModalOpen, setIsAddRepoModalOpen] = useState(false);
   const [isAddStandaloneVideoModalOpen, setIsAddStandaloneVideoModalOpen] =
     useState(false);

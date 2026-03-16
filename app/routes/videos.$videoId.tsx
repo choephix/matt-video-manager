@@ -150,7 +150,7 @@ export default function VideoLayout({ loaderData }: Route.ComponentProps) {
 
   // Build back button URL
   const backButtonUrl =
-    repoId && lessonId ? `/?repoId=${repoId}#${lessonId}` : "/videos";
+    repoId && lessonId ? `/?courseId=${repoId}#${lessonId}` : "/videos";
 
   // Build breadcrumb text
   const breadcrumb = isStandalone

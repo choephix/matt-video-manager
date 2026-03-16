@@ -35,14 +35,14 @@ export function ClearVideoFilesModal(props: {
         </DialogHeader>
         <fetcher.Form
           method="post"
-          action={`/api/repos/${props.repoId}/clear-video-files`}
+          action={`/api/courses/${props.repoId}/clear-video-files`}
           className="space-y-4 py-4"
           onSubmit={async (e) => {
             e.preventDefault();
             const formData = new FormData(e.currentTarget);
             await fetcher.submit(formData, {
               method: "post",
-              action: `/api/repos/${props.repoId}/clear-video-files`,
+              action: `/api/courses/${props.repoId}/clear-video-files`,
             });
             props.onOpenChange(false);
           }}

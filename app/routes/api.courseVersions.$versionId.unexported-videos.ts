@@ -2,7 +2,7 @@ import { Config, Effect } from "effect";
 import { FileSystem } from "@effect/platform";
 import { DBFunctionsService } from "@/services/db-service.server";
 import { runtimeLive } from "@/services/layer.server";
-import type { Route } from "./+types/api.repoVersions.$versionId.unexported-videos";
+import type { Route } from "./+types/api.courseVersions.$versionId.unexported-videos";
 import { data } from "react-router";
 import path from "node:path";
 

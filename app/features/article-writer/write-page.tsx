@@ -145,7 +145,7 @@ export function WritePage({ videoId, loaderData }: WritePageProps) {
     memorySaveTimeoutRef.current = setTimeout(() => {
       updateMemoryFetcher.submit(
         { memory },
-        { method: "post", action: `/api/repos/${repoId}/update-memory` }
+        { method: "post", action: `/api/courses/${repoId}/update-memory` }
       );
     }, 750);
     return () => {

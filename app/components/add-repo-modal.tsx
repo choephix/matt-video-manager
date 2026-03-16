@@ -32,7 +32,7 @@ export function AddRepoModal({ isOpen, onOpenChange }: AddRepoModalProps) {
         </DialogHeader>
         <addRepoFetcher.Form
           method="post"
-          action="/api/repos/add"
+          action="/api/courses/add"
           className="space-y-4 py-4"
         >
           <div className="space-y-2">

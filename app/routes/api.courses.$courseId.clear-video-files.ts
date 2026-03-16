@@ -1,5 +1,5 @@
 import { Effect, Schema } from "effect";
-import type { Route } from "./+types/api.repos.$repoId.clear-video-files";
+import type { Route } from "./+types/api.courses.$courseId.clear-video-files";
 import { DBFunctionsService } from "@/services/db-service.server";
 import { runtimeLive } from "@/services/layer.server";
 import { FileSystem } from "@effect/platform";

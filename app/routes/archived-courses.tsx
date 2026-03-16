@@ -7,7 +7,7 @@ import { ArchiveRestore } from "lucide-react";
 import { useState } from "react";
 import { isLeftClick } from "@/lib/utils";
 import { useFetcher, useNavigate, useSearchParams } from "react-router";
-import type { Route } from "./+types/archived-repos";
+import type { Route } from "./+types/archived-courses";
 
 export const meta: Route.MetaFunction = () => {
   return [
@@ -42,7 +42,7 @@ export default function ArchivedRepos(props: Route.ComponentProps) {
   const data = props.loaderData;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const selectedRepoId = searchParams.get("repoId");
+  const selectedRepoId = searchParams.get("courseId");
   const [isAddRepoModalOpen, setIsAddRepoModalOpen] = useState(false);
   const [isAddStandaloneVideoModalOpen, setIsAddStandaloneVideoModalOpen] =
     useState(false);
@@ -80,7 +80,7 @@ export default function ArchivedRepos(props: Route.ComponentProps) {
                       className="h-auto p-0 font-medium text-base"
                       onMouseDown={(e) => {
                         if (!isLeftClick(e)) return;
-                        navigate(`/?repoId=${repo.id}`, {
+                        navigate(`/?courseId=${repo.id}`, {
                           preventScrollReset: true,
                         });
                       }}
@@ -99,7 +99,7 @@ export default function ArchivedRepos(props: Route.ComponentProps) {
                         { archived: "false" },
                         {
                           method: "post",
-                          action: `/api/repos/${repo.id}/archive`,
+                          action: `/api/courses/${repo.id}/archive`,
                         }
                       );
                     }}

@@ -34,14 +34,14 @@ export function DeleteVersionModal(props: {
         </DialogHeader>
         <fetcher.Form
           method="post"
-          action={`/api/repos/${props.repoId}/delete-version`}
+          action={`/api/courses/${props.repoId}/delete-version`}
           className="space-y-4 py-4"
           onSubmit={async (e) => {
             e.preventDefault();
             const formData = new FormData(e.currentTarget);
             await fetcher.submit(formData, {
               method: "post",
-              action: `/api/repos/${props.repoId}/delete-version`,
+              action: `/api/courses/${props.repoId}/delete-version`,
             });
             props.onOpenChange(false);
           }}

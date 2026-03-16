@@ -1,5 +1,5 @@
 import { CourseRepoParserService } from "@/services/course-repo-parser";
-import type { Route } from "./+types/api.repos.add";
+import type { Route } from "./+types/api.courses.add";
 import { Console, Effect, Schema } from "effect";
 import { runtimeLive } from "@/services/layer.server";
 import { DBFunctionsService } from "@/services/db-service.server";

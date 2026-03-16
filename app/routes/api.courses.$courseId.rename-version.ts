@@ -1,5 +1,5 @@
 import { Console, Effect, Schema } from "effect";
-import type { Route } from "./+types/api.repos.$repoId.rename-version";
+import type { Route } from "./+types/api.courses.$courseId.rename-version";
 import { DBFunctionsService } from "@/services/db-service.server";
 import { runtimeLive } from "@/services/layer.server";
 import { withDatabaseDump } from "@/services/dump-service";

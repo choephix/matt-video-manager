@@ -61,7 +61,7 @@ export const meta: Route.MetaFunction = ({ data }) => {
 
 export const loader = async (args: Route.LoaderArgs) => {
   const url = new URL(args.request.url);
-  const selectedRepoId = url.searchParams.get("repoId");
+  const selectedRepoId = url.searchParams.get("courseId");
   const selectedVersionId = url.searchParams.get("versionId");
 
   return Effect.gen(function* () {
@@ -240,7 +240,7 @@ export const loader = async (args: Route.LoaderArgs) => {
 export default function Component(props: Route.ComponentProps) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const selectedRepoId = searchParams.get("repoId");
+  const selectedRepoId = searchParams.get("courseId");
   const { state: viewState, dispatch } = useCourseViewReducer();
   const {
     isAddRepoModalOpen,

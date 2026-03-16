@@ -1,28 +1,26 @@
 import { Console, Effect, Schema } from "effect";
-import type { Route } from "./+types/api.repos.$repoId.rename-repo";
+import type { Route } from "./+types/api.courses.$courseId.update-memory";
 import { DBFunctionsService } from "@/services/db-service.server";
 import { runtimeLive } from "@/services/layer.server";
 import { withDatabaseDump } from "@/services/dump-service";
 import { data } from "react-router";
 
-const renameRepoSchema = Schema.Struct({
-  name: Schema.String.pipe(
-    Schema.minLength(1, { message: () => "Course name cannot be empty" })
-  ),
+const updateMemorySchema = Schema.Struct({
+  memory: Schema.String,
 });
 
 export const action = async (args: Route.ActionArgs) => {
   const formData = await args.request.formData();
   const formDataObject = Object.fromEntries(formData);
-  const repoId = args.params.repoId;
+  const repoId = args.params.courseId;
 
   return Effect.gen(function* () {
-    const { name } =
-      yield* Schema.decodeUnknown(renameRepoSchema)(formDataObject);
+    const { memory } =
+      yield* Schema.decodeUnknown(updateMemorySchema)(formDataObject);
 
     const db = yield* DBFunctionsService;
 
-    yield* db.updateCourseName({ repoId, name: name.trim() });
+    yield* db.updateCourseMemory({ repoId, memory });
 
     return { success: true };
   }).pipe(
