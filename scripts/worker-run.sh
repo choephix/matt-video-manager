@@ -83,32 +83,7 @@ if [ -z "$PR_TITLE" ] || [ -z "$PR_DESCRIPTION" ]; then
   exit 1
 fi
 
-# --- Push branch ---
+# --- Write PR metadata for the workflow to pick up ---
 
-git config user.name "claude-code[bot]"
-git config user.email "claude-code[bot]@users.noreply.github.com"
-
-if ! git diff --quiet HEAD origin/main 2>/dev/null; then
-  git push origin "$BRANCH_NAME"
-  HAS_CHANGES=true
-else
-  git add -A
-  if ! git diff --cached --quiet; then
-    git commit -m "RALPH: ${TASK_PROMPT}"
-    git push origin "$BRANCH_NAME"
-    HAS_CHANGES=true
-  else
-    echo "No changes to push"
-    HAS_CHANGES=false
-  fi
-fi
-
-# --- Open PR ---
-
-if [ "$HAS_CHANGES" = "true" ]; then
-  gh pr create \
-    --base main \
-    --head "$BRANCH_NAME" \
-    --title "$PR_TITLE" \
-    --body "$PR_DESCRIPTION"
-fi
+echo "$PR_TITLE" > /tmp/pr_title.txt
+echo "$PR_DESCRIPTION" > /tmp/pr_description.txt

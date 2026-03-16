@@ -50,3 +50,39 @@ jobs:
           ISSUE_NUMBERS: ${{ inputs.issue_numbers }}
           TASK_PROMPT: ${{ inputs.prompt }}
         run: bash scripts/worker-run.sh "$BRANCH_NAME" "$ISSUE_NUMBERS" "$TASK_PROMPT"
+
+      - name: Push branch
+        env:
+          BRANCH_NAME: ${{ inputs.branch_name }}
+          TASK_PROMPT: ${{ inputs.prompt }}
+        run: |
+          git config user.name "claude-code[bot]"
+          git config user.email "claude-code[bot]@users.noreply.github.com"
+          if ! git diff --quiet HEAD origin/main 2>/dev/null; then
+            git push origin "$BRANCH_NAME"
+            echo "has_changes=true" >> "$GITHUB_ENV"
+          else
+            git add -A
+            if ! git diff --cached --quiet; then
+              git commit -m "RALPH: ${TASK_PROMPT}"
+              git push origin "$BRANCH_NAME"
+              echo "has_changes=true" >> "$GITHUB_ENV"
+            else
+              echo "No changes to push"
+              echo "has_changes=false" >> "$GITHUB_ENV"
+            fi
+          fi
+
+      - name: Open PR
+        if: env.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: ${{ inputs.branch_name }}
+        run: |
+          PR_TITLE=$(cat /tmp/pr_title.txt)
+          PR_DESCRIPTION=$(cat /tmp/pr_description.txt)
+          gh pr create \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --title "$PR_TITLE" \
+            --body "$PR_DESCRIPTION"
