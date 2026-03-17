@@ -46,28 +46,12 @@ sync_to_sandbox() {
   docker cp "$bundle_host" "${CONTAINER_NAME}:/tmp/repo.bundle"
   rm -f "$bundle_host"
 
-  if docker exec "$CONTAINER_NAME" test -d "$SANDBOX_REPO_DIR/.git"; then
-    # Discard any leftover changes from previous sessions
-    docker exec -w "$SANDBOX_REPO_DIR" "$CONTAINER_NAME" \
-      git checkout -f "$BRANCH" 2>/dev/null || true
-    docker exec -w "$SANDBOX_REPO_DIR" "$CONTAINER_NAME" \
-      git reset --hard HEAD
-    docker exec -w "$SANDBOX_REPO_DIR" "$CONTAINER_NAME" \
-      git clean -fdx -e node_modules
-
-    # Now sync to match local
-    docker exec -w "$SANDBOX_REPO_DIR" "$CONTAINER_NAME" \
-      git fetch /tmp/repo.bundle "${BRANCH}:refs/ralph/sync" --force
-    docker exec -w "$SANDBOX_REPO_DIR" "$CONTAINER_NAME" \
-      git checkout "$BRANCH"
-    docker exec -w "$SANDBOX_REPO_DIR" "$CONTAINER_NAME" \
-      git reset --hard refs/ralph/sync
-  else
-    docker exec "$CONTAINER_NAME" \
-      git clone /tmp/repo.bundle "$SANDBOX_REPO_DIR"
-    docker exec -w "$SANDBOX_REPO_DIR" "$CONTAINER_NAME" \
-      git checkout "$BRANCH"
-  fi
+  # Raze and clone fresh to guarantee a clean slate
+  docker exec "$CONTAINER_NAME" rm -rf "$SANDBOX_REPO_DIR"
+  docker exec "$CONTAINER_NAME" \
+    git clone /tmp/repo.bundle "$SANDBOX_REPO_DIR"
+  docker exec -w "$SANDBOX_REPO_DIR" "$CONTAINER_NAME" \
+    git checkout "$BRANCH"
 
   # Point origin to the real GitHub remote
   docker exec -w "$SANDBOX_REPO_DIR" "$CONTAINER_NAME" \
