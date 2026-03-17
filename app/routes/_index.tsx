@@ -5,8 +5,8 @@ import { CreateSectionModal } from "@/components/create-section-modal";
 import { VideoModal } from "@/components/video-player";
 import { useCourseViewReducer } from "@/hooks/use-course-view-reducer";
 import { useFocusRevalidate } from "@/hooks/use-focus-revalidate";
-import { getVideoPath } from "@/lib/get-video";
 import { Button } from "@/components/ui/button";
+import { CoursePublishService } from "@/services/course-publish-service";
 import { DBFunctionsService } from "@/services/db-service.server";
 import { FeatureFlagService } from "@/services/feature-flag-service";
 import { runtimeLive } from "@/services/layer.server";
@@ -123,14 +123,15 @@ export const loader = async (args: Route.LoaderArgs) => {
           })
         );
 
+    const publishService = yield* CoursePublishService;
     const hasExportedVideoMap: Record<string, boolean> = {};
     const videos = selectedCourse?.sections.flatMap((s) =>
       s.lessons.flatMap((l) => l.videos)
     );
     yield* Effect.forEach(videos ?? [], (video) =>
       Effect.gen(function* () {
-        hasExportedVideoMap[video.id] = yield* fs.exists(
-          getVideoPath(video.id)
+        hasExportedVideoMap[video.id] = yield* publishService.isExported(
+          video.id
         );
       })
     );

@@ -21,7 +21,7 @@ import {
   DEFAULT_UNCHECKED_PATHS,
 } from "@/services/text-writing-agent";
 import { getStandaloneVideoFilePath } from "@/services/standalone-video-files";
-import { getVideoPath } from "@/lib/get-video";
+import { CoursePublishService } from "@/services/course-publish-service";
 import { FilePreviewModal } from "@/components/file-preview-modal";
 import { AddLinkModal } from "@/components/add-link-modal";
 import { StandaloneFileManagementModal } from "@/components/standalone-file-management-modal";
@@ -36,8 +36,9 @@ export const loader = async (args: Route.LoaderArgs) => {
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
     const fs = yield* FileSystem.FileSystem;
+    const publishService = yield* CoursePublishService;
     const video = yield* db.getVideoWithClipsById(videoId);
-    const videoExists = yield* fs.exists(getVideoPath(videoId));
+    const videoExists = yield* publishService.isExported(videoId);
 
     // Check YouTube auth status
     const youtubeAuth = yield* db.getYoutubeAuth();

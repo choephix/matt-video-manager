@@ -1,4 +1,4 @@
-import { getVideoPath } from "@/lib/get-video";
+import { CoursePublishService } from "@/services/course-publish-service";
 import { DBFunctionsService } from "@/services/db-service.server";
 import { runtimeLive } from "@/services/layer.server";
 import { FileSystem } from "@effect/platform";
@@ -11,8 +11,19 @@ export const loader = async (args: Route.LoaderArgs) => {
   const { videoId } = args.params;
   const request = args.request;
 
+  const videoPath = await Effect.gen(function* () {
+    const publishService = yield* CoursePublishService;
+    return yield* publishService.resolveExportPath(videoId);
+  }).pipe(
+    Effect.catchAll(() => Effect.succeed(null)),
+    runtimeLive.runPromise
+  );
+
+  if (!videoPath) {
+    return new Response(null, { status: 404 });
+  }
+
   try {
-    const videoPath = getVideoPath(videoId);
     const stat = statSync(videoPath);
     const fileSize = stat.size;
 
@@ -67,11 +78,16 @@ export const action = async (args: Route.ActionArgs) => {
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
     const fs = yield* FileSystem.FileSystem;
+    const publishService = yield* CoursePublishService;
 
     // Verify video exists in DB
     yield* db.getVideoById(videoId);
 
-    const videoPath = getVideoPath(videoId);
+    const videoPath = yield* publishService.resolveExportPath(videoId);
+
+    if (!videoPath) {
+      return { success: true, deletedPath: null };
+    }
 
     const exists = yield* fs.exists(videoPath);
     if (!exists) {

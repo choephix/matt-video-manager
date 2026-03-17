@@ -1,4 +1,4 @@
-import { getVideoPath } from "@/lib/get-video";
+import { CoursePublishService } from "@/services/course-publish-service";
 import { postToAiHero } from "@/services/ai-hero-upload-service";
 import { runtimeLive } from "@/services/layer.server";
 import { Effect } from "effect";
@@ -20,8 +20,6 @@ export const action = async (args: Route.ActionArgs) => {
     return Response.json({ error: "Title is required" }, { status: 400 });
   }
 
-  const filePath = getVideoPath(videoId);
-
   // Set up SSE stream
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -33,6 +31,14 @@ export const action = async (args: Route.ActionArgs) => {
       };
 
       const program = Effect.gen(function* () {
+        const publishService = yield* CoursePublishService;
+        const filePath = yield* publishService.resolveExportPath(videoId);
+
+        if (!filePath) {
+          sendEvent("error", { message: "Video has not been exported" });
+          return;
+        }
+
         const result = yield* postToAiHero({
           filePath,
           title,

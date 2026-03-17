@@ -14,7 +14,7 @@ import {
   DEFAULT_UNCHECKED_PATHS,
 } from "@/services/text-writing-agent";
 import { getStandaloneVideoFilePath } from "@/services/standalone-video-files";
-import { getVideoPath } from "@/lib/get-video";
+import { CoursePublishService } from "@/services/course-publish-service";
 import { WritePage } from "@/features/article-writer/write-page";
 
 export const loader = async (args: Route.LoaderArgs) => {
@@ -22,9 +22,10 @@ export const loader = async (args: Route.LoaderArgs) => {
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
     const fs = yield* FileSystem.FileSystem;
+    const publishService = yield* CoursePublishService;
     const video = yield* db.getVideoWithClipsById(videoId);
     const globalLinks = yield* db.getLinks();
-    const videoExists = yield* fs.exists(getVideoPath(videoId));
+    const videoExists = yield* publishService.isExported(videoId);
 
     const lesson = video.lesson;
 

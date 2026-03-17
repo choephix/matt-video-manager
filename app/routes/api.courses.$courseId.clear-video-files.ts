@@ -3,7 +3,7 @@ import type { Route } from "./+types/api.courses.$courseId.clear-video-files";
 import { DBFunctionsService } from "@/services/db-service.server";
 import { runtimeLive } from "@/services/layer.server";
 import { FileSystem } from "@effect/platform";
-import { getVideoPath } from "@/lib/get-video";
+import { CoursePublishService } from "@/services/course-publish-service";
 
 const clearVideoFilesSchema = Schema.Struct({
   versionId: Schema.String.pipe(Schema.minLength(1)),
@@ -20,12 +20,14 @@ export const action = async (args: Route.ActionArgs) => {
 
     const db = yield* DBFunctionsService;
     const fs = yield* FileSystem.FileSystem;
+    const publishService = yield* CoursePublishService;
 
     const videoIds = yield* db.getVideoIdsForVersion(versionId);
 
     let deletedCount = 0;
     for (const videoId of videoIds) {
-      const videoPath = getVideoPath(videoId);
+      const videoPath = yield* publishService.resolveExportPath(videoId);
+      if (!videoPath) continue;
       const exists = yield* fs.exists(videoPath);
       if (exists) {
         yield* fs.remove(videoPath);

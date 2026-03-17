@@ -10,11 +10,10 @@ import {
 } from "@/components/ui/context-menu";
 import { UploadContext } from "@/features/upload-manager/upload-context";
 import { useFocusRevalidate } from "@/hooks/use-focus-revalidate";
-import { getVideoPath } from "@/lib/get-video";
 import { formatSecondsToTimeCode } from "@/services/utils";
+import { CoursePublishService } from "@/services/course-publish-service";
 import { DBFunctionsService } from "@/services/db-service.server";
 import { runtimeLive } from "@/services/layer.server";
-import { FileSystem } from "@effect/platform";
 import { Console, Effect } from "effect";
 import {
   Archive,
@@ -39,7 +38,7 @@ export const meta: Route.MetaFunction = () => {
 export const loader = async () => {
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
-    const fs = yield* FileSystem.FileSystem;
+    const publishService = yield* CoursePublishService;
 
     const courses = yield* db.getCourses();
     const videos = yield* db.getAllStandaloneVideos();
@@ -51,8 +50,9 @@ export const loader = async () => {
     const hasExportedVideoMap: Record<string, boolean> = {};
     yield* Effect.forEach([...videos, ...archivedVideos], (video) => {
       return Effect.gen(function* () {
-        const hasExportedVideo = yield* fs.exists(getVideoPath(video.id));
-        hasExportedVideoMap[video.id] = hasExportedVideo;
+        hasExportedVideoMap[video.id] = yield* publishService.isExported(
+          video.id
+        );
       });
     });
 

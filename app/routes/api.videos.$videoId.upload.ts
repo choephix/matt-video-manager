@@ -1,4 +1,4 @@
-import { getVideoPath } from "@/lib/get-video";
+import { CoursePublishService } from "@/services/course-publish-service";
 import { DBFunctionsService } from "@/services/db-service.server";
 import { getValidAccessToken } from "@/services/youtube-auth-service";
 import {
@@ -43,7 +43,6 @@ export const action = async (args: Route.ActionArgs) => {
   }
 
   const thumbnailFilePath = selectedThumbnail.filePath;
-  const filePath = getVideoPath(videoId);
 
   // Set up SSE stream
   const encoder = new TextEncoder();
@@ -56,6 +55,14 @@ export const action = async (args: Route.ActionArgs) => {
       };
 
       const program = Effect.gen(function* () {
+        const publishService = yield* CoursePublishService;
+        const filePath = yield* publishService.resolveExportPath(videoId);
+
+        if (!filePath) {
+          sendEvent("error", { message: "Video has not been exported" });
+          return;
+        }
+
         const accessToken = yield* getValidAccessToken;
 
         const result = yield* uploadVideoToYouTube({

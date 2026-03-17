@@ -1,4 +1,4 @@
-import { getVideoPath } from "@/lib/get-video";
+import { CoursePublishService } from "@/services/course-publish-service";
 import { runtimeLive } from "@/services/layer.server";
 import { Command } from "@effect/platform";
 import { Data, Effect } from "effect";
@@ -196,10 +196,6 @@ export const action = async (args: Route.ActionArgs) => {
     );
   }
 
-  const sourcePath = getVideoPath(videoId);
-  const destFilename = path.basename(sourcePath);
-  const destPath = path.join(bufferPostsPath, destFilename);
-
   // Set up SSE stream
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -211,6 +207,18 @@ export const action = async (args: Route.ActionArgs) => {
       };
 
       const program = Effect.gen(function* () {
+        const publishService = yield* CoursePublishService;
+        const sourcePath = yield* publishService.resolveExportPath(videoId);
+
+        if (!sourcePath) {
+          return yield* new SocialPostError({
+            message: "Video has not been exported",
+          });
+        }
+
+        const destFilename = path.basename(sourcePath);
+        const destPath = path.join(bufferPostsPath, destFilename);
+
         // Stage 1: Copy file to Dropbox folder
         sendEvent("copying", { percentage: 0 });
 
