@@ -21,10 +21,13 @@
 
 ## Ghost entities
 
-| Term              | Definition                                                                                 | Aliases to avoid             |
-| ----------------- | ------------------------------------------------------------------------------------------ | ---------------------------- |
-| **Ghost Lesson**  | A lesson that exists in the database but not yet on the file system (`fsStatus = "ghost"`) | Planned lesson, Draft lesson |
-| **Ghost Section** | A section that exists in the database but not yet on the file system                       | Planned section              |
+| Term                        | Definition                                                                                                                                                                | Aliases to avoid             |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| **Ghost Lesson**            | A lesson that exists in the database but not yet on the file system (`fsStatus = "ghost"`)                                                                                | Planned lesson, Draft lesson |
+| **Ghost Section**           | A section that exists in the database but not yet on the file system                                                                                                      | Planned section              |
+| **Ghost Course**            | A course with no file path (`filePath = NULL`); exists only in the database as a planning space (new)                                                                     | Planned course, Draft course |
+| **Materialize**             | The act of transitioning a ghost entity to a real entity by creating its on-disk representation (new)                                                                     | Create on disk, Realize      |
+| **Materialization Cascade** | The chain reaction when materializing a lesson inside a ghost course: assigns file path to course, materializes section, then materializes lesson — all in one flow (new) | -                            |
 
 ## Video and clips
 
@@ -72,12 +75,13 @@
 
 ## Relationships
 
-- A **Course** is backed by a **CourseRepo** on disk, referenced via `repoPath`
+- A **Course** is either a **Ghost Course** (no file path, planning-only) or backed by a **CourseRepo** on disk, referenced via `repoPath`
+- A **Ghost Course** becomes a real **Course** permanently when a file path is assigned during **Materialization Cascade**; a real course never reverts to ghost
 - A **Course** contains one or more **CourseVersions**
 - A **Course** has exactly one **Draft Version** (the latest CourseVersion) and zero or more **Published Versions**
 - A **CourseVersion** contains ordered **Sections**
 - A **Section** contains ordered **Lessons**
-- A **Lesson** contains one or more **Videos**
+- A **Lesson** contains zero or more **Videos** (ghost lessons have none)
 - A **Video** contains ordered **Clips** and **ClipSections**, interleaved in a shared ordering space
 - A **Video** with at least one **Clip** has an **Export Hash**; a video with no clips is not considered a real video
 - An **Exported Video** file is shared across **CourseVersions** via `{courseId}-{exportHash}.mp4` naming — if clips haven't changed, the hash matches and no re-export is needed
@@ -116,6 +120,24 @@
 
 > **Domain expert:** "Correct. Once published, the version's name, description, and structure are frozen. It cannot be deleted. The **Draft Version** is always the only mutable version."
 
+## Example dialogue: ghost courses (new)
+
+> **Dev:** "What if I want to plan a course but don't have a repo yet?"
+
+> **Domain expert:** "Create a **Ghost Course** — just give it a name. You can add **Ghost Sections** and **Ghost Lessons** freely. It's pure planning, no filesystem needed."
+
+> **Dev:** "What happens when I'm ready to commit one of those lessons to disk?"
+
+> **Domain expert:** "Hit 'Create Real Lesson.' Since the course is a **Ghost Course**, it triggers a **Materialization Cascade** — a modal asks you to point at an existing directory for the file path. Then the **Course**, **Section**, and **Lesson** all **Materialize** in one step."
+
+> **Dev:** "Can the course go back to ghost if I delete that lesson?"
+
+> **Domain expert:** "No. Once a **Course** has a file path, it stays real forever. The repo on disk doesn't disappear just because you removed a lesson."
+
+> **Dev:** "What about deleting a real lesson entirely — not converting to ghost?"
+
+> **Domain expert:** "There's a 'Delete' action that purges from disk and removes from the database in one step. Separate from 'Convert to Ghost,' which keeps the planning entry."
+
 ## Flagged ambiguities
 
 - **"Version"** — Used both for **CourseVersion** (structural snapshots) and implicitly for content history via `previousVersionLessonId`/`previousVersionSectionId` cross-references. These serve different purposes: one is a named milestone, the other is a migration link between versions. Now additionally distinguished as **Draft Version** vs **Published Version** by position (latest = draft).
@@ -123,3 +145,4 @@
 - **"Plan" vs course structure** — A **Plan** (`plans` table) is entirely disconnected from the **Course**/Section/Lesson hierarchy. There is no enforced link between a **PlanLesson** and an actual **Lesson**. The relationship is purely semantic.
 - **"Export Version Key" vs "CourseVersion"** — These are unrelated concepts that both use the word "version." The **Export Version Key** is a build-time constant for cache-busting video exports. A **CourseVersion** is a domain snapshot of course structure. Do not confuse them.
 - **"Clear" / "Delete from file system"** (resolved) — Previously used interchangeably for removing exported video files. Now canonicalized as **Purge**. "Clear" described the mechanism (clearing files), not the domain action. **Purge** captures the intent: deliberately removing a cached render artifact to transition a video back to Unexported status.
+- **"Delete" for lessons** (new) — "Delete" now means two different things depending on context: for a **Ghost Lesson**, it removes the DB row. For a real **Lesson**, it purges from disk AND removes from DB. This is distinct from "Convert to Ghost" which only removes from disk. The UI should make the distinction clear through labeling.
