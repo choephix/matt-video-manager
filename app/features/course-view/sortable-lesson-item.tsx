@@ -1,5 +1,6 @@
 import { AddVideoModal } from "@/components/add-video-modal";
 import { ConvertToGhostModal } from "@/components/convert-to-ghost-modal";
+import { DeleteLessonModal } from "@/components/delete-lesson-modal";
 import {
   DependencySelector,
   type DependencyLessonItem,
@@ -46,6 +47,7 @@ export function SortableLessonItem({
   addVideoToLessonId,
   editLessonId,
   convertToGhostLessonId,
+  deleteLessonId,
   dispatch,
   startExportUpload,
   revealVideoFetcher,
@@ -64,6 +66,7 @@ export function SortableLessonItem({
   addVideoToLessonId: string | null;
   editLessonId: string | null;
   convertToGhostLessonId: string | null;
+  deleteLessonId: string | null;
   dispatch: (action: courseViewReducer.Action) => void;
   startExportUpload: (videoId: string, path: string) => void;
   revealVideoFetcher: ReturnType<typeof useFetcher>;
@@ -421,13 +424,20 @@ export function SortableLessonItem({
                 <ContextMenuItem
                   variant="destructive"
                   onSelect={() => {
-                    deleteLessonFetcher.submit(
-                      { lessonId: lesson.id },
-                      {
-                        method: "post",
-                        action: "/api/lessons/delete",
-                      }
-                    );
+                    if (isGhost) {
+                      deleteLessonFetcher.submit(
+                        { lessonId: lesson.id },
+                        {
+                          method: "post",
+                          action: "/api/lessons/delete",
+                        }
+                      );
+                    } else {
+                      dispatch({
+                        type: "set-delete-lesson-id",
+                        lessonId: lesson.id,
+                      });
+                    }
                   }}
                 >
                   <Trash2 className="w-4 h-4" />
@@ -517,6 +527,20 @@ export function SortableLessonItem({
             onOpenChange={(open) => {
               dispatch({
                 type: "set-edit-lesson-id",
+                lessonId: open ? lesson.id : null,
+              });
+            }}
+          />
+        )}
+        {!isGhost && (
+          <DeleteLessonModal
+            lessonId={lesson.id}
+            lessonTitle={lesson.path}
+            filesOnDisk={data.lessonHasFilesMap[lesson.id] ?? []}
+            open={deleteLessonId === lesson.id}
+            onOpenChange={(open) => {
+              dispatch({
+                type: "set-delete-lesson-id",
                 lessonId: open ? lesson.id : null,
               });
             }}

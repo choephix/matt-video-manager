@@ -178,6 +178,22 @@ describe("courseViewReducer", () => {
         .getState();
       expect(state2.convertToGhostLessonId).toBeNull();
     });
+
+    it("22b. set-delete-lesson-id: sets and clears", () => {
+      const tester = createTester();
+      const state1 = tester
+        .send({
+          type: "set-delete-lesson-id",
+          lessonId: "lesson-4",
+        })
+        .getState();
+      expect(state1.deleteLessonId).toBe("lesson-4");
+
+      const state2 = tester
+        .send({ type: "set-delete-lesson-id", lessonId: null })
+        .getState();
+      expect(state2.deleteLessonId).toBeNull();
+    });
   });
 
   describe("Video player", () => {

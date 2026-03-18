@@ -248,6 +248,7 @@ export default function Component(props: Route.ComponentProps) {
     editLessonId,
     editSectionId,
     convertToGhostLessonId,
+    deleteLessonId,
     deleteSectionId,
     videoPlayerState,
     priorityFilter,
@@ -521,6 +522,7 @@ export default function Component(props: Route.ComponentProps) {
                     addVideoToLessonId={addVideoToLessonId}
                     editLessonId={editLessonId}
                     convertToGhostLessonId={convertToGhostLessonId}
+                    deleteLessonId={deleteLessonId}
                     dispatch={dispatch}
                     startExportUpload={startExportUpload}
                     revealVideoFetcher={revealVideoFetcher}
@@ -572,6 +574,7 @@ export default function Component(props: Route.ComponentProps) {
                 addVideoToLessonId={addVideoToLessonId}
                 editLessonId={editLessonId}
                 convertToGhostLessonId={convertToGhostLessonId}
+                deleteLessonId={deleteLessonId}
                 deleteSectionId={deleteSectionId}
                 dispatch={dispatch}
                 navigate={navigate}

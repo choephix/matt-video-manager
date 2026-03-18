@@ -24,6 +24,7 @@ export function NextTodoCard({
   addVideoToLessonId,
   editLessonId,
   convertToGhostLessonId,
+  deleteLessonId,
   dispatch,
   startExportUpload,
   revealVideoFetcher,
@@ -41,6 +42,7 @@ export function NextTodoCard({
   addVideoToLessonId: string | null;
   editLessonId: string | null;
   convertToGhostLessonId: string | null;
+  deleteLessonId: string | null;
   dispatch: (action: courseViewReducer.Action) => void;
   startExportUpload: (videoId: string, path: string) => void;
   revealVideoFetcher: ReturnType<typeof useFetcher>;
@@ -101,6 +103,7 @@ export function NextTodoCard({
                 addVideoToLessonId={addVideoToLessonId}
                 editLessonId={editLessonId}
                 convertToGhostLessonId={convertToGhostLessonId}
+                deleteLessonId={deleteLessonId}
                 dispatch={dispatch}
                 startExportUpload={startExportUpload}
                 revealVideoFetcher={revealVideoFetcher}

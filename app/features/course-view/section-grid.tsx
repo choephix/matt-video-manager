@@ -67,6 +67,7 @@ export function SectionGrid({
   addVideoToLessonId,
   editLessonId,
   convertToGhostLessonId,
+  deleteLessonId,
   deleteSectionId,
   dispatch,
   navigate,
@@ -116,6 +117,7 @@ export function SectionGrid({
   addVideoToLessonId: string | null;
   editLessonId: string | null;
   convertToGhostLessonId: string | null;
+  deleteLessonId: string | null;
   deleteSectionId: string | null;
   dispatch: (action: courseViewReducer.Action) => void;
   navigate: ReturnType<typeof useNavigate>;
@@ -444,6 +446,7 @@ export function SectionGrid({
                                       convertToGhostLessonId={
                                         convertToGhostLessonId
                                       }
+                                      deleteLessonId={deleteLessonId}
                                       dispatch={dispatch}
                                       startExportUpload={startExportUpload}
                                       revealVideoFetcher={revealVideoFetcher}
