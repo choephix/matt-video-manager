@@ -149,7 +149,7 @@ export function createSectionOps(
 
     // Get repo path from the first section's hierarchy
     const firstSection = yield* db.getSectionWithHierarchyById(sectionIds[0]!);
-    const repoPath = firstSection.repoVersion.repo.filePath;
+    const repoPath = firstSection.repoVersion.repo.filePath!;
 
     // Compute which section directories need filesystem renames
     const sectionRenames = computeSectionRenumberingPlan(
@@ -279,7 +279,7 @@ export function createSectionOps(
       return { success: true, path: section.path };
     }
 
-    const repoPath = section.repoVersion.repo.filePath;
+    const repoPath = section.repoVersion.repo.filePath!;
     const newPath = buildSectionPath(parsed.sectionNumber, newSlug);
 
     // Rename section directory on disk

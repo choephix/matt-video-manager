@@ -138,15 +138,16 @@ export const loader = async (args: Route.LoaderArgs) => {
 
     const hasExplainerFolderMap: Record<string, boolean> = {};
 
-    const lessons =
-      selectedCourse?.sections.flatMap((section) =>
-        section.lessons
-          .filter((lesson) => lesson.fsStatus !== "ghost")
-          .map((lesson) => ({
-            id: lesson.id,
-            fullPath: `${selectedCourse.filePath}/${section.path}/${lesson.path}`,
-          }))
-      ) ?? [];
+    const lessons = selectedCourse?.filePath
+      ? selectedCourse.sections.flatMap((section) =>
+          section.lessons
+            .filter((lesson) => lesson.fsStatus !== "ghost")
+            .map((lesson) => ({
+              id: lesson.id,
+              fullPath: `${selectedCourse.filePath}/${section.path}/${lesson.path}`,
+            }))
+        )
+      : [];
 
     const lessonHasFilesMap: Record<string, { path: string; size: number }[]> =
       {};

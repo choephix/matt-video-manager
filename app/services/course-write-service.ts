@@ -69,7 +69,7 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
           });
         }
 
-        const repoPath = lesson.section.repoVersion.repo.filePath;
+        const repoPath = lesson.section.repoVersion.repo.filePath!;
         const repoVersionId = lesson.section.repoVersionId;
         let sectionPath = lesson.section.path;
         const parsed = parseSectionPath(sectionPath);
@@ -239,7 +239,7 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
         const lesson = yield* db.getLessonWithHierarchyById(lessonId);
 
         if (lesson.fsStatus !== "ghost") {
-          const repoPath = lesson.section.repoVersion.repo.filePath;
+          const repoPath = lesson.section.repoVersion.repo.filePath!;
           const sectionPath = lesson.section.path;
           const parsed = parseSectionPath(sectionPath);
           const sectionNumber = parsed?.sectionNumber ?? 1;
@@ -323,7 +323,7 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
           });
         }
 
-        const repoPath = lesson.section.repoVersion.repo.filePath;
+        const repoPath = lesson.section.repoVersion.repo.filePath!;
         const sectionPath = lesson.section.path;
         const parsed = parseSectionPath(sectionPath);
         const sectionNumber = parsed?.sectionNumber ?? 1;
@@ -427,7 +427,7 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
         );
 
         if (lesson.fsStatus !== "ghost") {
-          const repoPath = lesson.section.repoVersion.repo.filePath;
+          const repoPath = lesson.section.repoVersion.repo.filePath!;
           const sectionPath = lesson.section.path;
 
           yield* repoWrite.renameLesson({
@@ -451,7 +451,7 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
         newOrderIds: readonly string[]
       ) {
         const section = yield* db.getSectionWithHierarchyById(sectionId);
-        const repoPath = section.repoVersion.repo.filePath;
+        const repoPath = section.repoVersion.repo.filePath!;
         const sectionPath = section.path;
 
         const sectionLessons = yield* db.getLessonsBySectionId(sectionId);
@@ -521,7 +521,7 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
         }
 
         // Real lesson: filesystem move + renumber both sections
-        const repoPath = lesson.section.repoVersion.repo.filePath;
+        const repoPath = lesson.section.repoVersion.repo.filePath!;
         const sourceSectionPath = lesson.section.path;
         const targetSection =
           yield* db.getSectionWithHierarchyById(targetSectionId);
@@ -604,7 +604,7 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
         sectionId: string
       ) {
         const section = yield* db.getSectionWithHierarchyById(sectionId);
-        const repoPath = section.repoVersion.repo.filePath;
+        const repoPath = section.repoVersion.repo.filePath!;
         const repoVersionId = section.repoVersionId;
 
         const sectionLessons = yield* db.getLessonsBySectionId(sectionId);

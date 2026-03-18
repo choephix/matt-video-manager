@@ -124,7 +124,7 @@ export const action = async (args: Route.ActionArgs) => {
       const repo = lesson.section.repoVersion.repo;
       const section = lesson.section;
       targetLessonId = lesson.id;
-      lessonDirPath = path.join(repo.filePath, section.path, lesson.path);
+      lessonDirPath = path.join(repo.filePath!, section.path, lesson.path);
     } else {
       // Create a new real lesson at end of section
       const section = yield* db.getSectionWithHierarchyById(sectionId);
@@ -134,7 +134,7 @@ export const action = async (args: Route.ActionArgs) => {
       const slug = toSlug(newLessonName || "new-lesson") || "new-lesson";
 
       const { lessonDirName, lessonNumber } = yield* repoWrite.addLesson({
-        repoPath: repo.filePath,
+        repoPath: repo.filePath!,
         sectionPath: section.path,
         sectionNumber,
         slug,
@@ -151,7 +151,7 @@ export const action = async (args: Route.ActionArgs) => {
       }
 
       targetLessonId = newLesson.id;
-      lessonDirPath = path.join(repo.filePath, section.path, lessonDirName);
+      lessonDirPath = path.join(repo.filePath!, section.path, lessonDirName);
     }
 
     // Merge files from standalone video dir into lesson dir

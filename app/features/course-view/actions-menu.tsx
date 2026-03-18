@@ -50,7 +50,7 @@ export function ActionsDropdown({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">
-        {data.isLatestVersion && (
+        {data.isLatestVersion && currentCourse.filePath && (
           <>
             <DropdownMenuItem
               disabled={!data.selectedVersion}
@@ -80,7 +80,7 @@ export function ActionsDropdown({
           </>
         )}
 
-        {data.gitStatus && data.gitStatus.total > 0 && (
+        {currentCourse.filePath && data.gitStatus && data.gitStatus.total > 0 && (
           <DropdownMenuItem
             disabled={gitPushFetcher.state === "submitting"}
             onSelect={() => {
@@ -131,22 +131,24 @@ export function ActionsDropdown({
               </span>
             </div>
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() =>
-              dispatch({
-                type: "set-rewrite-course-path-modal-open",
-                open: true,
-              })
-            }
-          >
-            <FolderPen className="w-4 h-4 mr-2" />
-            <div className="flex flex-col">
-              <span className="font-medium">Rewrite Course Repo Path</span>
-              <span className="text-xs text-muted-foreground">
-                Change course repo file path
-              </span>
-            </div>
-          </DropdownMenuItem>
+          {currentCourse.filePath && (
+            <DropdownMenuItem
+              onSelect={() =>
+                dispatch({
+                  type: "set-rewrite-course-path-modal-open",
+                  open: true,
+                })
+              }
+            >
+              <FolderPen className="w-4 h-4 mr-2" />
+              <div className="flex flex-col">
+                <span className="font-medium">Rewrite Course Repo Path</span>
+                <span className="text-xs text-muted-foreground">
+                  Change course repo file path
+                </span>
+              </div>
+            </DropdownMenuItem>
+          )}
           {currentCourse.sections.some((s) =>
             s.lessons.some((l) => l.fsStatus !== "ghost" && l.videos.length > 0)
           ) && (

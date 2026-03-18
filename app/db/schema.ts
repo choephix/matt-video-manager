@@ -37,7 +37,7 @@ export const courses = createTable("course", {
     .notNull()
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-  filePath: text("repo_path").notNull(),
+  filePath: text("repo_path"),
   name: text("name").notNull(),
   archived: boolean("archived").notNull().default(false),
   memory: text("memory").notNull().default(""),

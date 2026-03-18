@@ -275,7 +275,7 @@ export const acquireTextWritingContext = Effect.fn("acquireVideoContext")(
       lessonPath = lesson.path;
 
       const fullLessonPath = path.join(
-        repo.filePath,
+        repo.filePath!,
         section.path,
         lesson.path
       );

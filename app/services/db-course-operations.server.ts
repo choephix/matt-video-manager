@@ -149,6 +149,24 @@ export const createCourseOperations = (db: DrizzleDB) => {
     return course;
   });
 
+  const createGhostCourse = Effect.fn("createGhostCourse")(function* (input: {
+    name: string;
+  }) {
+    const result = yield* makeDbCall(() =>
+      db.insert(courses).values({ name: input.name, filePath: null }).returning()
+    );
+
+    const course = result[0];
+
+    if (!course) {
+      return yield* new UnknownDBServiceError({
+        cause: "No course was returned from the database",
+      });
+    }
+
+    return course;
+  });
+
   const updateCourseName = Effect.fn("updateCourseName")(function* (opts: {
     repoId: string;
     name: string;
@@ -230,17 +248,19 @@ export const createCourseOperations = (db: DrizzleDB) => {
         });
       }
 
-      const coursesWithSamePath = yield* makeDbCall(() =>
-        db.query.courses.findMany({
-          where: eq(courses.filePath, currentCourse.filePath),
-        })
-      );
+      if (currentCourse.filePath) {
+        const coursesWithSamePath = yield* makeDbCall(() =>
+          db.query.courses.findMany({
+            where: eq(courses.filePath, currentCourse.filePath!),
+          })
+        );
 
-      if (coursesWithSamePath.length > 1) {
-        return yield* new AmbiguousCourseUpdateError({
-          filePath: currentCourse.filePath,
-          repoCount: coursesWithSamePath.length,
-        });
+        if (coursesWithSamePath.length > 1) {
+          return yield* new AmbiguousCourseUpdateError({
+            filePath: currentCourse.filePath,
+            repoCount: coursesWithSamePath.length,
+          });
+        }
       }
 
       const [updated] = yield* makeDbCall(() =>
@@ -274,6 +294,7 @@ export const createCourseOperations = (db: DrizzleDB) => {
     getCourses,
     getArchivedCourses,
     createCourse,
+    createGhostCourse,
     updateCourseName,
     updateCourseMemory,
     updateCourseArchiveStatus,

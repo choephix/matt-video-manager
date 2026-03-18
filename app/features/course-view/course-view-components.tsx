@@ -384,7 +384,9 @@ export function NoCourseView({
             <div className="flex items-center justify-between mb-1">
               <h3 className="text-lg font-semibold">{course.name}</h3>
             </div>
-            <p className="text-sm text-muted-foreground">{course.filePath}</p>
+            <p className="text-sm text-muted-foreground">
+              {course.filePath ?? "Ghost course"}
+            </p>
           </Link>
         ))}
       </div>
@@ -495,7 +497,7 @@ export function RouteModals({
         />
       )}
 
-      {currentCourse && (
+      {currentCourse && currentCourse.filePath && (
         <RewriteCoursePathModal
           courseId={currentCourse.id}
           currentPath={currentCourse.filePath}

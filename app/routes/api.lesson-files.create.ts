@@ -45,7 +45,7 @@ export const action = async (args: Route.ActionArgs) => {
     const lesson = video.lesson!;
     const repo = lesson.section.repoVersion.repo;
     const section = lesson.section;
-    const lessonPath = path.join(repo.filePath, section.path, lesson.path);
+    const lessonPath = path.join(repo.filePath!, section.path, lesson.path);
 
     let filename: string;
     let fileData: Uint8Array;

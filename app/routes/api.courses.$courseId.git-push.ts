@@ -17,7 +17,7 @@ export const action = async (args: Route.ActionArgs) => {
       return Effect.die(data("Repo not found", { status: 404 }));
     }
 
-    const cwd = repo.filePath;
+    const cwd = repo.filePath!;
 
     // git add .
     yield* Effect.try({

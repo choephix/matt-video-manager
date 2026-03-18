@@ -166,7 +166,7 @@ export const loader = async (args: Route.LoaderArgs) => {
     const repo = lesson.section.repoVersion.repo;
     const section = lesson.section;
 
-    const lessonPath = path.join(repo.filePath, section.path, lesson.path);
+    const lessonPath = path.join(repo.filePath!, section.path, lesson.path);
 
     const allFilesInDirectory = yield* fs
       .readDirectory(lessonPath, {

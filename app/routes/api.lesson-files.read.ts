@@ -77,7 +77,7 @@ export const loader = async (args: Route.LoaderArgs) => {
     const lesson = video.lesson!;
     const repo = lesson.section.repoVersion.repo;
     const section = lesson.section;
-    const lessonPath = path.join(repo.filePath, section.path, lesson.path);
+    const lessonPath = path.join(repo.filePath!, section.path, lesson.path);
 
     // Construct full file path
     const fullFilePath = path.join(lessonPath, parsed.filePath);

@@ -16,7 +16,7 @@ export const action = async (args: Route.ActionArgs) => {
     const lesson = yield* db.getLessonWithHierarchyById(lessonId);
     const repo = lesson.section.repoVersion.repo;
 
-    yield* openFolder.openInVSCode(path.dirname(repo.filePath));
+    yield* openFolder.openInVSCode(path.dirname(repo.filePath!));
 
     return { success: true };
   }).pipe(

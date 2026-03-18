@@ -35,7 +35,7 @@ export const action = async (args: Route.ActionArgs) => {
       // Lesson-connected video — images relative to lesson directory
       const repo = video.lesson.section.repoVersion.repo;
       const section = video.lesson.section;
-      baseDir = path.join(repo.filePath, section.path, video.lesson.path);
+      baseDir = path.join(repo.filePath!, section.path, video.lesson.path);
     }
 
     const result = yield* cloudinaryMarkdown.uploadImagesInMarkdown(

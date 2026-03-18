@@ -27,7 +27,7 @@ export const action = async (args: Route.ActionArgs) => {
 
     const lesson = yield* db.getLessonWithHierarchyById(lessonId);
     const lessonFullPath = path.join(
-      lesson.section.repoVersion.repo.filePath,
+      lesson.section.repoVersion.repo.filePath!,
       lesson.section.path,
       lesson.path
     );

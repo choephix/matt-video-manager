@@ -23,7 +23,7 @@ export const action = async (args: Route.ActionArgs) => {
     } else {
       // Lesson-connected video — open parent directory of repo in Explorer
       const repo = video.lesson.section.repoVersion.repo;
-      yield* openFolder.openInExplorer(path.dirname(repo.filePath));
+      yield* openFolder.openInExplorer(path.dirname(repo.filePath!));
     }
 
     return { success: true };

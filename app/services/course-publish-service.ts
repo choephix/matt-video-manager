@@ -297,7 +297,7 @@ export class CoursePublishService extends Effect.Service<CoursePublishService>()
         });
 
         const sectionsOnFileSystem = yield* repoParser.parseRepo(
-          repoWithSections.filePath
+          repoWithSections.filePath!
         );
 
         // Build content-addressed path overrides for video resolution
@@ -390,7 +390,7 @@ export class CoursePublishService extends Effect.Service<CoursePublishService>()
 
             // Copy source files from course repo
             const lessonDir = path.join(
-              repoWithSections.filePath,
+              repoWithSections.filePath!,
               section.path,
               lesson.path
             );

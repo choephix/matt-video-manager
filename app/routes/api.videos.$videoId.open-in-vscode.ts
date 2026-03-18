@@ -22,7 +22,7 @@ export const action = async (args: Route.ActionArgs) => {
     }
 
     const repo = video.lesson.section.repoVersion.repo;
-    yield* openFolder.openInVSCode(repo.filePath);
+    yield* openFolder.openInVSCode(repo.filePath!);
 
     return { success: true };
   }).pipe(

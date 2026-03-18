@@ -91,7 +91,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
         });
 
         const sectionsOnFileSystem = yield* repoParserService.parseRepo(
-          repoWithSections.filePath
+          repoWithSections.filePath!
         );
 
         // Validate that all filesystem sections/lessons exist in the DB
@@ -256,7 +256,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
             }
 
             const lessonDirectoryOnFileSystem = path.join(
-              repoWithSections.filePath,
+              repoWithSections.filePath!,
               section.path,
               lesson.path
             );

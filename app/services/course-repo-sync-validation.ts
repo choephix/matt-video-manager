@@ -24,7 +24,7 @@ export class CourseRepoSyncValidationService extends Effect.Service<CourseRepoSy
         const mismatches: string[] = [];
 
         for (const course of courses) {
-          const repoPath = course.filePath;
+          const repoPath = course.filePath!;
           const repoExists = yield* fs.exists(repoPath);
 
           if (!repoExists) {
@@ -55,7 +55,7 @@ export class CourseRepoSyncValidationService extends Effect.Service<CourseRepoSy
               );
               if (!hasRealLessons) continue;
 
-              const sectionDir = path.join(repoPath, section.path);
+              const sectionDir = path.join(repoPath!, section.path);
               const sectionExists = yield* fs.exists(sectionDir);
 
               if (!sectionExists) {
