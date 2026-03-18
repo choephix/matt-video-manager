@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { UploadContext } from "@/features/upload-manager/upload-context";
 import { Input } from "@/components/ui/input";
@@ -227,6 +227,13 @@ export function AiHeroPage({
 
   // Cloudinary image upload state
   const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const hasLocalImages = useMemo(() => {
+    const imageRegex = /!\[[^\]]*\]\(([^)]+)\)/g;
+    const matches = Array.from(body.matchAll(imageRegex));
+    return matches.some(
+      (m) => !m[1]!.startsWith("http://") && !m[1]!.startsWith("https://")
+    );
+  }, [body]);
 
   const handleUploadImages = async (deleteLocalFiles: boolean) => {
     if (!body.trim()) return;
@@ -393,51 +400,53 @@ export function AiHeroPage({
           />
         </div>
 
-        {/* Upload Images to Cloudinary */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isUploadingImages || !body.trim()}
-            >
-              {isUploadingImages ? (
-                <>
-                  <Loader2Icon className="h-4 w-4 animate-spin" />
-                  Uploading images...
-                </>
-              ) : (
-                <>
-                  <ImageIcon className="h-4 w-4" />
-                  Upload Images to Cloudinary
-                </>
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={() => handleUploadImages(false)}>
-              <ImageIcon className="h-4 w-4" />
-              <div>
-                <div>Upload</div>
-                <p className="text-muted-foreground text-xs">
-                  Upload local images to Cloudinary and update references
-                </p>
-              </div>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              variant="destructive"
-              onClick={() => handleUploadImages(true)}
-            >
-              <Trash2Icon className="h-4 w-4" />
-              <div>
-                <div>Upload and delete local files</div>
-                <p className="text-xs opacity-70">
-                  Upload to Cloudinary, then remove the local image files
-                </p>
-              </div>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Upload Images to Cloudinary — only shown when body has local image references */}
+        {(hasLocalImages || isUploadingImages) && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isUploadingImages}
+              >
+                {isUploadingImages ? (
+                  <>
+                    <Loader2Icon className="h-4 w-4 animate-spin" />
+                    Uploading images...
+                  </>
+                ) : (
+                  <>
+                    <ImageIcon className="h-4 w-4" />
+                    Upload Images to Cloudinary
+                  </>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => handleUploadImages(false)}>
+                <ImageIcon className="h-4 w-4" />
+                <div>
+                  <div>Upload</div>
+                  <p className="text-muted-foreground text-xs">
+                    Upload local images to Cloudinary and update references
+                  </p>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => handleUploadImages(true)}
+              >
+                <Trash2Icon className="h-4 w-4" />
+                <div>
+                  <div>Upload and delete local files</div>
+                  <p className="text-xs opacity-70">
+                    Upload to Cloudinary, then remove the local image files
+                  </p>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
         {/* SEO Description */}
         <div className="space-y-2">
