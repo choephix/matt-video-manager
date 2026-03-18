@@ -503,6 +503,39 @@ export class CourseRepoWriteService extends Effect.Service<CourseRepoWriteServic
         return yield* fs.exists(fullPath);
       });
 
+      /**
+       * Deletes a section directory from the filesystem.
+       * Uses `git rm -rf` for tracked files; falls back to recursive
+       * removal for untracked directories.
+       */
+      const deleteSectionDir = Effect.fn("deleteSectionDir")(function* (opts: {
+        repoPath: string;
+        sectionPath: string;
+      }) {
+        const fullPath = path.join(opts.repoPath, opts.sectionPath);
+
+        const exists = yield* fs.exists(fullPath);
+        if (!exists) return;
+
+        const gitRmSucceeded = yield* Effect.try({
+          try: () => {
+            execFileSync("git", ["rm", "-rf", fullPath], {
+              cwd: opts.repoPath,
+            });
+            return true;
+          },
+          catch: () =>
+            new CourseRepoWriteError({
+              cause: null,
+              message: "git rm failed",
+            }),
+        }).pipe(Effect.catchAll(() => Effect.succeed(false)));
+
+        if (gitRmSucceeded) return;
+
+        yield* fs.remove(fullPath, { recursive: true });
+      });
+
       return {
         createLessonDirectory,
         addLesson,
@@ -512,6 +545,7 @@ export class CourseRepoWriteService extends Effect.Service<CourseRepoWriteServic
         deleteLesson,
         moveLessonToSection,
         sectionDirExists,
+        deleteSectionDir,
       };
     }),
     dependencies: [NodeFileSystem.layer],

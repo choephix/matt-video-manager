@@ -417,23 +417,21 @@ export function SortableLessonItem({
                   <ArrowRightLeft className="w-4 h-4" />
                   Move to Section
                 </ContextMenuItem>
-                {isGhost && (
-                  <ContextMenuItem
-                    variant="destructive"
-                    onSelect={() => {
-                      deleteLessonFetcher.submit(
-                        { lessonId: lesson.id },
-                        {
-                          method: "post",
-                          action: "/api/lessons/delete",
-                        }
-                      );
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Delete
-                  </ContextMenuItem>
-                )}
+                <ContextMenuItem
+                  variant="destructive"
+                  onSelect={() => {
+                    deleteLessonFetcher.submit(
+                      { lessonId: lesson.id },
+                      {
+                        method: "post",
+                        action: "/api/lessons/delete",
+                      }
+                    );
+                  }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </ContextMenuItem>
               </>
             )}
           </ContextMenuContent>

@@ -125,12 +125,20 @@ const setup = async () => {
       return yield* db.getLessonWithHierarchyById(lessonId);
     }).pipe(Effect.provide(dbLayer), Effect.runPromise);
 
+  const getSection = (sectionId: string) =>
+    Effect.gen(function* () {
+      const db = yield* DBFunctionsService;
+      return yield* db.getSectionWithHierarchyById(sectionId);
+    }).pipe(Effect.provide(dbLayer), Effect.runPromise);
+
   return {
     run,
     createSection,
     createRealLesson,
     createGhostLesson,
     getLesson,
+    getSection,
+    version,
   };
 };
 
@@ -172,6 +180,91 @@ describe("CourseWriteService", () => {
 
       // Record removed from DB
       await expect(getLesson(real.id)).rejects.toThrow();
+    });
+
+    it("deletes a real lesson and renumbers remaining lessons", async () => {
+      const { run, createSection, createRealLesson, getLesson } = await setup();
+
+      const section = await createSection("01-intro", 1);
+      const real1 = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.01-first",
+        1
+      );
+      const real2 = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.02-second",
+        2
+      );
+      const real3 = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.03-third",
+        3
+      );
+
+      await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.deleteLesson(real2.id);
+        })
+      );
+
+      // Deleted lesson removed from disk
+      expect(
+        fs.existsSync(path.join(tempDir, "01-intro", "01.02-second"))
+      ).toBe(false);
+
+      // Deleted lesson removed from DB
+      await expect(getLesson(real2.id)).rejects.toThrow();
+
+      // First lesson unchanged
+      const updatedReal1 = await getLesson(real1.id);
+      expect(updatedReal1.path).toBe("01.01-first");
+      expect(
+        fs.existsSync(path.join(tempDir, "01-intro", "01.01-first"))
+      ).toBe(true);
+
+      // Third lesson renumbered: 01.03 → 01.02
+      const updatedReal3 = await getLesson(real3.id);
+      expect(updatedReal3.path).toBe("01.02-third");
+      expect(
+        fs.existsSync(path.join(tempDir, "01-intro", "01.02-third"))
+      ).toBe(true);
+      expect(
+        fs.existsSync(path.join(tempDir, "01-intro", "01.03-third"))
+      ).toBe(false);
+    });
+
+    it("reverts section to ghost path when last real lesson is deleted", async () => {
+      const { run, createSection, createRealLesson, getSection } =
+        await setup();
+
+      const section = await createSection("01-intro", 1);
+      const real = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.01-only-lesson",
+        1
+      );
+
+      await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.deleteLesson(real.id);
+        })
+      );
+
+      // Directory removed from disk
+      expect(
+        fs.existsSync(path.join(tempDir, "01-intro", "01.01-only-lesson"))
+      ).toBe(false);
+
+      // Section path reverted to title case (no longer numbered)
+      const updatedSection = await getSection(section.id);
+      expect(updatedSection.path).toBe("Intro");
     });
 
     it("deletes a ghost lesson from database only (no filesystem ops)", async () => {

@@ -231,7 +231,8 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
         return { success: true, lessonId: newLesson!.id };
       });
 
-      /** Deletes a lesson. If real, removes the directory from disk first. */
+      /** Deletes a lesson. If real, removes the directory from disk first,
+       *  renumbers remaining lessons, and reverts section if no real lessons remain. */
       const deleteLesson = Effect.fn("deleteLesson")(function* (
         lessonId: string
       ) {
@@ -240,15 +241,71 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
         if (lesson.fsStatus !== "ghost") {
           const repoPath = lesson.section.repoVersion.repo.filePath;
           const sectionPath = lesson.section.path;
+          const parsed = parseSectionPath(sectionPath);
+          const sectionNumber = parsed?.sectionNumber ?? 1;
 
           yield* repoWrite.deleteLesson({
             repoPath,
             sectionPath,
             lessonDirName: lesson.path,
           });
-        }
 
-        yield* db.deleteLesson(lessonId);
+          // Delete DB entry before renumbering so it's excluded
+          yield* db.deleteLesson(lessonId);
+
+          // Renumber remaining real lessons to close the gap
+          const sectionLessons = yield* db.getLessonsBySectionId(
+            lesson.sectionId
+          );
+          const remainingReal = sectionLessons.filter(
+            (l) => l.fsStatus !== "ghost"
+          );
+
+          if (remainingReal.length > 0) {
+            const renames: { id: string; oldPath: string; newPath: string }[] =
+              [];
+            for (let i = 0; i < remainingReal.length; i++) {
+              const l = remainingReal[i]!;
+              const p = parseLessonPath(l.path);
+              if (!p) continue;
+              const newPath = buildLessonPath(sectionNumber, i + 1, p.slug);
+              if (newPath !== l.path) {
+                renames.push({ id: l.id, oldPath: l.path, newPath });
+              }
+            }
+
+            if (renames.length > 0) {
+              yield* repoWrite.renameLessons({
+                repoPath,
+                sectionPath,
+                renames: renames.map((r) => ({
+                  oldPath: r.oldPath,
+                  newPath: r.newPath,
+                })),
+              });
+
+              for (const rename of renames) {
+                yield* db.updateLesson(rename.id, {
+                  path: rename.newPath,
+                });
+              }
+            }
+          }
+
+          // If no real lessons remain, remove the section directory,
+          // revert the section path to title case, and renumber other sections
+          if (remainingReal.length === 0) {
+            const sectionParsed = parseSectionPath(sectionPath);
+            if (sectionParsed) {
+              yield* repoWrite.deleteSectionDir({ repoPath, sectionPath });
+              const title = titleFromSlug(sectionParsed.slug);
+              yield* db.updateSectionPath(lesson.sectionId, title);
+              yield* renumberSections(lesson.section.repoVersionId, repoPath);
+            }
+          }
+        } else {
+          yield* db.deleteLesson(lessonId);
+        }
 
         return { success: true };
       });
@@ -322,11 +379,12 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
           }
         }
 
-        // If no real lessons remain, revert the section path to title case
-        // and renumber other sections to close the gap
+        // If no real lessons remain, remove the section directory,
+        // revert the section path to title case, and renumber other sections
         if (remainingReal.length === 0) {
           const sectionParsed = parseSectionPath(sectionPath);
           if (sectionParsed) {
+            yield* repoWrite.deleteSectionDir({ repoPath, sectionPath });
             const title = titleFromSlug(sectionParsed.slug);
             yield* db.updateSectionPath(lesson.sectionId, title);
             yield* renumberSections(lesson.section.repoVersionId, repoPath);
