@@ -495,4 +495,146 @@ describe("CourseWriteService", () => {
       expect(updated.path).toBe("new-title");
     });
   });
+
+  describe("createRealLesson", () => {
+    it("creates a real lesson on disk and in DB in one step", async () => {
+      const { run, createSection, getLesson } = await setup();
+
+      const section = await createSection("01-intro", 1);
+
+      const result = await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.createRealLesson(section.id, "My First Lesson");
+        })
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.path).toBe("01.01-my-first-lesson");
+
+      // Directory exists on disk
+      expect(
+        fs.existsSync(
+          path.join(tempDir, "01-intro", "01.01-my-first-lesson", "explainer", "readme.md")
+        )
+      ).toBe(true);
+
+      // DB entry is real
+      const lesson = await getLesson(result.lessonId);
+      expect(lesson.fsStatus).toBe("real");
+      expect(lesson.path).toBe("01.01-my-first-lesson");
+      expect(lesson.title).toBe("My First Lesson");
+    });
+
+    it("creates a real lesson with correct numbering between existing lessons", async () => {
+      const { run, createSection, createRealLesson, getLesson } = await setup();
+
+      const section = await createSection("01-intro", 1);
+      const real1 = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.01-first",
+        1
+      );
+      const real2 = await createRealLesson(
+        section.id,
+        "01-intro",
+        "01.02-second",
+        2
+      );
+
+      // Insert before second lesson
+      const result = await run(
+        Effect.gen(function* () {
+          const service = yield* CourseWriteService;
+          return yield* service.createRealLesson(
+            section.id,
+            "Inserted Lesson",
+            { adjacentLessonId: real2.id, position: "before" }
+          );
+        })
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.path).toBe("01.02-inserted-lesson");
+
+      // New lesson dir exists
+      expect(
+        fs.existsSync(
+          path.join(tempDir, "01-intro", "01.02-inserted-lesson")
+        )
+      ).toBe(true);
+
+      // First lesson unchanged
+      const updatedReal1 = await getLesson(real1.id);
+      expect(updatedReal1.path).toBe("01.01-first");
+
+      // Second lesson renumbered: 01.02 → 01.03
+      const updatedReal2 = await getLesson(real2.id);
+      expect(updatedReal2.path).toBe("01.03-second");
+      expect(
+        fs.existsSync(path.join(tempDir, "01-intro", "01.03-second"))
+      ).toBe(true);
+    });
+
+    it("errors when creating a real lesson in a ghost course", async () => {
+      const { run } = await setup();
+
+      // Create a ghost course (no filePath)
+      const ghostCourse = await Effect.gen(function* () {
+        const db = yield* DBFunctionsService;
+        return yield* db.createGhostCourse({ name: "ghost-course" });
+      }).pipe(
+        Effect.provide(
+          DBFunctionsService.Default.pipe(
+            Layer.provide(Layer.succeed(DrizzleService, testDb as any))
+          )
+        ),
+        Effect.runPromise
+      );
+
+      const ghostVersion = await Effect.gen(function* () {
+        const db = yield* DBFunctionsService;
+        return yield* db.createCourseVersion({
+          repoId: ghostCourse.id,
+          name: "v1",
+        });
+      }).pipe(
+        Effect.provide(
+          DBFunctionsService.Default.pipe(
+            Layer.provide(Layer.succeed(DrizzleService, testDb as any))
+          )
+        ),
+        Effect.runPromise
+      );
+
+      const ghostSection = await Effect.gen(function* () {
+        const db = yield* DBFunctionsService;
+        const sections = yield* db.createSections({
+          repoVersionId: ghostVersion.id,
+          sections: [{ sectionPathWithNumber: "Planning", sectionNumber: 1 }],
+        });
+        return sections[0]!;
+      }).pipe(
+        Effect.provide(
+          DBFunctionsService.Default.pipe(
+            Layer.provide(Layer.succeed(DrizzleService, testDb as any))
+          )
+        ),
+        Effect.runPromise
+      );
+
+      await expect(
+        run(
+          Effect.gen(function* () {
+            const service = yield* CourseWriteService;
+            return yield* service.createRealLesson(
+              ghostSection.id,
+              "Some Lesson"
+            );
+          })
+        )
+      ).rejects.toThrow();
+    });
+  });
 });

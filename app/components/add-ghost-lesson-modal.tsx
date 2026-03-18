@@ -19,11 +19,28 @@ export function AddGhostLessonModal(props: {
   fetcher?: ReturnType<typeof useFetcher>;
   adjacentLessonId?: string | null;
   position?: "before" | "after" | null;
+  mode?: "ghost" | "real";
 }) {
   const internalFetcher = useFetcher();
   const fetcher = props.fetcher ?? internalFetcher;
   const [title, setTitle] = useState("");
   const isValid = title.trim().length > 0;
+  const isReal = props.mode === "real";
+  const actionUrl = isReal
+    ? "/api/lessons/create-real"
+    : "/api/lessons/add-ghost";
+
+  const dialogTitle = isReal
+    ? props.position === "before"
+      ? "Create Real Lesson Before"
+      : props.position === "after"
+        ? "Create Real Lesson After"
+        : "Create Real Lesson"
+    : props.position === "before"
+      ? "Add Ghost Lesson Before"
+      : props.position === "after"
+        ? "Add Ghost Lesson After"
+        : "Add Ghost Lesson";
 
   return (
     <Dialog
@@ -35,17 +52,11 @@ export function AddGhostLessonModal(props: {
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {props.position === "before"
-              ? "Add Lesson Before"
-              : props.position === "after"
-                ? "Add Lesson After"
-                : "Add Lesson"}
-          </DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
         </DialogHeader>
         <fetcher.Form
           method="post"
-          action="/api/lessons/add-ghost"
+          action={actionUrl}
           className="space-y-4 py-4"
           onSubmit={async (e) => {
             e.preventDefault();
@@ -54,7 +65,7 @@ export function AddGhostLessonModal(props: {
             formData.set("title", capitalizeTitle(title.trim()));
             await fetcher.submit(formData, {
               method: "post",
-              action: "/api/lessons/add-ghost",
+              action: actionUrl,
             });
             setTitle("");
             props.onOpenChange(false);
@@ -96,6 +107,8 @@ export function AddGhostLessonModal(props: {
             <Button type="submit" disabled={!isValid}>
               {fetcher.state === "submitting" ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
+              ) : isReal ? (
+                "Create Lesson"
               ) : (
                 "Add Lesson"
               )}

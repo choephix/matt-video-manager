@@ -196,6 +196,157 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
         return { success: true, sectionId: newSection!.id };
       });
 
+      /** Creates a real lesson on disk + DB in one step (no ghost intermediate). */
+      const createRealLesson = Effect.fn("createRealLesson")(function* (
+        sectionId: string,
+        title: string,
+        opts?: { adjacentLessonId?: string; position?: "before" | "after" }
+      ) {
+        const section = yield* db.getSectionWithHierarchyById(sectionId);
+        const repoPath = section.repoVersion.repo.filePath;
+
+        if (!repoPath) {
+          return yield* new CourseWriteError({
+            cause: null,
+            message:
+              "Cannot create a real lesson in a ghost course",
+          });
+        }
+
+        let sectionPath = section.path;
+        const parsed = parseSectionPath(sectionPath);
+        const slug = toSlug(title) || "untitled";
+        const repoVersionId = section.repoVersionId;
+
+        // If section is ghost, materialize it
+        let sectionMaterialized = false;
+        let sectionNumber: number;
+        if (!parsed) {
+          const allSections =
+            yield* db.getSectionsByRepoVersionId(repoVersionId);
+          const positionIndex = allSections.findIndex(
+            (s) => s.id === sectionId
+          );
+          let realBefore = 0;
+          for (let i = 0; i < positionIndex; i++) {
+            if (parseSectionPath(allSections[i]!.path)) realBefore++;
+          }
+          sectionNumber = realBefore + 1;
+
+          const sectionSlug = toSlug(sectionPath) || "untitled";
+          sectionPath = buildSectionPath(sectionNumber, sectionSlug);
+          yield* db.updateSectionPath(sectionId, sectionPath);
+          sectionMaterialized = true;
+        } else {
+          sectionNumber = parsed.sectionNumber;
+        }
+
+        // Get all lessons in section
+        const lessons = yield* db.getLessonsBySectionId(sectionId);
+        const maxOrder =
+          lessons.length > 0 ? Math.max(...lessons.map((l) => l.order)) : 0;
+        let insertOrder = maxOrder + 1;
+
+        const realLessons = lessons.filter((l) => l.fsStatus !== "ghost");
+        let insertAtIndex = realLessons.length;
+
+        if (opts?.adjacentLessonId && opts?.position) {
+          const adjLesson = lessons.find(
+            (l) => l.id === opts.adjacentLessonId
+          );
+          if (adjLesson) {
+            const adjOrder = adjLesson.order;
+
+            // Determine insert position among real lessons
+            for (let i = 0; i < realLessons.length; i++) {
+              if (
+                opts.position === "before"
+                  ? realLessons[i]!.order >= adjOrder
+                  : realLessons[i]!.order > adjOrder
+              ) {
+                insertAtIndex = i;
+                break;
+              }
+              if (i === realLessons.length - 1) {
+                insertAtIndex = realLessons.length;
+              }
+            }
+
+            // Shift orders for subsequent lessons
+            const adjIdx = lessons.findIndex(
+              (l) => l.id === opts.adjacentLessonId
+            );
+            if (adjIdx !== -1) {
+              const idx = opts.position === "after" ? adjIdx + 1 : adjIdx;
+              for (let i = idx; i < lessons.length; i++) {
+                yield* db.updateLessonOrder(
+                  lessons[i]!.id,
+                  lessons[i]!.order + 1
+                );
+              }
+              insertOrder = lessons[idx]
+                ? lessons[idx]!.order
+                : maxOrder + 1;
+            }
+          }
+        }
+
+        const existingRealLessons = realLessons.map((l) => ({
+          id: l.id,
+          path: l.path,
+        }));
+
+        const plan = computeInsertionPlan({
+          existingRealLessons,
+          insertAtIndex,
+          sectionNumber,
+          slug,
+        });
+
+        // Rename shifted lessons on disk
+        if (plan.renames.length > 0) {
+          yield* repoWrite.renameLessons({
+            repoPath,
+            sectionPath,
+            renames: plan.renames.map((r) => ({
+              oldPath: r.oldPath,
+              newPath: r.newPath,
+            })),
+          });
+
+          for (const rename of plan.renames) {
+            yield* db.updateLesson(rename.id, { path: rename.newPath });
+          }
+        }
+
+        // Create directory on disk
+        yield* repoWrite.createLessonDirectory({
+          repoPath,
+          sectionPath,
+          lessonDirName: plan.newLessonDirName,
+        });
+
+        // Create DB entry as ghost, then update to real
+        const [newLesson] = yield* db.createGhostLesson(sectionId, {
+          title,
+          path: plan.newLessonDirName,
+          order: insertOrder,
+        });
+
+        yield* db.updateLesson(newLesson!.id, { fsStatus: "real" });
+
+        // Renumber sections if we materialized one
+        if (sectionMaterialized) {
+          yield* renumberSections(repoVersionId, repoPath);
+        }
+
+        return {
+          success: true,
+          lessonId: newLesson!.id,
+          path: plan.newLessonDirName,
+        };
+      });
+
       /** Creates a ghost lesson. Supports optional insertion before/after a lesson. */
       const addGhostLesson = Effect.fn("addGhostLesson")(function* (
         sectionId: string,
@@ -637,6 +788,8 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
       return {
         materializeGhost: (...args: Parameters<typeof materializeGhost>) =>
           withSyncValidation(materializeGhost(...args)),
+        createRealLesson: (...args: Parameters<typeof createRealLesson>) =>
+          withSyncValidation(createRealLesson(...args)),
         addGhostSection,
         addGhostLesson,
         deleteLesson: (...args: Parameters<typeof deleteLesson>) =>

@@ -31,12 +31,12 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import {
+  BookOpen,
   ChevronRight,
   ClipboardCopy,
   Ghost,
   GripVertical,
   PencilIcon,
-  Plus,
   Trash2,
 } from "lucide-react";
 import { useState, useCallback } from "react";
@@ -63,6 +63,7 @@ export function SectionGrid({
   addGhostLessonSectionId,
   insertAdjacentLessonId,
   insertPosition,
+  lessonCreationMode,
   editSectionId,
   addVideoToLessonId,
   editLessonId,
@@ -112,6 +113,7 @@ export function SectionGrid({
   addGhostLessonSectionId: string | null;
   insertAdjacentLessonId: string | null;
   insertPosition: "before" | "after" | null;
+  lessonCreationMode: "ghost" | "real";
   editSectionId: string | null;
   addVideoToLessonId: string | null;
   editLessonId: string | null;
@@ -449,9 +451,22 @@ export function SectionGrid({
                                 })
                               }
                             >
-                              <Plus className="w-4 h-4" />
-                              Add Lesson
+                              <Ghost className="w-4 h-4" />
+                              Create Ghost Lesson
                             </ContextMenuItem>
+                            {currentCourse.filePath && (
+                              <ContextMenuItem
+                                onSelect={() =>
+                                  dispatch({
+                                    type: "set-add-real-lesson-section-id",
+                                    sectionId: section.id,
+                                  })
+                                }
+                              >
+                                <BookOpen className="w-4 h-4" />
+                                Create Real Lesson
+                              </ContextMenuItem>
+                            )}
                             <ContextMenuItem
                               onSelect={() =>
                                 dispatch({
@@ -512,6 +527,7 @@ export function SectionGrid({
                       fetcher={addGhostFetcher}
                       adjacentLessonId={insertAdjacentLessonId}
                       position={insertPosition}
+                      mode={lessonCreationMode}
                     />
                     <DeleteSectionModal
                       sectionId={section.id}
