@@ -454,19 +454,17 @@ export function SectionGrid({
                               <Ghost className="w-4 h-4" />
                               Create Ghost Lesson
                             </ContextMenuItem>
-                            {currentCourse.filePath && (
-                              <ContextMenuItem
-                                onSelect={() =>
-                                  dispatch({
-                                    type: "set-add-real-lesson-section-id",
-                                    sectionId: section.id,
-                                  })
-                                }
-                              >
-                                <BookOpen className="w-4 h-4" />
-                                Create Real Lesson
-                              </ContextMenuItem>
-                            )}
+                            <ContextMenuItem
+                              onSelect={() =>
+                                dispatch({
+                                  type: "set-add-real-lesson-section-id",
+                                  sectionId: section.id,
+                                })
+                              }
+                            >
+                              <BookOpen className="w-4 h-4" />
+                              Create Real Lesson
+                            </ContextMenuItem>
                             <ContextMenuItem
                               onSelect={() =>
                                 dispatch({
@@ -528,6 +526,7 @@ export function SectionGrid({
                       adjacentLessonId={insertAdjacentLessonId}
                       position={insertPosition}
                       mode={lessonCreationMode}
+                      courseFilePath={currentCourse.filePath}
                     />
                     <DeleteSectionModal
                       sectionId={section.id}

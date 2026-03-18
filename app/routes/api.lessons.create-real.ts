@@ -14,6 +14,7 @@ const createRealLessonSchema = Schema.Struct({
   ),
   adjacentLessonId: Schema.optional(Schema.String),
   position: Schema.optional(Schema.Literal("before", "after")),
+  filePath: Schema.optional(Schema.String),
 });
 
 export const action = async (args: Route.ActionArgs) => {
@@ -21,10 +22,21 @@ export const action = async (args: Route.ActionArgs) => {
   const formDataObject = Object.fromEntries(formData);
 
   return Effect.gen(function* () {
-    const { sectionId, title, adjacentLessonId, position } =
+    const { sectionId, title, adjacentLessonId, position, filePath } =
       yield* Schema.decodeUnknown(createRealLessonSchema)(formDataObject);
 
     const service = yield* CourseWriteService;
+
+    // If filePath is provided, this is a Materialization Cascade for a ghost course
+    if (filePath) {
+      return yield* service.materializeCourseWithLesson(
+        sectionId,
+        title,
+        filePath,
+        { adjacentLessonId, position }
+      );
+    }
+
     return yield* service.createRealLesson(sectionId, title, {
       adjacentLessonId,
       position,

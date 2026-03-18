@@ -1,4 +1,6 @@
 import { Effect } from "effect";
+import { FileSystem } from "@effect/platform";
+import { NodeFileSystem } from "@effect/platform-node";
 import { DBFunctionsService } from "./db-service.server";
 import { CourseRepoWriteService } from "./course-repo-write-service";
 import {
@@ -30,6 +32,7 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
       const db = yield* DBFunctionsService;
       const repoWrite = yield* CourseRepoWriteService;
       const syncService = yield* CourseRepoSyncValidationService;
+      const fileSystem = yield* FileSystem.FileSystem;
 
       const runValidation = syncService.validate().pipe(
         Effect.catchAll((e) => {
@@ -345,6 +348,52 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
           lessonId: newLesson!.id,
           path: plan.newLessonDirName,
         };
+      });
+
+      /** Materialization Cascade: assigns filePath to a ghost course, then creates a real lesson.
+       *  Materializes the section and lesson in one flow. */
+      const materializeCourseWithLesson = Effect.fn(
+        "materializeCourseWithLesson"
+      )(function* (
+        sectionId: string,
+        title: string,
+        filePath: string,
+        opts?: { adjacentLessonId?: string; position?: "before" | "after" }
+      ) {
+        const section = yield* db.getSectionWithHierarchyById(sectionId);
+        const courseId = section.repoVersion.repo.id;
+
+        if (section.repoVersion.repo.filePath) {
+          return yield* new CourseWriteError({
+            cause: null,
+            message: "Course already has a file path — use createRealLesson instead",
+          });
+        }
+
+        // Validate filePath points to an existing directory
+        const stat = yield* fileSystem.stat(filePath).pipe(
+          Effect.catchAll(() =>
+            Effect.fail(
+              new CourseWriteError({
+                cause: null,
+                message: `File path does not exist: ${filePath}`,
+              })
+            )
+          )
+        );
+
+        if (stat.type !== "Directory") {
+          return yield* new CourseWriteError({
+            cause: null,
+            message: `File path is not a directory: ${filePath}`,
+          });
+        }
+
+        // Assign file path to the ghost course — this makes it permanently real
+        yield* db.updateCourseFilePath({ repoId: courseId, filePath });
+
+        // Now delegate to createRealLesson which handles section materialization
+        return yield* createRealLesson(sectionId, title, opts);
       });
 
       /** Creates a ghost lesson. Supports optional insertion before/after a lesson. */
@@ -790,6 +839,9 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
           withSyncValidation(materializeGhost(...args)),
         createRealLesson: (...args: Parameters<typeof createRealLesson>) =>
           withSyncValidation(createRealLesson(...args)),
+        materializeCourseWithLesson: (
+          ...args: Parameters<typeof materializeCourseWithLesson>
+        ) => withSyncValidation(materializeCourseWithLesson(...args)),
         addGhostSection,
         addGhostLesson,
         deleteLesson: (...args: Parameters<typeof deleteLesson>) =>
@@ -814,6 +866,7 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
       DBFunctionsService.Default,
       CourseRepoWriteService.Default,
       CourseRepoSyncValidationService.Default,
+      NodeFileSystem.layer,
     ],
   }
 ) {}

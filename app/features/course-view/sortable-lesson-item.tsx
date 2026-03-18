@@ -399,22 +399,20 @@ export function SortableLessonItem({
                       <Ghost className="w-4 h-4" />
                       Ghost Lesson
                     </ContextMenuItem>
-                    {data.selectedCourse?.filePath && (
-                      <ContextMenuItem
-                        onSelect={() =>
-                          dispatch({
-                            type: "set-insert-lesson",
-                            sectionId: section.id,
-                            adjacentLessonId: lesson.id,
-                            position: "before",
-                            mode: "real",
-                          })
-                        }
-                      >
-                        <BookOpen className="w-4 h-4" />
-                        Real Lesson
-                      </ContextMenuItem>
-                    )}
+                    <ContextMenuItem
+                      onSelect={() =>
+                        dispatch({
+                          type: "set-insert-lesson",
+                          sectionId: section.id,
+                          adjacentLessonId: lesson.id,
+                          position: "before",
+                          mode: "real",
+                        })
+                      }
+                    >
+                      <BookOpen className="w-4 h-4" />
+                      Real Lesson
+                    </ContextMenuItem>
                   </ContextMenuSubContent>
                 </ContextMenuSub>
                 <ContextMenuSub>
@@ -437,22 +435,20 @@ export function SortableLessonItem({
                       <Ghost className="w-4 h-4" />
                       Ghost Lesson
                     </ContextMenuItem>
-                    {data.selectedCourse?.filePath && (
-                      <ContextMenuItem
-                        onSelect={() =>
-                          dispatch({
-                            type: "set-insert-lesson",
-                            sectionId: section.id,
-                            adjacentLessonId: lesson.id,
-                            position: "after",
-                            mode: "real",
-                          })
-                        }
-                      >
-                        <BookOpen className="w-4 h-4" />
-                        Real Lesson
-                      </ContextMenuItem>
-                    )}
+                    <ContextMenuItem
+                      onSelect={() =>
+                        dispatch({
+                          type: "set-insert-lesson",
+                          sectionId: section.id,
+                          adjacentLessonId: lesson.id,
+                          position: "after",
+                          mode: "real",
+                        })
+                      }
+                    >
+                      <BookOpen className="w-4 h-4" />
+                      Real Lesson
+                    </ContextMenuItem>
                   </ContextMenuSubContent>
                 </ContextMenuSub>
                 <ContextMenuSeparator />

@@ -24,7 +24,8 @@ export class CourseRepoSyncValidationService extends Effect.Service<CourseRepoSy
         const mismatches: string[] = [];
 
         for (const course of courses) {
-          const repoPath = course.filePath!;
+          if (!course.filePath) continue; // ghost course — no filesystem to validate
+          const repoPath = course.filePath;
           const repoExists = yield* fs.exists(repoPath);
 
           if (!repoExists) {

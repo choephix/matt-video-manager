@@ -20,22 +20,28 @@ export function AddGhostLessonModal(props: {
   adjacentLessonId?: string | null;
   position?: "before" | "after" | null;
   mode?: "ghost" | "real";
+  courseFilePath?: string | null;
 }) {
   const internalFetcher = useFetcher();
   const fetcher = props.fetcher ?? internalFetcher;
   const [title, setTitle] = useState("");
-  const isValid = title.trim().length > 0;
+  const [filePath, setFilePath] = useState("");
   const isReal = props.mode === "real";
+  const isGhostCourse = isReal && !props.courseFilePath;
+  const isValid =
+    title.trim().length > 0 && (!isGhostCourse || filePath.trim().length > 0);
   const actionUrl = isReal
     ? "/api/lessons/create-real"
     : "/api/lessons/add-ghost";
 
   const dialogTitle = isReal
-    ? props.position === "before"
-      ? "Create Real Lesson Before"
-      : props.position === "after"
-        ? "Create Real Lesson After"
-        : "Create Real Lesson"
+    ? isGhostCourse
+      ? "Materialize Course & Create Lesson"
+      : props.position === "before"
+        ? "Create Real Lesson Before"
+        : props.position === "after"
+          ? "Create Real Lesson After"
+          : "Create Real Lesson"
     : props.position === "before"
       ? "Add Ghost Lesson Before"
       : props.position === "after"
@@ -46,7 +52,10 @@ export function AddGhostLessonModal(props: {
     <Dialog
       open={props.open}
       onOpenChange={(open) => {
-        if (!open) setTitle("");
+        if (!open) {
+          setTitle("");
+          setFilePath("");
+        }
         props.onOpenChange(open);
       }}
     >
@@ -63,11 +72,15 @@ export function AddGhostLessonModal(props: {
             if (!isValid) return;
             const formData = new FormData(e.currentTarget);
             formData.set("title", capitalizeTitle(title.trim()));
+            if (isGhostCourse) {
+              formData.set("filePath", filePath.trim());
+            }
             await fetcher.submit(formData, {
               method: "post",
               action: actionUrl,
             });
             setTitle("");
+            setFilePath("");
             props.onOpenChange(false);
           }}
         >
@@ -82,6 +95,23 @@ export function AddGhostLessonModal(props: {
           {props.position && (
             <input type="hidden" name="position" value={props.position} />
           )}
+          {isGhostCourse && (
+            <div className="space-y-2">
+              <Label htmlFor="course-file-path">Course File Path</Label>
+              <Input
+                id="course-file-path"
+                name="filePath"
+                placeholder="e.g. /path/to/existing/directory"
+                value={filePath}
+                onChange={(e) => setFilePath(e.target.value)}
+                autoFocus
+              />
+              <p className="text-xs text-muted-foreground">
+                Must point to an existing directory. This will permanently assign
+                a file path to the course.
+              </p>
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="ghost-lesson-title">Title</Label>
             <Input
@@ -90,7 +120,7 @@ export function AddGhostLessonModal(props: {
               placeholder="e.g. Understanding Generics"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              autoFocus
+              autoFocus={!isGhostCourse}
             />
           </div>
           <div className="flex justify-end space-x-2">
@@ -98,6 +128,7 @@ export function AddGhostLessonModal(props: {
               variant="outline"
               onClick={() => {
                 setTitle("");
+                setFilePath("");
                 props.onOpenChange(false);
               }}
               type="button"
@@ -107,6 +138,8 @@ export function AddGhostLessonModal(props: {
             <Button type="submit" disabled={!isValid}>
               {fetcher.state === "submitting" ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
+              ) : isGhostCourse ? (
+                "Materialize & Create"
               ) : isReal ? (
                 "Create Lesson"
               ) : (
