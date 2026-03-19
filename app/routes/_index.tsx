@@ -6,11 +6,10 @@ import { VideoModal } from "@/components/video-player";
 import { useCourseViewReducer } from "@/hooks/use-course-view-reducer";
 import { useFocusRevalidate } from "@/hooks/use-focus-revalidate";
 import { Button } from "@/components/ui/button";
-import { CoursePublishService } from "@/services/course-publish-service";
 import { DBFunctionsService } from "@/services/db-service.server";
+import { loadCourseFileMaps } from "@/services/course-loader-fs";
 import { FeatureFlagService } from "@/services/feature-flag-service";
 import { runtimeLive } from "@/services/layer.server";
-import { FileSystem } from "@effect/platform";
 import {
   PointerSensor,
   KeyboardSensor,
@@ -67,7 +66,6 @@ export const loader = async (args: Route.LoaderArgs) => {
 
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
-    const fs = yield* FileSystem.FileSystem;
     const featureFlags = yield* FeatureFlagService;
 
     const courses = yield* db.getCourses();
@@ -123,20 +121,9 @@ export const loader = async (args: Route.LoaderArgs) => {
           })
         );
 
-    const publishService = yield* CoursePublishService;
-    const hasExportedVideoMap: Record<string, boolean> = {};
     const videos = selectedCourse?.sections.flatMap((s) =>
       s.lessons.flatMap((l) => l.videos)
     );
-    yield* Effect.forEach(videos ?? [], (video) =>
-      Effect.gen(function* () {
-        hasExportedVideoMap[video.id] = yield* publishService.isExported(
-          video.id
-        );
-      })
-    );
-
-    const hasExplainerFolderMap: Record<string, boolean> = {};
 
     const lessons = selectedCourse?.filePath
       ? selectedCourse.sections.flatMap((section) =>
@@ -149,50 +136,11 @@ export const loader = async (args: Route.LoaderArgs) => {
         )
       : [];
 
-    const lessonHasFilesMap: Record<string, { path: string; size: number }[]> =
-      {};
-
-    const listFilesRecursive = (
-      dir: string,
-      prefix: string
-    ): Effect.Effect<
-      { path: string; size: number }[],
-      never,
-      FileSystem.FileSystem
-    > =>
-      Effect.gen(function* () {
-        const entries = yield* fs
-          .readDirectory(dir)
-          .pipe(Effect.catchAll(() => Effect.succeed([] as string[])));
-        const results: { path: string; size: number }[] = [];
-        for (const entry of entries) {
-          const fullPath = `${dir}/${entry}`;
-          const relativePath = prefix ? `${prefix}/${entry}` : entry;
-          const stat = yield* fs
-            .stat(fullPath)
-            .pipe(Effect.catchAll(() => Effect.succeed(undefined)));
-          if (!stat) continue;
-          if (stat.type === "Directory") {
-            const nested = yield* listFilesRecursive(fullPath, relativePath);
-            results.push(...nested);
-          } else {
-            results.push({ path: relativePath, size: Number(stat.size) });
-          }
-        }
-        return results;
+    const { hasExportedVideoMap, hasExplainerFolderMap, lessonHasFilesMap } =
+      yield* loadCourseFileMaps({
+        videos: videos ?? [],
+        lessons,
       });
-
-    yield* Effect.forEach(lessons, (lesson) =>
-      Effect.gen(function* () {
-        hasExplainerFolderMap[lesson.id] = yield* fs.exists(
-          `${lesson.fullPath}/explainer`
-        );
-        lessonHasFilesMap[lesson.id] = yield* listFilesRecursive(
-          lesson.fullPath,
-          ""
-        );
-      })
-    );
 
     const latestVersion = versions[0];
     const isLatestVersion = !!(
