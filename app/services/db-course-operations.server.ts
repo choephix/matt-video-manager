@@ -105,6 +105,116 @@ export const createCourseOperations = (db: DrizzleDB) => {
     }
   );
 
+  const getCourseWithSlimClipsById = Effect.fn("getCourseWithSlimClipsById")(
+    function* (id: string) {
+      const course = yield* makeDbCall(() =>
+        db.query.courses.findFirst({
+          where: eq(courses.id, id),
+          with: {
+            versions: {
+              orderBy: desc(courseVersions.createdAt),
+              with: {
+                sections: {
+                  with: {
+                    lessons: {
+                      with: {
+                        videos: {
+                          orderBy: asc(videos.path),
+                          where: eq(videos.archived, false),
+                          with: {
+                            clips: {
+                              columns: {
+                                id: true,
+                                videoFilename: true,
+                                sourceStartTime: true,
+                                sourceEndTime: true,
+                                order: true,
+                              },
+                              orderBy: asc(clips.order),
+                              where: eq(clips.archived, false),
+                            },
+                          },
+                        },
+                      },
+                      orderBy: asc(lessons.order),
+                    },
+                  },
+                  orderBy: asc(sections.order),
+                },
+              },
+            },
+          },
+        })
+      );
+
+      if (!course) {
+        return yield* new NotFoundError({
+          type: "getCourseWithSlimClips",
+          params: { id },
+        });
+      }
+
+      return course;
+    }
+  );
+
+  const getVideoTranscripts = Effect.fn("getVideoTranscripts")(function* (
+    courseId: string
+  ) {
+    const course = yield* makeDbCall(() =>
+      db.query.courses.findFirst({
+        where: eq(courses.id, courseId),
+        columns: { id: true },
+        with: {
+          versions: {
+            columns: { id: true },
+            orderBy: desc(courseVersions.createdAt),
+            limit: 1,
+            with: {
+              sections: {
+                columns: { id: true },
+                with: {
+                  lessons: {
+                    columns: { id: true },
+                    with: {
+                      videos: {
+                        columns: { id: true },
+                        where: eq(videos.archived, false),
+                        with: {
+                          clips: {
+                            columns: { text: true },
+                            orderBy: asc(clips.order),
+                            where: eq(clips.archived, false),
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      })
+    );
+
+    const transcripts: Record<string, string> = {};
+    const version = course?.versions[0];
+    if (version) {
+      for (const section of version.sections) {
+        for (const lesson of section.lessons) {
+          for (const video of lesson.videos) {
+            transcripts[video.id] = video.clips
+              .map((c) => c.text)
+              .filter(Boolean)
+              .join(" ");
+          }
+        }
+      }
+    }
+    return transcripts;
+  });
+
   const getCourseWithSectionsByFilePath = Effect.fn(
     "getCourseWithSectionsByFilePath"
   )(function* (filePath: string) {
@@ -153,7 +263,10 @@ export const createCourseOperations = (db: DrizzleDB) => {
     name: string;
   }) {
     const result = yield* makeDbCall(() =>
-      db.insert(courses).values({ name: input.name, filePath: null }).returning()
+      db
+        .insert(courses)
+        .values({ name: input.name, filePath: null })
+        .returning()
     );
 
     const course = result[0];
@@ -290,6 +403,8 @@ export const createCourseOperations = (db: DrizzleDB) => {
     getCourseById,
     getCourseByFilePath,
     getCourseWithSectionsById,
+    getCourseWithSlimClipsById,
+    getVideoTranscripts,
     getCourseWithSectionsByFilePath,
     getCourses,
     getArchivedCourses,

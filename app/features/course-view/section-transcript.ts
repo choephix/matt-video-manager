@@ -19,7 +19,8 @@ const defaultOptions: TranscriptOptions = {
 export function buildCourseTranscript(
   coursePath: string,
   sections: Section[],
-  options: TranscriptOptions = defaultOptions
+  options: TranscriptOptions = defaultOptions,
+  videoTranscripts: Record<string, string> = {}
 ) {
   const lines: string[] = [`<course title="${escapeAttr(coursePath)}">`];
   for (const section of sections) {
@@ -30,7 +31,8 @@ export function buildCourseTranscript(
     const sectionLines = buildSectionTranscript(
       section.path,
       section.lessons,
-      options
+      options,
+      videoTranscripts
     );
     // Indent each line of the section transcript by 2 spaces
     for (const line of sectionLines.split("\n")) {
@@ -44,7 +46,8 @@ export function buildCourseTranscript(
 export function buildSectionTranscript(
   sectionPath: string,
   lessons: Lesson[],
-  options: TranscriptOptions = defaultOptions
+  options: TranscriptOptions = defaultOptions,
+  videoTranscripts: Record<string, string> = {}
 ) {
   const realLessons = lessons.filter((l) => l.fsStatus !== "ghost");
   const lines: string[] = [`<section title="${escapeAttr(sectionPath)}">`];
@@ -75,15 +78,12 @@ export function buildSectionTranscript(
     for (const video of lesson.videos) {
       lines.push(`    <video title="${escapeAttr(video.path)}">`);
       if (options.includeTranscripts) {
-        if (video.clips.length === 0) {
+        if (video.clipCount === 0) {
           lines.push("      (no clips)");
           lines.push("    </video>");
           continue;
         }
-        const transcript = video.clips
-          .map((c) => c.text)
-          .filter(Boolean)
-          .join(" ");
+        const transcript = videoTranscripts[video.id];
         lines.push(`      ${transcript || "(no transcript)"}`);
       }
       lines.push("    </video>");

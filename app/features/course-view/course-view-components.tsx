@@ -69,14 +69,10 @@ export function StatsBar({
         section.lessons.reduce((lessonAcc, lesson) => {
           return (
             lessonAcc +
-            lesson.videos.reduce((videoAcc, video) => {
-              return (
-                videoAcc +
-                video.clips.reduce((clipAcc, clip) => {
-                  return clipAcc + (clip.sourceEndTime - clip.sourceStartTime);
-                }, 0)
-              );
-            }, 0)
+            lesson.videos.reduce(
+              (videoAcc, video) => videoAcc + video.totalDuration,
+              0
+            )
           );
         }, 0)
       );
@@ -523,29 +519,33 @@ export function RouteModals({
         />
       )}
 
-      {currentCourse && (
-        <CopyTranscriptModal
-          mode="course"
-          courseName={currentCourse.name}
-          sections={currentCourse.sections}
-          open={viewState.isCopyTranscriptModalOpen}
-          onOpenChange={(open) =>
-            dispatch({ type: "set-copy-transcript-modal-open", open })
-          }
-        />
-      )}
+      <Suspense>
+        {currentCourse && (
+          <CopyTranscriptModal
+            mode="course"
+            courseName={currentCourse.name}
+            sections={currentCourse.sections}
+            videoTranscripts={data.videoTranscripts}
+            open={viewState.isCopyTranscriptModalOpen}
+            onOpenChange={(open) =>
+              dispatch({ type: "set-copy-transcript-modal-open", open })
+            }
+          />
+        )}
 
-      {viewState.copySectionTranscriptState && (
-        <CopyTranscriptModal
-          mode="section"
-          sectionPath={viewState.copySectionTranscriptState.sectionPath}
-          lessons={viewState.copySectionTranscriptState.lessons}
-          open={true}
-          onOpenChange={(open) => {
-            if (!open) dispatch({ type: "close-copy-section-transcript" });
-          }}
-        />
-      )}
+        {viewState.copySectionTranscriptState && (
+          <CopyTranscriptModal
+            mode="section"
+            sectionPath={viewState.copySectionTranscriptState.sectionPath}
+            lessons={viewState.copySectionTranscriptState.lessons}
+            videoTranscripts={data.videoTranscripts}
+            open={true}
+            onOpenChange={(open) => {
+              if (!open) dispatch({ type: "close-copy-section-transcript" });
+            }}
+          />
+        )}
+      </Suspense>
 
       {viewState.moveLessonState && currentCourse && (
         <MoveLessonModal

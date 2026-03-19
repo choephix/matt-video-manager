@@ -33,8 +33,8 @@ export function filterLessons(
       // "todo" filter
       if ((lesson.fsStatus ?? "real") !== "real") return false;
       if (lesson.videos.length === 0) return true;
-      if (lesson.videos.every((v) => v.clips.length > 1)) return false;
-      return lesson.videos.some((v) => v.clips.length === 0);
+      if (lesson.videos.every((v) => v.clipCount > 1)) return false;
+      return lesson.videos.some((v) => v.clipCount === 0);
     })();
     const passesSearch = (() => {
       if (!searchQuery) return true;
@@ -60,13 +60,7 @@ export function calcSectionDuration(lessons: Lesson[]): number {
     (acc, lesson) =>
       acc +
       lesson.videos.reduce(
-        (videoAcc, video) =>
-          videoAcc +
-          video.clips.reduce(
-            (clipAcc, clip) =>
-              clipAcc + (clip.sourceEndTime - clip.sourceStartTime),
-            0
-          ),
+        (videoAcc, video) => videoAcc + video.totalDuration,
         0
       ),
     0

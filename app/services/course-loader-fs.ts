@@ -99,3 +99,20 @@ export const loadLessonFsMaps = (opts: {
 
     return { hasExplainerFolderMap, lessonHasFilesMap };
   });
+
+export function toSlimVideo<
+  T extends {
+    clips: { id: string; sourceStartTime: number; sourceEndTime: number }[];
+  },
+>(video: T) {
+  const { clips, ...rest } = video;
+  return {
+    ...rest,
+    clipCount: clips.length,
+    totalDuration: clips.reduce(
+      (acc, c) => acc + (c.sourceEndTime - c.sourceStartTime),
+      0
+    ),
+    firstClipId: clips[0]?.id ?? null,
+  };
+}

@@ -10,6 +10,7 @@ import { DBFunctionsService } from "@/services/db-service.server";
 import {
   loadExportStatusMap,
   loadLessonFsMaps,
+  toSlimVideo,
 } from "@/services/course-loader-fs";
 import type { ExportClip } from "@/services/export-hash";
 import { FeatureFlagService } from "@/services/feature-flag-service";
@@ -104,7 +105,7 @@ export const loader = async (args: Route.LoaderArgs) => {
 
     const selectedCourse = yield* !selectedCourseId
       ? Effect.succeed(undefined)
-      : db.getCourseWithSectionsById(selectedCourseId).pipe(
+      : db.getCourseWithSlimClipsById(selectedCourseId).pipe(
           Effect.andThen((course) => {
             if (!course) {
               return undefined;
@@ -125,9 +126,23 @@ export const loader = async (args: Route.LoaderArgs) => {
           })
         );
 
-    const videos = selectedCourse?.sections.flatMap((s) =>
+    // Build slim video summaries for the UI (no clip arrays sent to client)
+    const allVideos = selectedCourse?.sections.flatMap((s) =>
       s.lessons.flatMap((l) => l.videos)
     );
+
+    const slimCourse = selectedCourse
+      ? {
+          ...selectedCourse,
+          sections: selectedCourse.sections.map((section) => ({
+            ...section,
+            lessons: section.lessons.map((lesson) => ({
+              ...lesson,
+              videos: lesson.videos.map(toSlimVideo),
+            })),
+          })),
+        }
+      : undefined;
 
     const lessons = selectedCourse?.filePath
       ? selectedCourse.sections.flatMap((section) =>
@@ -145,22 +160,20 @@ export const loader = async (args: Route.LoaderArgs) => {
       ? runtimeLive.runPromise(
           loadExportStatusMap({
             courseId: selectedCourse.id,
-            videos: (videos ?? []).map((v) => ({
+            videos: (allVideos ?? []).map((v) => ({
               id: v.id,
-              clips: v.clips.map(
-                (c): ExportClip => ({
-                  videoFilename: c.videoFilename,
-                  sourceStartTime: c.sourceStartTime,
-                  sourceEndTime: c.sourceEndTime,
-                  order: c.order,
-                })
-              ),
+              clips: v.clips as ExportClip[],
             })),
           })
         )
       : Promise.resolve({} as Record<string, boolean>);
 
     const lessonFsMaps = runtimeLive.runPromise(loadLessonFsMaps({ lessons }));
+
+    // Deferred: transcript text per video, loaded via separate DB query
+    const videoTranscripts = selectedCourseId
+      ? runtimeLive.runPromise(db.getVideoTranscripts(selectedCourseId))
+      : Promise.resolve({} as Record<string, string>);
 
     const latestVersion = versions[0];
     const isLatestVersion = !!(
@@ -176,12 +189,13 @@ export const loader = async (args: Route.LoaderArgs) => {
     return {
       courses,
       standaloneVideos,
-      selectedCourse,
+      selectedCourse: slimCourse,
       versions,
       selectedVersion,
       isLatestVersion,
       hasExportedVideoMap,
       lessonFsMaps,
+      videoTranscripts,
       plans,
       gitStatus,
       showMediaFilesList: featureFlags.isEnabled("ENABLE_MEDIA_FILES_LIST"),
@@ -401,8 +415,8 @@ export default function Component(props: Route.ComponentProps) {
           counts.real++;
           const isTodo =
             lesson.videos.length === 0 ||
-            (lesson.videos.some((v) => v.clips.length === 0) &&
-              !lesson.videos.every((v) => v.clips.length > 1));
+            (lesson.videos.some((v) => v.clipCount === 0) &&
+              !lesson.videos.every((v) => v.clipCount > 1));
           if (isTodo) counts.todo++;
         }
       }

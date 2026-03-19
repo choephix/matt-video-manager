@@ -16,7 +16,7 @@ import {
   type TranscriptOptions,
 } from "@/features/course-view/section-transcript";
 import { ClipboardCopy } from "lucide-react";
-import { useMemo, useState } from "react";
+import { use, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 type CourseMode = {
@@ -32,10 +32,11 @@ type SectionMode = {
 };
 
 export function CopyTranscriptModal(
-  props: { open: boolean; onOpenChange: (open: boolean) => void } & (
-    | CourseMode
-    | SectionMode
-  )
+  props: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    videoTranscripts: Promise<Record<string, string>>;
+  } & (CourseMode | SectionMode)
 ) {
   const [options, setOptions] = useState<TranscriptOptions>({
     includeTranscripts: false,
@@ -45,12 +46,24 @@ export function CopyTranscriptModal(
     includeExerciseType: false,
   });
 
+  const resolvedTranscripts = use(props.videoTranscripts);
+
   const preview = useMemo(() => {
     if (props.mode === "course") {
-      return buildCourseTranscript(props.courseName, props.sections, options);
+      return buildCourseTranscript(
+        props.courseName,
+        props.sections,
+        options,
+        resolvedTranscripts
+      );
     }
-    return buildSectionTranscript(props.sectionPath, props.lessons, options);
-  }, [props, options]);
+    return buildSectionTranscript(
+      props.sectionPath,
+      props.lessons,
+      options,
+      resolvedTranscripts
+    );
+  }, [props, options, resolvedTranscripts]);
 
   const byteCount = new TextEncoder().encode(preview).length;
   const approxTokens = Math.ceil(byteCount / 4);

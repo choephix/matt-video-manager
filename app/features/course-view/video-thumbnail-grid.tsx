@@ -47,11 +47,7 @@ function VideoThumbnailItem({
 }) {
   const hasExportedVideoMap = use(data.hasExportedVideoMap);
   const isReadOnly = !data.isLatestVersion;
-  const totalDuration = video.clips.reduce((acc, clip) => {
-    return acc + (clip.sourceEndTime - clip.sourceStartTime);
-  }, 0);
-
-  const firstClip = video.clips[0];
+  const totalDuration = video.totalDuration;
 
   return (
     <ContextMenu>
@@ -64,9 +60,9 @@ function VideoThumbnailItem({
           }}
         >
           <div className="relative aspect-video w-32 bg-muted">
-            {firstClip ? (
+            {video.firstClipId ? (
               <img
-                src={`/clips/${firstClip.id}/first-frame`}
+                src={`/clips/${video.firstClipId}/first-frame`}
                 alt={video.path}
                 className="w-full h-full object-cover"
                 loading="lazy"

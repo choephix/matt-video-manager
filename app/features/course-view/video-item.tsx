@@ -46,9 +46,7 @@ export function VideoItem({
   deleteVideoFetcher: ReturnType<typeof useFetcher>;
 }) {
   const hasExportedVideoMap = use(data.hasExportedVideoMap);
-  const totalDuration = video.clips.reduce((acc, clip) => {
-    return acc + (clip.sourceEndTime - clip.sourceStartTime);
-  }, 0);
+  const totalDuration = video.totalDuration;
 
   return (
     <ContextMenu>

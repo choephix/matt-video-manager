@@ -13,8 +13,8 @@ import { useNavigate, useFetcher } from "react-router";
 function isTodoLesson(lesson: Lesson): boolean {
   if ((lesson.fsStatus ?? "real") !== "real") return false;
   if (lesson.videos.length === 0) return true;
-  if (lesson.videos.every((v) => v.clips.length > 1)) return false;
-  return lesson.videos.some((v) => v.clips.length === 0);
+  if (lesson.videos.every((v) => v.clipCount > 1)) return false;
+  return lesson.videos.some((v) => v.clipCount === 0);
 }
 
 export function NextTodoCard({
