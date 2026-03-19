@@ -22,7 +22,7 @@ export const loader = async (_args: Route.LoaderArgs) => {
     const db = yield* DBFunctionsService;
     const archivedPlans = yield* db.getArchivedPlans();
     const courses = yield* db.getCourses();
-    const standaloneVideos = yield* db.getStandaloneVideos();
+    const standaloneVideos = yield* db.getStandaloneVideosSidebar();
     const plans = yield* db.getPlans();
 
     return {

@@ -57,7 +57,7 @@ export const loader = async ({ params }: Route.LoaderArgs) => {
     const db = yield* DBFunctionsService;
     const [courses, standaloneVideos, plans] = yield* Effect.all([
       db.getCourses(),
-      db.getStandaloneVideos(),
+      db.getStandaloneVideosSidebar(),
       db.getPlans(),
     ]);
     const plan = plans.find((p) => p.id === params.planId);

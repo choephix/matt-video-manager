@@ -73,6 +73,21 @@ export const createVideoOperations = (
     return standaloneVideos;
   });
 
+  const getStandaloneVideosSidebar = Effect.fn("getStandaloneVideosSidebar")(
+    function* () {
+      const standaloneVideos = yield* makeDbCall(() =>
+        db.query.videos.findMany({
+          columns: { id: true, path: true },
+          where: and(isNull(videos.lessonId), eq(videos.archived, false)),
+          orderBy: desc(videos.updatedAt),
+          limit: 5,
+        })
+      );
+
+      return standaloneVideos;
+    }
+  );
+
   const getAllStandaloneVideos = Effect.fn("getAllStandaloneVideos")(
     function* () {
       const standaloneVideos = yield* makeDbCall(() =>
@@ -523,6 +538,7 @@ export const createVideoOperations = (
   return {
     getVideoDeepById,
     getStandaloneVideos,
+    getStandaloneVideosSidebar,
     getAllStandaloneVideos,
     getArchivedStandaloneVideos,
     getVideoWithClipsById,

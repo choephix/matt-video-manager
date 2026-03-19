@@ -61,7 +61,7 @@ export const loader = async () => {
     const db = yield* DBFunctionsService;
     const videos = yield* db.getAllStandaloneVideos();
     const courseList = yield* db.getCourses();
-    const sidebarVideos = yield* db.getStandaloneVideos();
+    const sidebarVideos = yield* db.getStandaloneVideosSidebar();
     const plans = yield* db.getPlans();
 
     // Load all courses with their sections/lessons/videos (draft version)

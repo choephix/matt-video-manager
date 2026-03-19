@@ -106,13 +106,16 @@ export const createCourseOperations = (db: DrizzleDB) => {
   );
 
   const getCourseWithSlimClipsById = Effect.fn("getCourseWithSlimClipsById")(
-    function* (id: string) {
+    function* (id: string, versionId?: string) {
       const course = yield* makeDbCall(() =>
         db.query.courses.findFirst({
           where: eq(courses.id, id),
           with: {
             versions: {
               orderBy: desc(courseVersions.createdAt),
+              ...(versionId
+                ? { where: eq(courseVersions.id, versionId) }
+                : { limit: 1 }),
               with: {
                 sections: {
                   with: {

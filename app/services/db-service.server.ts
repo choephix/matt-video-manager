@@ -52,6 +52,7 @@ export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
       const {
         getVideoDeepById,
         getStandaloneVideos,
+        getStandaloneVideosSidebar,
         getAllStandaloneVideos,
         getArchivedStandaloneVideos,
         getVideoWithClipsById,
@@ -168,6 +169,7 @@ export class DBFunctionsService extends Effect.Service<DBFunctionsService>()(
         getVideoById: getVideoDeepById,
         getVideoWithClipsById: getVideoWithClipsById,
         getStandaloneVideos,
+        getStandaloneVideosSidebar,
         getAllStandaloneVideos,
         getArchivedStandaloneVideos,
         createCourse,

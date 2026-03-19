@@ -74,7 +74,7 @@ export const loader = async (args: Route.LoaderArgs) => {
     const featureFlags = yield* FeatureFlagService;
 
     const courses = yield* db.getCourses();
-    const standaloneVideos = yield* db.getStandaloneVideos();
+    const standaloneVideos = yield* db.getStandaloneVideosSidebar();
     const plans = yield* db.getPlans();
 
     let versions: Awaited<
@@ -105,26 +105,24 @@ export const loader = async (args: Route.LoaderArgs) => {
 
     const selectedCourse = yield* !selectedCourseId
       ? Effect.succeed(undefined)
-      : db.getCourseWithSlimClipsById(selectedCourseId).pipe(
-          Effect.andThen((course) => {
-            if (!course) {
-              return undefined;
-            }
+      : db
+          .getCourseWithSlimClipsById(selectedCourseId, selectedVersion?.id)
+          .pipe(
+            Effect.andThen((course) => {
+              if (!course) {
+                return undefined;
+              }
 
-            // Get sections from selected version only (or latest if none selected)
-            const versionData =
-              course.versions.find((v) => v.id === selectedVersion?.id) ??
-              course.versions[0];
-            const allSections = versionData?.sections ?? [];
+              const allSections = course.versions[0]?.sections ?? [];
 
-            return {
-              ...course,
-              sections: allSections.filter((section) => {
-                return !section.path.endsWith("ARCHIVE");
-              }),
-            };
-          })
-        );
+              return {
+                ...course,
+                sections: allSections.filter((section) => {
+                  return !section.path.endsWith("ARCHIVE");
+                }),
+              };
+            })
+          );
 
     // Build slim video summaries for the UI (no clip arrays sent to client)
     const allVideos = selectedCourse?.sections.flatMap((s) =>
@@ -132,17 +130,25 @@ export const loader = async (args: Route.LoaderArgs) => {
     );
 
     const slimCourse = selectedCourse
-      ? {
-          ...selectedCourse,
-          versions: [],
-          sections: selectedCourse.sections.map((section) => ({
-            ...section,
-            lessons: section.lessons.map((lesson) => ({
-              ...lesson,
-              videos: lesson.videos.map(toSlimVideo),
-            })),
-          })),
-        }
+      ? (() => {
+          const { versions, sections, ...courseRest } = selectedCourse;
+          return {
+            ...courseRest,
+            sections: sections.map((section) => {
+              const { lessons, ...sectionRest } = section;
+              return {
+                ...sectionRest,
+                lessons: lessons.map((lesson) => {
+                  const { videos, ...lessonRest } = lesson;
+                  return {
+                    ...lessonRest,
+                    videos: videos.map(toSlimVideo),
+                  };
+                }),
+              };
+            }),
+          };
+        })()
       : undefined;
 
     const lessons = selectedCourse?.filePath

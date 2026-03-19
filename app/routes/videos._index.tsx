@@ -43,7 +43,7 @@ export const loader = async () => {
 
     const courses = yield* db.getCourses();
     const videos = yield* db.getAllStandaloneVideos();
-    const sidebarVideos = yield* db.getStandaloneVideos();
+    const sidebarVideos = yield* db.getStandaloneVideosSidebar();
     const archivedVideos = yield* db.getArchivedStandaloneVideos();
     const plans = yield* db.getPlans();
 
@@ -118,7 +118,10 @@ export default function Component(props: Route.ComponentProps) {
               Standalone Videos
             </h1>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => navigate("/videos/concatenate")}>
+              <Button
+                variant="outline"
+                onClick={() => navigate("/videos/concatenate")}
+              >
                 Concatenate
               </Button>
               <Button onClick={() => setIsAddVideoOpen(true)}>

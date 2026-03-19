@@ -7,7 +7,7 @@ import { RenameVideoModal } from "@/components/rename-video-modal";
 import { RewriteCoursePathModal } from "@/components/rewrite-course-path-modal";
 import { VersionSelectorModal } from "@/components/version-selector-modal";
 import { courseViewReducer } from "@/features/course-view/course-view-reducer";
-import { formatSecondsToTimeCode } from "@/services/utils";
+
 import {
   Code,
   FileVideo,
@@ -350,11 +350,6 @@ export function NoCourseView({
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {standaloneVideos.slice(0, 3).map((video) => {
-              const totalDuration = video.clips.reduce(
-                (acc, clip) =>
-                  acc + (clip.sourceEndTime - clip.sourceStartTime),
-                0
-              );
               return (
                 <Link
                   key={video.id}
@@ -365,15 +360,12 @@ export function NoCourseView({
                     if (e.button === 0) navigate(`/videos/${video.id}/edit`);
                   }}
                 >
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2">
                     <VideoIcon className="w-4 h-4 text-muted-foreground" />
                     <span className="text-sm font-medium truncate">
                       {video.path}
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {formatSecondsToTimeCode(totalDuration)}
-                  </p>
                 </Link>
               );
             })}
