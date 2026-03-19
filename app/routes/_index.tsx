@@ -134,6 +134,7 @@ export const loader = async (args: Route.LoaderArgs) => {
     const slimCourse = selectedCourse
       ? {
           ...selectedCourse,
+          versions: [],
           sections: selectedCourse.sections.map((section) => ({
             ...section,
             lessons: section.lessons.map((lesson) => ({
