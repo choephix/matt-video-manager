@@ -1,6 +1,5 @@
 import { PurgeExportsModal } from "@/components/purge-exports-modal";
 import { CopyTranscriptModal } from "@/components/copy-transcript-modal";
-import { MoveLessonModal } from "@/components/move-lesson-modal";
 import { MoveVideoModal } from "@/components/move-video-modal";
 import { RenameCourseModal } from "@/components/rename-course-modal";
 import { RenameVideoModal } from "@/components/rename-video-modal";
@@ -439,11 +438,6 @@ export function RouteModals({
       sectionPath: string;
       lessons: import("./course-view-types").Lesson[];
     } | null;
-    moveLessonState: {
-      lessonId: string;
-      lessonTitle: string;
-      currentSectionId: string;
-    } | null;
     moveVideoState: {
       videoId: string;
       videoPath: string;
@@ -536,26 +530,6 @@ export function RouteModals({
           />
         )}
       </Suspense>
-
-      {viewState.moveLessonState && currentCourse && (
-        <MoveLessonModal
-          lessonId={viewState.moveLessonState.lessonId}
-          lessonTitle={viewState.moveLessonState.lessonTitle}
-          currentSectionId={viewState.moveLessonState.currentSectionId}
-          sections={currentCourse.sections}
-          open={true}
-          onOpenChange={(open) => {
-            if (!open) dispatch({ type: "close-move-lesson" });
-          }}
-          onMove={(targetSectionId) => {
-            dispatch({
-              type: "move-lesson-to-section",
-              lessonFrontendId: viewState.moveLessonState!.lessonId,
-              targetSectionFrontendId: targetSectionId,
-            } as any);
-          }}
-        />
-      )}
 
       {viewState.moveVideoState && currentCourse && (
         <MoveVideoModal

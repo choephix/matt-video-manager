@@ -111,6 +111,7 @@ export function NextTodoCard({
                 deleteVideoFileFetcher={deleteVideoFileFetcher}
                 deleteVideoFetcher={deleteVideoFetcher}
                 allFlatLessons={allFlatLessons}
+                allSections={sections}
                 dependencyMap={dependencyMap}
                 hideAnchor
               />

@@ -13,6 +13,9 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { Separator } from "@/components/ui/separator";
@@ -57,6 +60,7 @@ export function SortableLessonItem({
   deleteVideoFetcher,
   allFlatLessons,
   dependencyMap,
+  allSections,
   hideAnchor,
   isGhostCourse,
 }: {
@@ -77,6 +81,7 @@ export function SortableLessonItem({
   deleteVideoFetcher: ReturnType<typeof useFetcher>;
   allFlatLessons: DependencyLessonItem[];
   dependencyMap: Record<string, string[]>;
+  allSections: { id: string; path: string }[];
   hideAnchor?: boolean;
   isGhostCourse?: boolean;
 }) {
@@ -394,21 +399,36 @@ export function SortableLessonItem({
                   Add Lesson After
                 </ContextMenuItem>
                 <ContextMenuSeparator />
-                <ContextMenuItem
-                  onSelect={() =>
-                    dispatch({
-                      type: "open-move-lesson",
-                      lessonId: lesson.id,
-                      lessonTitle: isGhost
-                        ? lesson.title || lesson.path
-                        : lesson.path,
-                      currentSectionId: section.id,
-                    })
-                  }
-                >
-                  <ArrowRightLeft className="w-4 h-4" />
-                  Move to Section
-                </ContextMenuItem>
+                <ContextMenuSub>
+                  <ContextMenuSubTrigger>
+                    <ArrowRightLeft className="w-4 h-4" />
+                    Move to Section
+                  </ContextMenuSubTrigger>
+                  <ContextMenuSubContent>
+                    {allSections
+                      .filter((s) => s.id !== section.id)
+                      .map((targetSection) => (
+                        <ContextMenuItem
+                          key={targetSection.id}
+                          onSelect={() =>
+                            dispatch({
+                              type: "move-lesson-to-section",
+                              lessonFrontendId: lesson.id,
+                              targetSectionFrontendId: targetSection.id,
+                            } as any)
+                          }
+                        >
+                          {targetSection.path}
+                        </ContextMenuItem>
+                      ))}
+                    {allSections.filter((s) => s.id !== section.id).length ===
+                      0 && (
+                      <ContextMenuItem disabled>
+                        No other sections
+                      </ContextMenuItem>
+                    )}
+                  </ContextMenuSubContent>
+                </ContextMenuSub>
                 <ContextMenuItem
                   variant="destructive"
                   onSelect={() => {

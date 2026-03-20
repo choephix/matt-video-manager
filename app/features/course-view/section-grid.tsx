@@ -314,6 +314,7 @@ export function SectionGrid({
                                         deleteVideoFileFetcher
                                       }
                                       deleteVideoFetcher={deleteVideoFetcher}
+                                      allSections={currentCourse.sections}
                                       dependencyMap={dependencyMap}
                                       isGhostCourse={isGhostCourse}
                                     />
