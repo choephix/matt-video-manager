@@ -49,6 +49,7 @@ export function SortableLessonItem({
   editLessonId,
   convertToGhostLessonId,
   deleteLessonId,
+  createOnDiskLessonId,
   dispatch,
   startExportUpload,
   revealVideoFetcher,
@@ -68,6 +69,7 @@ export function SortableLessonItem({
   editLessonId: string | null;
   convertToGhostLessonId: string | null;
   deleteLessonId: string | null;
+  createOnDiskLessonId: string | null;
   dispatch: (action: courseViewReducer.Action) => void;
   startExportUpload: (videoId: string, path: string) => void;
   revealVideoFetcher: ReturnType<typeof useFetcher>;
@@ -99,7 +101,6 @@ export function SortableLessonItem({
   const isGhost =
     lesson.fsStatus === "ghost" && createOnDiskFetcher.state === "idle";
   const isGhostCourse = !data.selectedCourse?.filePath;
-  const [showCreateOnDiskModal, setShowCreateOnDiskModal] = useState(false);
 
   const descriptionFetcher = useFetcher();
   const currentDescription =
@@ -324,12 +325,10 @@ export function SortableLessonItem({
                     <ContextMenuItem
                       onSelect={() => {
                         if (isGhostCourse) {
-                          // Delay so the Dialog opens after the ContextMenu
-                          // has fully closed — otherwise Radix's dismiss
-                          // events immediately close the Dialog.
-                          requestAnimationFrame(() =>
-                            setShowCreateOnDiskModal(true)
-                          );
+                          dispatch({
+                            type: "set-create-on-disk-lesson-id",
+                            lessonId: lesson.id,
+                          });
                         } else {
                           createOnDiskFetcher.submit(null, {
                             method: "post",
@@ -593,8 +592,13 @@ export function SortableLessonItem({
         </div>
         <CreateOnDiskModal
           lessonId={lesson.id}
-          open={showCreateOnDiskModal}
-          onOpenChange={setShowCreateOnDiskModal}
+          open={createOnDiskLessonId === lesson.id}
+          onOpenChange={(open) => {
+            dispatch({
+              type: "set-create-on-disk-lesson-id",
+              lessonId: open ? lesson.id : null,
+            });
+          }}
         />
       </div>
     </div>

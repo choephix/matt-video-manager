@@ -237,6 +237,7 @@ export default function Component(props: Route.ComponentProps) {
     editSectionId,
     convertToGhostLessonId,
     deleteLessonId,
+    createOnDiskLessonId,
     deleteSectionId,
     videoPlayerState,
     priorityFilter,
@@ -492,7 +493,6 @@ export default function Component(props: Route.ComponentProps) {
                 <ReadOnlyBanner />
               )}
 
-              {/* Stats */}
               <div className="mb-10">
                 <StatsBar
                   selectedCourse={loaderData.selectedCourse}
@@ -501,7 +501,6 @@ export default function Component(props: Route.ComponentProps) {
               </div>
 
               <Suspense>
-                {/* Next Up — only show for draft */}
                 {loaderData.isLatestVersion && (
                   <div className="mb-14">
                     <NextTodoCard
@@ -512,6 +511,7 @@ export default function Component(props: Route.ComponentProps) {
                       editLessonId={editLessonId}
                       convertToGhostLessonId={convertToGhostLessonId}
                       deleteLessonId={deleteLessonId}
+                      createOnDiskLessonId={createOnDiskLessonId}
                       dispatch={dispatch}
                       startExportUpload={startExportUpload}
                       revealVideoFetcher={revealVideoFetcher}
@@ -526,7 +526,6 @@ export default function Component(props: Route.ComponentProps) {
                   </div>
                 )}
 
-                {/* All Lessons */}
                 <div className="mb-4">
                   <h2 className="text-lg font-semibold mb-3">All Lessons</h2>
                   <FilterBar
@@ -564,6 +563,7 @@ export default function Component(props: Route.ComponentProps) {
                   editLessonId={editLessonId}
                   convertToGhostLessonId={convertToGhostLessonId}
                   deleteLessonId={deleteLessonId}
+                  createOnDiskLessonId={createOnDiskLessonId}
                   deleteSectionId={deleteSectionId}
                   dispatch={dispatch}
                   navigate={navigate}
