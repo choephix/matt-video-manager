@@ -5,24 +5,95 @@
 
 import { Schema } from "effect";
 
+const nonEmptyString = Schema.String.pipe(Schema.minLength(1));
+
 export const CourseEditorEventSchema = Schema.Union(
+  // --- Section events ---
   Schema.Struct({
     type: Schema.Literal("create-section"),
-    repoVersionId: Schema.String.pipe(Schema.minLength(1)),
-    title: Schema.String.pipe(Schema.minLength(1)),
+    repoVersionId: nonEmptyString,
+    title: nonEmptyString,
     maxOrder: Schema.Number,
   }),
   Schema.Struct({
     type: Schema.Literal("update-section-name"),
-    sectionId: Schema.String.pipe(Schema.minLength(1)),
-    title: Schema.String.pipe(Schema.minLength(1)),
+    sectionId: nonEmptyString,
+    title: nonEmptyString,
   }),
   Schema.Struct({
     type: Schema.Literal("delete-section"),
-    sectionId: Schema.String.pipe(Schema.minLength(1)),
+    sectionId: nonEmptyString,
   }),
   Schema.Struct({
     type: Schema.Literal("reorder-sections"),
-    sectionIds: Schema.Array(Schema.String.pipe(Schema.minLength(1))),
+    sectionIds: Schema.Array(nonEmptyString),
+  }),
+  // --- Lesson events ---
+  Schema.Struct({
+    type: Schema.Literal("add-ghost-lesson"),
+    sectionId: nonEmptyString,
+    title: nonEmptyString,
+    adjacentLessonId: Schema.optional(nonEmptyString),
+    position: Schema.optional(Schema.Literal("before", "after")),
+  }),
+  Schema.Struct({
+    type: Schema.Literal("create-real-lesson"),
+    sectionId: nonEmptyString,
+    title: nonEmptyString,
+    adjacentLessonId: Schema.optional(nonEmptyString),
+    position: Schema.optional(Schema.Literal("before", "after")),
+  }),
+  Schema.Struct({
+    type: Schema.Literal("update-lesson-name"),
+    lessonId: nonEmptyString,
+    newSlug: nonEmptyString,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("update-lesson-title"),
+    lessonId: nonEmptyString,
+    title: nonEmptyString,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("update-lesson-description"),
+    lessonId: nonEmptyString,
+    description: Schema.String,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("update-lesson-icon"),
+    lessonId: nonEmptyString,
+    icon: Schema.Literal("watch", "code", "discussion"),
+  }),
+  Schema.Struct({
+    type: Schema.Literal("update-lesson-priority"),
+    lessonId: nonEmptyString,
+    priority: Schema.Literal(1, 2, 3),
+  }),
+  Schema.Struct({
+    type: Schema.Literal("update-lesson-dependencies"),
+    lessonId: nonEmptyString,
+    dependencies: Schema.Array(Schema.String),
+  }),
+  Schema.Struct({
+    type: Schema.Literal("delete-lesson"),
+    lessonId: nonEmptyString,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("reorder-lessons"),
+    sectionId: nonEmptyString,
+    lessonIds: Schema.Array(nonEmptyString),
+  }),
+  Schema.Struct({
+    type: Schema.Literal("move-lesson-to-section"),
+    lessonId: nonEmptyString,
+    targetSectionId: nonEmptyString,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("convert-to-ghost"),
+    lessonId: nonEmptyString,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("create-on-disk"),
+    lessonId: nonEmptyString,
+    repoPath: Schema.optional(nonEmptyString),
   })
 );

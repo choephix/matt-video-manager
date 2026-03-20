@@ -5,7 +5,7 @@
  * ClipService pattern. Discriminated union events, transport abstraction,
  * HTTP transport for production, direct transport for tests.
  *
- * Phase 1: Section events only (create, update-name, delete, reorder).
+ * Covers 4 section events + 13 lesson events = 17 total event types.
  */
 
 // ============================================================================
@@ -13,6 +13,7 @@
 // ============================================================================
 
 export type CourseEditorEvent =
+  // --- Section events ---
   | {
       type: "create-section";
       repoVersionId: string;
@@ -31,6 +32,74 @@ export type CourseEditorEvent =
   | {
       type: "reorder-sections";
       sectionIds: string[];
+    }
+  // --- Lesson events ---
+  | {
+      type: "add-ghost-lesson";
+      sectionId: string;
+      title: string;
+      adjacentLessonId?: string;
+      position?: "before" | "after";
+    }
+  | {
+      type: "create-real-lesson";
+      sectionId: string;
+      title: string;
+      adjacentLessonId?: string;
+      position?: "before" | "after";
+    }
+  | {
+      type: "update-lesson-name";
+      lessonId: string;
+      newSlug: string;
+    }
+  | {
+      type: "update-lesson-title";
+      lessonId: string;
+      title: string;
+    }
+  | {
+      type: "update-lesson-description";
+      lessonId: string;
+      description: string;
+    }
+  | {
+      type: "update-lesson-icon";
+      lessonId: string;
+      icon: "watch" | "code" | "discussion";
+    }
+  | {
+      type: "update-lesson-priority";
+      lessonId: string;
+      priority: 1 | 2 | 3;
+    }
+  | {
+      type: "update-lesson-dependencies";
+      lessonId: string;
+      dependencies: string[];
+    }
+  | {
+      type: "delete-lesson";
+      lessonId: string;
+    }
+  | {
+      type: "reorder-lessons";
+      sectionId: string;
+      lessonIds: string[];
+    }
+  | {
+      type: "move-lesson-to-section";
+      lessonId: string;
+      targetSectionId: string;
+    }
+  | {
+      type: "convert-to-ghost";
+      lessonId: string;
+    }
+  | {
+      type: "create-on-disk";
+      lessonId: string;
+      repoPath?: string;
     };
 
 // ============================================================================
@@ -46,6 +115,7 @@ export type CourseEditorTransport = (
 // ============================================================================
 
 export interface CourseEditorService {
+  // Section operations
   createSection(
     repoVersionId: string,
     title: string,
@@ -57,6 +127,68 @@ export interface CourseEditorService {
   deleteSection(sectionId: string): Promise<{ success: true }>;
 
   reorderSections(sectionIds: string[]): Promise<{ success: true }>;
+
+  // Lesson operations
+  addGhostLesson(
+    sectionId: string,
+    title: string,
+    opts?: { adjacentLessonId?: string; position?: "before" | "after" }
+  ): Promise<{ success: true; lessonId: string }>;
+
+  createRealLesson(
+    sectionId: string,
+    title: string,
+    opts?: { adjacentLessonId?: string; position?: "before" | "after" }
+  ): Promise<{ success: true; lessonId: string; path: string }>;
+
+  updateLessonName(
+    lessonId: string,
+    newSlug: string
+  ): Promise<{ success: true; path: string }>;
+
+  updateLessonTitle(
+    lessonId: string,
+    title: string
+  ): Promise<{ success: true }>;
+
+  updateLessonDescription(
+    lessonId: string,
+    description: string
+  ): Promise<{ success: true }>;
+
+  updateLessonIcon(
+    lessonId: string,
+    icon: "watch" | "code" | "discussion"
+  ): Promise<{ success: true }>;
+
+  updateLessonPriority(
+    lessonId: string,
+    priority: 1 | 2 | 3
+  ): Promise<{ success: true }>;
+
+  updateLessonDependencies(
+    lessonId: string,
+    dependencies: string[]
+  ): Promise<{ success: true }>;
+
+  deleteLesson(lessonId: string): Promise<{ success: true }>;
+
+  reorderLessons(
+    sectionId: string,
+    lessonIds: string[]
+  ): Promise<{ success: true }>;
+
+  moveLessonToSection(
+    lessonId: string,
+    targetSectionId: string
+  ): Promise<{ success: true }>;
+
+  convertToGhost(lessonId: string): Promise<{ success: true }>;
+
+  createOnDisk(
+    lessonId: string,
+    opts?: { repoPath?: string }
+  ): Promise<{ success: true; path: string }>;
 }
 
 // ============================================================================
@@ -67,6 +199,7 @@ export function createCourseEditorService(
   send: CourseEditorTransport
 ): CourseEditorService {
   return {
+    // --- Section operations ---
     async createSection(repoVersionId, title, maxOrder) {
       return send({
         type: "create-section",
@@ -96,6 +229,117 @@ export function createCourseEditorService(
         type: "reorder-sections",
         sectionIds,
       }) as Promise<{ success: true }>;
+    },
+
+    // --- Lesson operations ---
+    async addGhostLesson(sectionId, title, opts) {
+      return send({
+        type: "add-ghost-lesson",
+        sectionId,
+        title,
+        ...(opts?.adjacentLessonId && {
+          adjacentLessonId: opts.adjacentLessonId,
+        }),
+        ...(opts?.position && { position: opts.position }),
+      }) as Promise<{ success: true; lessonId: string }>;
+    },
+
+    async createRealLesson(sectionId, title, opts) {
+      return send({
+        type: "create-real-lesson",
+        sectionId,
+        title,
+        ...(opts?.adjacentLessonId && {
+          adjacentLessonId: opts.adjacentLessonId,
+        }),
+        ...(opts?.position && { position: opts.position }),
+      }) as Promise<{ success: true; lessonId: string; path: string }>;
+    },
+
+    async updateLessonName(lessonId, newSlug) {
+      return send({
+        type: "update-lesson-name",
+        lessonId,
+        newSlug,
+      }) as Promise<{ success: true; path: string }>;
+    },
+
+    async updateLessonTitle(lessonId, title) {
+      return send({
+        type: "update-lesson-title",
+        lessonId,
+        title,
+      }) as Promise<{ success: true }>;
+    },
+
+    async updateLessonDescription(lessonId, description) {
+      return send({
+        type: "update-lesson-description",
+        lessonId,
+        description,
+      }) as Promise<{ success: true }>;
+    },
+
+    async updateLessonIcon(lessonId, icon) {
+      return send({
+        type: "update-lesson-icon",
+        lessonId,
+        icon,
+      }) as Promise<{ success: true }>;
+    },
+
+    async updateLessonPriority(lessonId, priority) {
+      return send({
+        type: "update-lesson-priority",
+        lessonId,
+        priority,
+      }) as Promise<{ success: true }>;
+    },
+
+    async updateLessonDependencies(lessonId, dependencies) {
+      return send({
+        type: "update-lesson-dependencies",
+        lessonId,
+        dependencies,
+      }) as Promise<{ success: true }>;
+    },
+
+    async deleteLesson(lessonId) {
+      return send({
+        type: "delete-lesson",
+        lessonId,
+      }) as Promise<{ success: true }>;
+    },
+
+    async reorderLessons(sectionId, lessonIds) {
+      return send({
+        type: "reorder-lessons",
+        sectionId,
+        lessonIds,
+      }) as Promise<{ success: true }>;
+    },
+
+    async moveLessonToSection(lessonId, targetSectionId) {
+      return send({
+        type: "move-lesson-to-section",
+        lessonId,
+        targetSectionId,
+      }) as Promise<{ success: true }>;
+    },
+
+    async convertToGhost(lessonId) {
+      return send({
+        type: "convert-to-ghost",
+        lessonId,
+      }) as Promise<{ success: true }>;
+    },
+
+    async createOnDisk(lessonId, opts) {
+      return send({
+        type: "create-on-disk",
+        lessonId,
+        ...(opts?.repoPath && { repoPath: opts.repoPath }),
+      }) as Promise<{ success: true; path: string }>;
     },
   };
 }

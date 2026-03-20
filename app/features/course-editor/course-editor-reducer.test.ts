@@ -395,6 +395,27 @@ describe("EffectQueue", () => {
     updateSectionName: vi.fn().mockResolvedValue({ success: true }),
     deleteSection: vi.fn().mockResolvedValue({ success: true }),
     reorderSections: vi.fn().mockResolvedValue({ success: true }),
+    addGhostLesson: vi
+      .fn()
+      .mockResolvedValue({ success: true, lessonId: "db-lesson-new" }),
+    createRealLesson: vi.fn().mockResolvedValue({
+      success: true,
+      lessonId: "db-lesson-new",
+      path: "mock",
+    }),
+    updateLessonName: vi
+      .fn()
+      .mockResolvedValue({ success: true, path: "mock" }),
+    updateLessonTitle: vi.fn().mockResolvedValue({ success: true }),
+    updateLessonDescription: vi.fn().mockResolvedValue({ success: true }),
+    updateLessonIcon: vi.fn().mockResolvedValue({ success: true }),
+    updateLessonPriority: vi.fn().mockResolvedValue({ success: true }),
+    updateLessonDependencies: vi.fn().mockResolvedValue({ success: true }),
+    deleteLesson: vi.fn().mockResolvedValue({ success: true }),
+    reorderLessons: vi.fn().mockResolvedValue({ success: true }),
+    moveLessonToSection: vi.fn().mockResolvedValue({ success: true }),
+    convertToGhost: vi.fn().mockResolvedValue({ success: true }),
+    createOnDisk: vi.fn().mockResolvedValue({ success: true, path: "mock" }),
   });
 
   it("should execute create-section and record ID mapping", async () => {
@@ -541,6 +562,25 @@ describe("EffectQueue", () => {
         return { success: true };
       }),
       reorderSections: vi.fn().mockResolvedValue({ success: true }),
+      addGhostLesson: vi
+        .fn()
+        .mockResolvedValue({ success: true, lessonId: "db-l" }),
+      createRealLesson: vi
+        .fn()
+        .mockResolvedValue({ success: true, lessonId: "db-l", path: "mock" }),
+      updateLessonName: vi
+        .fn()
+        .mockResolvedValue({ success: true, path: "mock" }),
+      updateLessonTitle: vi.fn().mockResolvedValue({ success: true }),
+      updateLessonDescription: vi.fn().mockResolvedValue({ success: true }),
+      updateLessonIcon: vi.fn().mockResolvedValue({ success: true }),
+      updateLessonPriority: vi.fn().mockResolvedValue({ success: true }),
+      updateLessonDependencies: vi.fn().mockResolvedValue({ success: true }),
+      deleteLesson: vi.fn().mockResolvedValue({ success: true }),
+      reorderLessons: vi.fn().mockResolvedValue({ success: true }),
+      moveLessonToSection: vi.fn().mockResolvedValue({ success: true }),
+      convertToGhost: vi.fn().mockResolvedValue({ success: true }),
+      createOnDisk: vi.fn().mockResolvedValue({ success: true, path: "mock" }),
     };
     const dispatch = vi.fn();
     const queue = new EffectQueue(service, dispatch);

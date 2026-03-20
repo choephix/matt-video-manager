@@ -1,12 +1,14 @@
 /**
  * CourseEditorService Handler
  *
- * Processes CourseEditorEvents by delegating to CourseWriteService.
+ * Processes CourseEditorEvents by delegating to CourseWriteService
+ * (for structural operations) or DBFunctionsService (for property updates).
  * Also provides the direct transport factory for testing.
  */
 
 import { Effect } from "effect";
 import { CourseWriteService } from "./course-write-service";
+import { DBFunctionsService } from "./db-service.server";
 import { toSlug } from "./lesson-path-service";
 import {
   createCourseEditorService,
@@ -21,8 +23,10 @@ import {
 export const handleCourseEditorEvent = Effect.fn("handleCourseEditorEvent")(
   function* (event: CourseEditorEvent) {
     const service = yield* CourseWriteService;
+    const db = yield* DBFunctionsService;
 
     switch (event.type) {
+      // --- Section events ---
       case "create-section": {
         return yield* service.addGhostSection(
           event.repoVersionId,
@@ -42,6 +46,93 @@ export const handleCourseEditorEvent = Effect.fn("handleCourseEditorEvent")(
 
       case "reorder-sections": {
         return yield* service.reorderSections(event.sectionIds);
+      }
+
+      // --- Lesson events ---
+      case "add-ghost-lesson": {
+        return yield* service.addGhostLesson(event.sectionId, event.title, {
+          adjacentLessonId: event.adjacentLessonId,
+          position: event.position,
+        });
+      }
+
+      case "create-real-lesson": {
+        return yield* service.createRealLesson(event.sectionId, event.title, {
+          adjacentLessonId: event.adjacentLessonId,
+          position: event.position,
+        });
+      }
+
+      case "update-lesson-name": {
+        return yield* service.renameLesson(event.lessonId, event.newSlug);
+      }
+
+      case "update-lesson-title": {
+        const lesson = yield* db.getLessonWithHierarchyById(event.lessonId);
+        const slug = toSlug(event.title) || "untitled";
+        yield* db.updateLesson(event.lessonId, {
+          title: event.title.trim(),
+          path: slug,
+          sectionId: lesson.sectionId,
+        });
+        return { success: true };
+      }
+
+      case "update-lesson-description": {
+        yield* db.getLessonWithHierarchyById(event.lessonId);
+        yield* db.updateLesson(event.lessonId, {
+          description: event.description.trim(),
+        });
+        return { success: true };
+      }
+
+      case "update-lesson-icon": {
+        yield* db.getLessonWithHierarchyById(event.lessonId);
+        yield* db.updateLesson(event.lessonId, {
+          icon: event.icon,
+        });
+        return { success: true };
+      }
+
+      case "update-lesson-priority": {
+        yield* db.getLessonWithHierarchyById(event.lessonId);
+        yield* db.updateLesson(event.lessonId, {
+          priority: event.priority,
+        });
+        return { success: true };
+      }
+
+      case "update-lesson-dependencies": {
+        yield* db.getLessonWithHierarchyById(event.lessonId);
+        yield* db.updateLesson(event.lessonId, {
+          dependencies: event.dependencies,
+        });
+        return { success: true };
+      }
+
+      case "delete-lesson": {
+        return yield* service.deleteLesson(event.lessonId);
+      }
+
+      case "reorder-lessons": {
+        return yield* service.reorderLessons(event.sectionId, event.lessonIds);
+      }
+
+      case "move-lesson-to-section": {
+        return yield* service.moveToSection(
+          event.lessonId,
+          event.targetSectionId
+        );
+      }
+
+      case "convert-to-ghost": {
+        return yield* service.convertToGhost(event.lessonId);
+      }
+
+      case "create-on-disk": {
+        return yield* service.materializeGhost(event.lessonId, {
+          repoPath: event.repoPath,
+        });
       }
 
       default: {
