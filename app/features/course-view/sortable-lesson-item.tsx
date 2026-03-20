@@ -1,5 +1,6 @@
 import { AddVideoModal } from "@/components/add-video-modal";
 import { ConvertToGhostModal } from "@/components/convert-to-ghost-modal";
+import { CreateOnDiskModal } from "./create-on-disk-modal";
 import { DeleteLessonModal } from "@/components/delete-lesson-modal";
 import {
   DependencySelector,
@@ -97,6 +98,9 @@ export function SortableLessonItem({
   const createOnDiskFetcher = useFetcher();
   const isGhost =
     lesson.fsStatus === "ghost" && createOnDiskFetcher.state === "idle";
+  const isGhostCourse = !data.selectedCourse?.filePath;
+  const [showCreateOnDiskModal, setShowCreateOnDiskModal] = useState(false);
+
   const descriptionFetcher = useFetcher();
   const currentDescription =
     (descriptionFetcher.formData?.get("description") as string) ??
@@ -319,10 +323,14 @@ export function SortableLessonItem({
                   <>
                     <ContextMenuItem
                       onSelect={() => {
-                        createOnDiskFetcher.submit(null, {
-                          method: "post",
-                          action: `/api/lessons/${lesson.id}/create-on-disk`,
-                        });
+                        if (isGhostCourse) {
+                          setShowCreateOnDiskModal(true);
+                        } else {
+                          createOnDiskFetcher.submit(null, {
+                            method: "post",
+                            action: `/api/lessons/${lesson.id}/create-on-disk`,
+                          });
+                        }
                       }}
                     >
                       <BookOpen className="w-4 h-4" />
@@ -578,6 +586,11 @@ export function SortableLessonItem({
             deleteVideoFetcher={deleteVideoFetcher}
           />
         </div>
+        <CreateOnDiskModal
+          lessonId={lesson.id}
+          open={showCreateOnDiskModal}
+          onOpenChange={setShowCreateOnDiskModal}
+        />
       </div>
     </div>
   );

@@ -6,23 +6,33 @@ import { withDatabaseDump } from "@/services/dump-service";
 import { data } from "react-router";
 
 export const action = async (args: Route.ActionArgs) => {
+  const formData = await args.request.formData();
+  const repoPath = formData.get("repoPath") as string | null;
+
   return Effect.gen(function* () {
     const courseWrite = yield* CourseWriteService;
-    return yield* courseWrite.materializeGhost(args.params.lessonId);
+    return yield* courseWrite.materializeGhost(
+      args.params.lessonId,
+      repoPath ? { repoPath } : undefined
+    );
   }).pipe(
     withDatabaseDump,
     Effect.tapErrorCause((e) => Console.dir(e, { depth: null })),
     Effect.catchTag("CourseRepoSyncError", (e) => {
-      return Effect.die(data(e.message, { status: 409 }));
+      return Effect.succeed(data({ error: e.message }, { status: 409 }));
     }),
     Effect.catchTag("NotFoundError", () => {
-      return Effect.die(data("Lesson not found", { status: 404 }));
+      return Effect.succeed(
+        data({ error: "Lesson not found" }, { status: 404 })
+      );
     }),
     Effect.catchTag("CourseWriteError", (e) => {
-      return Effect.die(data(e.message, { status: 400 }));
+      return Effect.succeed(data({ error: e.message }, { status: 400 }));
     }),
     Effect.catchAll(() => {
-      return Effect.die(data("Internal server error", { status: 500 }));
+      return Effect.succeed(
+        data({ error: "Internal server error" }, { status: 500 })
+      );
     }),
     runtimeLive.runPromise
   );

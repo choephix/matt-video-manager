@@ -1,4 +1,6 @@
 import { Effect } from "effect";
+import { FileSystem } from "@effect/platform";
+import { execFileSync } from "node:child_process";
 import type { DBFunctionsService } from "./db-service.server";
 import type { CourseRepoWriteService } from "./course-repo-write-service";
 import { parseLessonPath, buildLessonPath } from "./lesson-path-service";
@@ -8,6 +10,52 @@ import {
   computeSectionRenumberingPlan,
 } from "./section-path-service";
 import { CourseWriteError } from "./course-write-service.types";
+
+/**
+ * Validates that a file path is an existing directory containing a git repo,
+ * then assigns it to the given course in the database.
+ */
+export const validateAndAssignRepoPath = Effect.fn("validateAndAssignRepoPath")(
+  function* (
+    fileSystem: FileSystem.FileSystem,
+    db: DBFunctionsService,
+    repoId: string,
+    filePath: string
+  ) {
+    const stat = yield* fileSystem.stat(filePath).pipe(
+      Effect.catchAll(() =>
+        Effect.fail(
+          new CourseWriteError({
+            cause: null,
+            message: `File path does not exist: ${filePath}`,
+          })
+        )
+      )
+    );
+
+    if (stat.type !== "Directory") {
+      return yield* new CourseWriteError({
+        cause: null,
+        message: `File path is not a directory: ${filePath}`,
+      });
+    }
+
+    yield* Effect.try({
+      try: () =>
+        execFileSync("git", ["rev-parse", "--is-inside-work-tree"], {
+          cwd: filePath,
+          stdio: "pipe",
+        }),
+      catch: () =>
+        new CourseWriteError({
+          cause: null,
+          message: `Directory is not a git repository: ${filePath}`,
+        }),
+    });
+
+    yield* db.updateCourseFilePath({ repoId, filePath });
+  }
+);
 
 export function createSectionOps(
   db: DBFunctionsService,
