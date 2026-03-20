@@ -671,26 +671,28 @@ All tRPC procedures are accessible via the HTTP bridge at `/api/trpc/{router}.{p
 
 ## Endpoints Consumed by This Project
 
-This project (`course-video-manager`) makes 9 API calls to the AI Hero service:
+This project (`course-video-manager`) makes 12 API calls to the AI Hero service:
 
-| #   | Method | Endpoint                                    | Purpose                                             |
-| --- | ------ | ------------------------------------------- | --------------------------------------------------- |
-| 1   | POST   | `/oauth/device/code`                        | Initiate device auth flow                           |
-| 2   | POST   | `/oauth/token`                              | Poll for access token (5s intervals, 10min timeout) |
-| 3   | GET    | `/oauth/userinfo`                           | Get authenticated user ID                           |
-| 4   | GET    | `/api/uploads/signed-url?objectName={name}` | Get S3 signed upload URL                            |
-| 5   | PUT    | `{signedUrl}`                               | Upload video to S3 (Content-Type: video/mp4)        |
-| 6   | POST   | `/api/posts`                                | Create post (`{ title, postType: "article" }`)      |
-| 7   | POST   | `/api/uploads/new`                          | Trigger video processing (link video to post)       |
-| 8   | PUT    | `/api/posts?id={id}&action=save`            | Update post fields (title, slug, body, description) |
-| 9   | PUT    | `/api/posts?id={id}&action=publish`         | Publish post                                        |
+| #   | Method | Endpoint                                                                 | Purpose                                               |
+| --- | ------ | ------------------------------------------------------------------------ | ----------------------------------------------------- |
+| 1   | POST   | `/oauth/device/code`                                                     | Initiate device auth flow                             |
+| 2   | POST   | `/oauth/token`                                                           | Poll for access token (5s intervals, 10min timeout)   |
+| 3   | GET    | `/oauth/userinfo`                                                        | Get authenticated user ID                             |
+| 4   | POST   | `/api/uploads/multipart/create`                                          | Create multipart upload session                       |
+| 5   | GET    | `/api/uploads/multipart/part-url?key={key}&uploadId={id}&partNumber={n}` | Get presigned URL for each 100MB chunk                |
+| 6   | PUT    | `{signedUrl}` (per part)                                                 | Upload chunk to S3 (with retries, 4 concurrent parts) |
+| 7   | POST   | `/api/uploads/multipart/complete`                                        | Complete multipart upload (sends part ETags)          |
+| 8   | POST   | `/api/posts`                                                             | Create post (`{ title, postType: "article" }`)        |
+| 9   | POST   | `/api/uploads/new`                                                       | Trigger video processing (link video to post)         |
+| 10  | PUT    | `/api/posts?id={id}&action=save`                                         | Update post fields (title, slug, body, description)   |
+| 11  | PUT    | `/api/posts?id={id}&action=publish`                                      | Publish post                                          |
 
 All calls (except OAuth endpoints) use `Authorization: Bearer {token}`.
 
 **Source files:**
 
 - `app/services/ai-hero-auth-service.ts` — OAuth device flow (calls 1-3)
-- `app/services/ai-hero-upload-service.ts` — Upload & post creation (calls 4-9)
+- `app/services/ai-hero-upload-service.ts` — Multipart upload & post creation (calls 4-11)
 - `app/features/upload-manager/sse-ai-hero-client.ts` — SSE client for progress tracking
 
 ---
