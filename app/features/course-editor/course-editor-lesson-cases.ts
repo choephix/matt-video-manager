@@ -440,9 +440,30 @@ export function handleLessonCase(
         section
       );
 
+      // Compute optimistic lesson path with numeric prefix
+      const sectionNumber = sectionMat
+        ? sectionMat.sectionNumber
+        : parseSectionPath(section.path)?.sectionNumber;
+
+      let optimisticPath = lesson.path;
+      if (sectionNumber != null) {
+        const slug =
+          toSlug(lesson.title || "") || toSlug(lesson.path) || "untitled";
+        // Find insert position: count real lessons ordered before this one
+        const realLessonsBefore = section.lessons.filter(
+          (l) => l.fsStatus === "real" && l.order < lesson.order
+        ).length;
+        optimisticPath = buildLessonPath(
+          sectionNumber,
+          realLessonsBefore + 1,
+          slug
+        );
+      }
+
       let sections = updateLesson(state, action.frontendId, (l) => ({
         ...l,
         fsStatus: "real",
+        path: optimisticPath,
       }));
 
       if (sectionMat) {
