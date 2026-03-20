@@ -10,6 +10,7 @@ import { Effect } from "effect";
 import { CourseWriteService } from "./course-write-service";
 import { DBFunctionsService } from "./db-service.server";
 import { toSlug } from "./lesson-path-service";
+import { parseSectionPath } from "./section-path-service";
 import {
   createCourseEditorService,
   type CourseEditorEvent,
@@ -36,8 +37,17 @@ export const handleCourseEditorEvent = Effect.fn("handleCourseEditorEvent")(
       }
 
       case "update-section-name": {
-        const newSlug = toSlug(event.title.trim()) || "untitled";
-        return yield* service.renameSection(event.sectionId, newSlug);
+        const section = yield* db.getSectionWithHierarchyById(event.sectionId);
+        const parsed = parseSectionPath(section.path);
+        if (parsed) {
+          // Real (materialized) section: rename on disk with slug conversion
+          const newSlug = toSlug(event.title.trim()) || "untitled";
+          return yield* service.renameSection(event.sectionId, newSlug);
+        }
+        // Ghost section: just update the DB path with the raw title
+        const newPath = event.title.trim() || "untitled";
+        yield* db.updateSectionPath(event.sectionId, newPath);
+        return { success: true, path: newPath };
       }
 
       case "delete-section": {

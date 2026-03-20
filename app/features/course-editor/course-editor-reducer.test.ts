@@ -51,7 +51,7 @@ describe("courseEditorReducer", () => {
         .getState();
 
       expect(state.sections).toHaveLength(1);
-      expect(state.sections[0]!.path).toBe("my-section");
+      expect(state.sections[0]!.path).toBe("My Section");
       expect(state.sections[0]!.databaseId).toBeNull();
       expect(state.sections[0]!.frontendId).toBeTruthy();
       expect(state.sections[0]!.repoVersionId).toBe("v1");
@@ -102,7 +102,7 @@ describe("courseEditorReducer", () => {
       );
     });
 
-    it("should generate a slug from the title", () => {
+    it("should use the raw title as the path (ghost sections keep sentence case)", () => {
       const tester = createTester();
 
       const state = tester
@@ -113,7 +113,7 @@ describe("courseEditorReducer", () => {
         })
         .getState();
 
-      expect(state.sections[0]!.path).toBe("hello-world");
+      expect(state.sections[0]!.path).toBe("Hello World!!");
     });
 
     it("should use 'untitled' for empty titles", () => {
@@ -128,8 +128,8 @@ describe("courseEditorReducer", () => {
   });
 
   describe("rename-section", () => {
-    it("should update the section path optimistically", () => {
-      const section = createSection({ path: "old-name" });
+    it("should update the section path optimistically with raw title", () => {
+      const section = createSection({ path: "Old Name" });
       const tester = createTester([section]);
 
       const state = tester
@@ -140,7 +140,7 @@ describe("courseEditorReducer", () => {
         })
         .getState();
 
-      expect(state.sections[0]!.path).toBe("new-name");
+      expect(state.sections[0]!.path).toBe("New Name");
     });
 
     it("should schedule a rename-section effect with databaseId", () => {

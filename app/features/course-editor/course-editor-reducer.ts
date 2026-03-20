@@ -308,13 +308,6 @@ export namespace courseEditorReducer {
 // Helpers
 // ============================================================================
 
-function toSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
 function generateFrontendId(): FrontendId {
   return crypto.randomUUID() as FrontendId;
 }
@@ -378,12 +371,11 @@ export const courseEditorReducer: EffectReducer<
         (max, s) => Math.max(max, s.order),
         0
       );
-      const slug = toSlug(action.title.trim()) || "untitled";
       const newSection: EditorSection = {
         frontendId,
         databaseId: null,
         repoVersionId: action.repoVersionId,
-        path: slug,
+        path: action.title.trim() || "untitled",
         order: maxOrder + 1,
         lessons: [],
       };
@@ -402,7 +394,7 @@ export const courseEditorReducer: EffectReducer<
         (s) => s.frontendId === action.frontendId
       );
       if (!section) return state;
-      const slug = toSlug(action.title.trim()) || "untitled";
+      const newPath = action.title.trim() || "untitled";
       exec({
         type: "rename-section",
         frontendId: action.frontendId,
@@ -412,7 +404,7 @@ export const courseEditorReducer: EffectReducer<
       return {
         ...state,
         sections: state.sections.map((s) =>
-          s.frontendId === action.frontendId ? { ...s, path: slug } : s
+          s.frontendId === action.frontendId ? { ...s, path: newPath } : s
         ),
       };
     }

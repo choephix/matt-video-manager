@@ -82,6 +82,27 @@ describe("CourseEditorService — sections", () => {
       expect(sections[0]!.path).toBe("01-getting-started");
     });
 
+    it("renames a ghost section by updating path without slug conversion", async () => {
+      const { version } = await createCourseWithVersion();
+      const createResult = await svc().createSection(
+        version.id,
+        "Before We Start",
+        0
+      );
+
+      const result = await svc().updateSectionName(
+        createResult.sectionId,
+        "Getting Started"
+      );
+      expect(result).toMatchObject({
+        success: true,
+        path: "Getting Started",
+      });
+
+      const sections = await getSections(version.id);
+      expect(sections[0]!.path).toBe("Getting Started");
+    });
+
     it("returns early when slug is unchanged", async () => {
       const { version } = await createCourseWithVersion();
       const [section] = await db()
