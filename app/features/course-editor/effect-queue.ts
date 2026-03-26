@@ -18,18 +18,27 @@ export class EffectQueue {
   private idMap = new Map<FrontendId, DatabaseId>();
   private service: CourseEditorService;
   private dispatch: (action: courseEditorReducer.Action) => void;
+  private onQueueSizeChange?: (size: number) => void;
 
   constructor(
     service: CourseEditorService,
-    dispatch: (action: courseEditorReducer.Action) => void
+    dispatch: (action: courseEditorReducer.Action) => void,
+    onQueueSizeChange?: (size: number) => void
   ) {
     this.service = service;
     this.dispatch = dispatch;
+    this.onQueueSizeChange = onQueueSizeChange;
   }
 
   enqueue(effect: courseEditorReducer.Effect): void {
     this.queue.push(effect);
+    this.notifyQueueSize();
     this.drain();
+  }
+
+  private notifyQueueSize(): void {
+    const size = this.queue.length + (this.processing ? 1 : 0);
+    this.onQueueSizeChange?.(size);
   }
 
   getIdMap(): Map<FrontendId, DatabaseId> {
@@ -46,10 +55,12 @@ export class EffectQueue {
 
     while (this.queue.length > 0) {
       const effect = this.queue.shift()!;
+      this.notifyQueueSize();
       await this.execute(effect);
     }
 
     this.processing = false;
+    this.notifyQueueSize();
   }
 
   private async execute(effect: courseEditorReducer.Effect): Promise<void> {
