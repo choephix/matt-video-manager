@@ -2,7 +2,11 @@
 
 Fix issue #{{ISSUE_NUMBER}}: {{ISSUE_TITLE}}
 
-Pull in the issue using `gh issue view`. If it has a parent PRD, pull that in too.
+<issue>
+
+!`gh issue view {{ISSUE_NUMBER}}`
+
+</issue>
 
 Only work on the issue specified.
 
