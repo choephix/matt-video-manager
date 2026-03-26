@@ -14,7 +14,7 @@ export function SectionDescriptionEditor({
   isReadOnly: boolean;
   dispatch: (action: courseViewReducer.Action) => void;
 }) {
-  const currentDescription = description ?? "";
+  const currentDescription = description;
   const [editingDesc, setEditingDesc] = useState(false);
   const [descValue, setDescValue] = useState(currentDescription);
 

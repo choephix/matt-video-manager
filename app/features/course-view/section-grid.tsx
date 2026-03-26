@@ -273,7 +273,7 @@ export function SectionGrid({
                             </div>
                             <SectionDescriptionEditor
                               sectionId={section.id}
-                              description={(section as any).description ?? ""}
+                              description={section.description ?? ""}
                               isReadOnly={isReadOnly}
                               dispatch={dispatch}
                             />

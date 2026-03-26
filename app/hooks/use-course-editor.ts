@@ -25,7 +25,7 @@ function transformSections(loaderSections: Section[]): EditorSection[] {
     databaseId: s.id as DatabaseId,
     repoVersionId: s.repoVersionId,
     path: s.path,
-    description: (s as any).description ?? "",
+    description: s.description ?? "",
     order: s.order ?? sIndex + 1,
     lessons: s.lessons.map(
       (l, lIndex): EditorLesson => ({
