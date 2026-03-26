@@ -3,7 +3,7 @@ import { parseLessonPath, toSlug } from "@/services/lesson-path-service";
 import { capitalizeTitle } from "@/utils/capitalize-title";
 import { courseViewReducer } from "@/features/course-view/course-view-reducer";
 import type { Lesson } from "./course-view-types";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function useLessonTitleEditor({
   lesson,
@@ -95,6 +95,15 @@ export function LessonTitleEditor({
     : lesson.path;
 
   const handledRef = useRef(false);
+
+  // Reset handledRef at the start of each editing session so that
+  // blur-to-save works correctly even after a previous Enter/Escape
+  // closed the editor (issue #703).
+  useEffect(() => {
+    if (editingTitle) {
+      handledRef.current = false;
+    }
+  }, [editingTitle]);
 
   if (!isReadOnly && editingTitle) {
     return (
