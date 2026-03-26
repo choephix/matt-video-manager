@@ -36,6 +36,10 @@ export class EffectQueue {
     return new Map(this.idMap);
   }
 
+  hasUnresolvedItems(): boolean {
+    return this.processing || this.queue.length > 0;
+  }
+
   // --------------------------------------------------------------------------
   // Private
   // --------------------------------------------------------------------------

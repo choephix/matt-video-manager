@@ -1,4 +1,4 @@
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useEffect } from "react";
 import { useEffectReducer, type EffectsMap } from "use-effect-reducer";
 import {
   courseEditorReducer,
@@ -177,6 +177,17 @@ export function useCourseEditor(
 
   // Keep dispatch ref current for EffectQueue
   dispatchRef.current = dispatch;
+
+  // Prevent page leave when there are unresolved queue items
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (queueRef.current.hasUnresolvedItems()) {
+        event.preventDefault();
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
 
   return { state, dispatch };
 }

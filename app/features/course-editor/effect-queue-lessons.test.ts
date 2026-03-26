@@ -38,6 +38,48 @@ const createMockService = (): CourseEditorService => ({
     .mockResolvedValue({ success: true, path: "on-disk-path" }),
 });
 
+describe("EffectQueue — hasUnresolvedItems", () => {
+  it("returns false when queue is empty and not processing", () => {
+    const service = createMockService();
+    const queue = new EffectQueue(service, vi.fn());
+    expect(queue.hasUnresolvedItems()).toBe(false);
+  });
+
+  it("returns true immediately after enqueueing an item", () => {
+    const service = {
+      ...createMockService(),
+      // Never resolves, so processing stays true
+      createSection: vi.fn().mockReturnValue(new Promise(() => {})),
+    };
+    const queue = new EffectQueue(service, vi.fn());
+    queue.enqueue({
+      type: "create-section",
+      frontendId: fid("s-1"),
+      repoVersionId: "v1",
+      title: "Section",
+      maxOrder: 0,
+    });
+    expect(queue.hasUnresolvedItems()).toBe(true);
+  });
+
+  it("returns false after all items have been processed", async () => {
+    const service = createMockService();
+    const dispatch = vi.fn();
+    const queue = new EffectQueue(service, dispatch);
+
+    queue.enqueue({
+      type: "create-section",
+      frontendId: fid("s-1"),
+      repoVersionId: "v1",
+      title: "Section",
+      maxOrder: 0,
+    });
+
+    await vi.waitFor(() => expect(dispatch).toHaveBeenCalled());
+    expect(queue.hasUnresolvedItems()).toBe(false);
+  });
+});
+
 describe("EffectQueue — section effects", () => {
   it("should dispatch section-created with the user title as path, not the database UUID", async () => {
     const service = {
