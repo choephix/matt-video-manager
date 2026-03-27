@@ -185,6 +185,104 @@ describe("courseEditorReducer — materialization", () => {
       // Ghost lesson is not affected
       expect(state.sections[0]!.lessons[2]!.path).toBe("bar");
     });
+
+    it("should not renumber real lessons when materializing a ghost after all reals", () => {
+      const real1 = createLesson({
+        fsStatus: "real",
+        path: "01.01-first",
+        title: "First",
+        order: 1,
+      });
+      const real2 = createLesson({
+        fsStatus: "real",
+        path: "01.02-second",
+        title: "Second",
+        order: 2,
+      });
+      const ghost = createLesson({
+        fsStatus: "ghost",
+        path: "third",
+        title: "Third",
+        order: 3,
+      });
+      const section = createSection({
+        path: "01-intro",
+        lessons: [real1, real2, ghost],
+      });
+      const state = createTester([section])
+        .send({ type: "create-on-disk", frontendId: ghost.frontendId })
+        .getState();
+      // Existing reals stay the same
+      expect(state.sections[0]!.lessons[0]!.path).toBe("01.01-first");
+      expect(state.sections[0]!.lessons[1]!.path).toBe("01.02-second");
+      // Ghost becomes the 3rd real lesson
+      expect(state.sections[0]!.lessons[2]!.path).toBe("01.03-third");
+    });
+
+    it("should renumber multiple real lessons after a materialized ghost", () => {
+      const ghost = createLesson({
+        fsStatus: "ghost",
+        path: "new",
+        title: "New",
+        order: 1,
+      });
+      const real1 = createLesson({
+        fsStatus: "real",
+        path: "01.01-alpha",
+        title: "Alpha",
+        order: 2,
+      });
+      const real2 = createLesson({
+        fsStatus: "real",
+        path: "01.02-beta",
+        title: "Beta",
+        order: 3,
+      });
+      const real3 = createLesson({
+        fsStatus: "real",
+        path: "01.03-gamma",
+        title: "Gamma",
+        order: 4,
+      });
+      const section = createSection({
+        path: "01-intro",
+        lessons: [ghost, real1, real2, real3],
+      });
+      const state = createTester([section])
+        .send({ type: "create-on-disk", frontendId: ghost.frontendId })
+        .getState();
+      expect(state.sections[0]!.lessons[0]!.path).toBe("01.01-new");
+      expect(state.sections[0]!.lessons[1]!.path).toBe("01.02-alpha");
+      expect(state.sections[0]!.lessons[2]!.path).toBe("01.03-beta");
+      expect(state.sections[0]!.lessons[3]!.path).toBe("01.04-gamma");
+    });
+
+    it("should not affect lessons in other sections", () => {
+      const ghost = createLesson({
+        fsStatus: "ghost",
+        path: "new",
+        title: "New",
+        order: 1,
+      });
+      const section1 = createSection({
+        path: "01-intro",
+        lessons: [ghost],
+      });
+      const otherReal = createLesson({
+        fsStatus: "real",
+        path: "02.01-other",
+        title: "Other",
+        order: 1,
+      });
+      const section2 = createSection({
+        path: "02-advanced",
+        lessons: [otherReal],
+      });
+      const state = createTester([section1, section2])
+        .send({ type: "create-on-disk", frontendId: ghost.frontendId })
+        .getState();
+      expect(state.sections[1]!.lessons[0]!.path).toBe("02.01-other");
+    });
   });
 
   describe("lesson-created-on-disk reconciliation", () => {
