@@ -6,6 +6,10 @@ import type {
 } from "./course-editor-types";
 import type { Lesson } from "@/features/course-view/course-view-types";
 import { handleLessonCase } from "./course-editor-lesson-cases";
+import {
+  parseSectionPath,
+  buildSectionPath,
+} from "@/services/section-path-service";
 
 // ============================================================================
 // Namespace: State, Action, Effect
@@ -413,7 +417,11 @@ export const courseEditorReducer: EffectReducer<
         (s) => s.frontendId === action.frontendId
       );
       if (!section) return state;
-      const newPath = action.title.trim() || "untitled";
+      const parsedPath = parseSectionPath(section.path);
+      const slug = action.title.trim() || "untitled";
+      const newPath = parsedPath
+        ? buildSectionPath(parsedPath.sectionNumber, slug)
+        : slug;
       exec({
         type: "rename-section",
         frontendId: action.frontendId,

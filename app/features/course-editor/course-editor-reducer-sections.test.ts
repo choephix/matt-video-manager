@@ -140,6 +140,32 @@ describe("courseEditorReducer — section operations", () => {
     });
   });
 
+  describe("rename-section", () => {
+    it("should preserve number prefix when renaming a real section optimistically", () => {
+      const section = createSection({ path: "01-old-slug" });
+      const state = createTester([section])
+        .send({
+          type: "rename-section",
+          frontendId: section.frontendId,
+          title: "new-slug",
+        })
+        .getState();
+      expect(state.sections[0]!.path).toBe("01-new-slug");
+    });
+
+    it("should not add a number prefix when renaming a ghost section", () => {
+      const section = createSection({ path: "Ghost Section Title" });
+      const state = createTester([section])
+        .send({
+          type: "rename-section",
+          frontendId: section.frontendId,
+          title: "New Ghost Title",
+        })
+        .getState();
+      expect(state.sections[0]!.path).toBe("New Ghost Title");
+    });
+  });
+
   describe("add-section", () => {
     it("should initialize description as empty string on new section", () => {
       const state = createTester([])
