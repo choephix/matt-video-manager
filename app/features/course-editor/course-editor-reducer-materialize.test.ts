@@ -147,6 +147,43 @@ describe("courseEditorReducer — materialization", () => {
         .send({ type: "create-on-disk", frontendId: ghost.frontendId })
         .getState();
       expect(state.sections[0]!.lessons[1]!.path).toBe("02.02-beta");
+      // l3 should be renumbered from 02.02 to 02.03
+      expect(state.sections[0]!.lessons[2]!.path).toBe("02.03-gamma");
+    });
+
+    it("should renumber real lessons after materializing a ghost lesson before them", () => {
+      const ghost = createLesson({
+        fsStatus: "ghost",
+        path: "new-lesson",
+        title: "New Lesson",
+        order: 1,
+      });
+      const real = createLesson({
+        fsStatus: "real",
+        path: "01.01-foo",
+        title: "Foo",
+        order: 2,
+      });
+      const ghost2 = createLesson({
+        fsStatus: "ghost",
+        path: "bar",
+        title: "Bar",
+        order: 3,
+      });
+      const section = createSection({
+        path: "01-intro",
+        lessons: [ghost, real, ghost2],
+      });
+      const state = createTester([section])
+        .send({ type: "create-on-disk", frontendId: ghost.frontendId })
+        .getState();
+      // Materialized lesson becomes 01.01
+      expect(state.sections[0]!.lessons[0]!.path).toBe("01.01-new-lesson");
+      expect(state.sections[0]!.lessons[0]!.fsStatus).toBe("real");
+      // Existing real lesson is renumbered from 01.01 to 01.02
+      expect(state.sections[0]!.lessons[1]!.path).toBe("01.02-foo");
+      // Ghost lesson is not affected
+      expect(state.sections[0]!.lessons[2]!.path).toBe("bar");
     });
   });
 

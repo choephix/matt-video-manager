@@ -583,6 +583,28 @@ export function handleLessonCase(
         );
       }
 
+      // Renumber all real lessons in the section to reflect the newly materialized lesson.
+      // The materialized lesson shifts subsequent real lessons by one position.
+      if (sectionNumber != null) {
+        sections = sections.map((s) => {
+          if (s.frontendId !== section.frontendId) return s;
+          let realIndex = 0;
+          const renumberedLessons = s.lessons.map((l) => {
+            if (l.fsStatus !== "real") return l;
+            realIndex++;
+            const parsed = parseLessonPath(l.path);
+            if (!parsed) return l;
+            const newPath = buildLessonPath(
+              sectionNumber,
+              realIndex,
+              parsed.slug
+            );
+            return newPath !== l.path ? { ...l, path: newPath } : l;
+          });
+          return { ...s, lessons: renumberedLessons };
+        });
+      }
+
       return { ...state, sections };
     }
 
