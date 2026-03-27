@@ -1,6 +1,7 @@
 ---
 name: document-ai-hero-api
 description: "Generate or update documentation for the AI Hero API by reading the source code at ~/repos/ai/course-builder. Use when user wants to document, update docs for, or understand the AI Hero API endpoints."
+disable-model-invocation: true
 ---
 
 # Document AI Hero API
