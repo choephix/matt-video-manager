@@ -221,100 +221,150 @@ export function SortableLessonItem({
       >
         <ContextMenu>
           <ContextMenuTrigger asChild>
-            <div className="flex items-center gap-2 mb-1.5 cursor-context-menu hover:bg-muted/50 rounded px-1 py-0.5 transition-colors">
-              {!isReadOnly && (
+            <div>
+              <div className="flex items-center gap-2 mb-1.5 cursor-context-menu hover:bg-muted/50 rounded px-1 py-0.5 transition-colors">
+                {!isReadOnly && (
+                  <button
+                    className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 touch-none flex items-center justify-center"
+                    {...attributes}
+                    {...listeners}
+                  >
+                    <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                )}
                 <button
-                  className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 touch-none flex items-center justify-center"
-                  {...attributes}
-                  {...listeners}
-                >
-                  <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
-                </button>
-              )}
-              <button
-                className={cn(
-                  "flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-colors",
-                  currentIcon === "code"
-                    ? "bg-yellow-500/20 text-yellow-600"
-                    : currentIcon === "discussion"
-                      ? "bg-green-500/20 text-green-600"
-                      : "bg-purple-500/20 text-purple-600"
-                )}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!isReadOnly) handleIconCycle();
-                }}
-                title={
-                  currentIcon === "code"
-                    ? isReadOnly
-                      ? "Interactive"
-                      : "Interactive (click to change)"
-                    : currentIcon === "discussion"
+                  className={cn(
+                    "flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-colors",
+                    currentIcon === "code"
+                      ? "bg-yellow-500/20 text-yellow-600"
+                      : currentIcon === "discussion"
+                        ? "bg-green-500/20 text-green-600"
+                        : "bg-purple-500/20 text-purple-600"
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isReadOnly) handleIconCycle();
+                  }}
+                  title={
+                    currentIcon === "code"
                       ? isReadOnly
-                        ? "Discussion"
-                        : "Discussion (click to change)"
-                      : isReadOnly
-                        ? "Watch"
-                        : "Watch (click to change)"
-                }
-              >
-                {currentIcon === "code" ? (
-                  <Code className="w-3 h-3" />
-                ) : currentIcon === "discussion" ? (
-                  <MessageCircle className="w-3 h-3" />
-                ) : (
-                  <Play className="w-3 h-3" />
+                        ? "Interactive"
+                        : "Interactive (click to change)"
+                      : currentIcon === "discussion"
+                        ? isReadOnly
+                          ? "Discussion"
+                          : "Discussion (click to change)"
+                        : isReadOnly
+                          ? "Watch"
+                          : "Watch (click to change)"
+                  }
+                >
+                  {currentIcon === "code" ? (
+                    <Code className="w-3 h-3" />
+                  ) : currentIcon === "discussion" ? (
+                    <MessageCircle className="w-3 h-3" />
+                  ) : (
+                    <Play className="w-3 h-3" />
+                  )}
+                </button>
+                <LessonTitleEditor
+                  lesson={lesson}
+                  isGhost={isGhost}
+                  isReadOnly={isReadOnly}
+                  showGhostStyle={showGhostStyle}
+                  editingTitle={editingTitle}
+                  titleValue={titleValue}
+                  pathPrefix={pathPrefix}
+                  onTitleValueChange={setTitleValue}
+                  onCancel={() => setEditingTitle(false)}
+                  onSave={saveTitle}
+                  onStartEditing={startEditingTitle}
+                />
+                {showGhostStyle && (
+                  <span className="flex items-center text-muted-foreground/60 shrink-0">
+                    <Ghost className="w-3 h-3" />
+                  </span>
                 )}
-              </button>
-              <LessonTitleEditor
-                lesson={lesson}
-                isGhost={isGhost}
-                isReadOnly={isReadOnly}
-                showGhostStyle={showGhostStyle}
-                editingTitle={editingTitle}
-                titleValue={titleValue}
-                pathPrefix={pathPrefix}
-                onTitleValueChange={setTitleValue}
-                onCancel={() => setEditingTitle(false)}
-                onSave={saveTitle}
-                onStartEditing={startEditingTitle}
-              />
-              {showGhostStyle && (
-                <span className="flex items-center text-muted-foreground/60 shrink-0">
-                  <Ghost className="w-3 h-3" />
-                </span>
-              )}
-              <button
-                className={cn(
-                  "flex-shrink-0 text-xs px-2 py-0.5 rounded-sm font-medium",
-                  currentPriority === 1
-                    ? "bg-red-500/20 text-red-600"
-                    : currentPriority === 3
-                      ? "bg-sky-500/20 text-sky-500"
-                      : "bg-yellow-500/20 text-yellow-600"
-                )}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!isReadOnly) handlePriorityCycle();
-                }}
-                title={
-                  isReadOnly
-                    ? `P${currentPriority}`
-                    : "Click to toggle priority (P2 → P3 → P1 → P2)"
-                }
-              >
-                P{currentPriority}
-              </button>
-              <DependencySelector
-                lessonId={lesson.id}
-                dependencies={lessonDeps}
-                allLessons={allFlatLessons}
-                onDependenciesChange={handleDependenciesChange}
-                orderViolations={orderViolations}
-                priorityViolations={priorityViolations}
-                lessonPriority={lessonPriority}
-                dependencyMap={dependencyMap}
-              />
+                <button
+                  className={cn(
+                    "flex-shrink-0 text-xs px-2 py-0.5 rounded-sm font-medium",
+                    currentPriority === 1
+                      ? "bg-red-500/20 text-red-600"
+                      : currentPriority === 3
+                        ? "bg-sky-500/20 text-sky-500"
+                        : "bg-yellow-500/20 text-yellow-600"
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isReadOnly) handlePriorityCycle();
+                  }}
+                  title={
+                    isReadOnly
+                      ? `P${currentPriority}`
+                      : "Click to toggle priority (P2 → P3 → P1 → P2)"
+                  }
+                >
+                  P{currentPriority}
+                </button>
+                <DependencySelector
+                  lessonId={lesson.id}
+                  dependencies={lessonDeps}
+                  allLessons={allFlatLessons}
+                  onDependenciesChange={handleDependenciesChange}
+                  orderViolations={orderViolations}
+                  priorityViolations={priorityViolations}
+                  lessonPriority={lessonPriority}
+                  dependencyMap={dependencyMap}
+                />
+              </div>
+              <div className="ml-5">
+                {!isReadOnly && editingDesc ? (
+                  <div className="mt-1 max-w-[65ch]">
+                    <Textarea
+                      ref={descTextareaRef}
+                      value={descValue}
+                      onChange={(e) => setDescValue(e.target.value)}
+                      placeholder="What should this lesson teach?"
+                      className="text-sm min-h-[60px]"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                          setDescValue(currentDescription);
+                          setEditingDesc(false);
+                        }
+                        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                          saveDescription(descValue);
+                        }
+                      }}
+                      onBlur={() => saveDescription(descValue)}
+                    />
+                  </div>
+                ) : currentDescription ? (
+                  <div
+                    className={cn(
+                      "text-xs text-muted-foreground mt-1 whitespace-pre-line max-w-[65ch]",
+                      !isReadOnly && "cursor-pointer hover:text-foreground/70"
+                    )}
+                    onClick={() => {
+                      if (isReadOnly) return;
+                      setDescValue(currentDescription);
+                      setEditingDesc(true);
+                    }}
+                  >
+                    {currentDescription}
+                  </div>
+                ) : !isReadOnly ? (
+                  <button
+                    className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                    onClick={() => {
+                      setDescValue("");
+                      setEditingDesc(true);
+                    }}
+                  >
+                    + Add description
+                  </button>
+                ) : null}
+              </div>
             </div>
           </ContextMenuTrigger>
           <ContextMenuContent>
@@ -458,54 +508,6 @@ export function SortableLessonItem({
             )}
           </ContextMenuContent>
         </ContextMenu>
-        <div className="ml-5">
-          {!isReadOnly && editingDesc ? (
-            <div className="mt-1 max-w-[65ch]">
-              <Textarea
-                ref={descTextareaRef}
-                value={descValue}
-                onChange={(e) => setDescValue(e.target.value)}
-                placeholder="What should this lesson teach?"
-                className="text-sm min-h-[60px]"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") {
-                    setDescValue(currentDescription);
-                    setEditingDesc(false);
-                  }
-                  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                    saveDescription(descValue);
-                  }
-                }}
-                onBlur={() => saveDescription(descValue)}
-              />
-            </div>
-          ) : currentDescription ? (
-            <div
-              className={cn(
-                "text-xs text-muted-foreground mt-1 whitespace-pre-line max-w-[65ch]",
-                !isReadOnly && "cursor-pointer hover:text-foreground/70"
-              )}
-              onClick={() => {
-                if (isReadOnly) return;
-                setDescValue(currentDescription);
-                setEditingDesc(true);
-              }}
-            >
-              {currentDescription}
-            </div>
-          ) : !isReadOnly ? (
-            <button
-              className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-              onClick={() => {
-                setDescValue("");
-                setEditingDesc(true);
-              }}
-            >
-              + Add description
-            </button>
-          ) : null}
-        </div>
         <AddVideoModal
           lessonId={lesson.id}
           videoCount={lesson.videos.length}
