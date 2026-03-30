@@ -14,11 +14,10 @@ export const loader = async (args: Route.LoaderArgs) => {
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
 
-    const version = yield* db.getCourseVersionById(versionId);
-    const repoWithSections = yield* db.getCourseWithSectionsByVersion({
-      repoId,
-      versionId,
-    });
+    const [version, repoWithSections] = yield* Effect.all([
+      db.getCourseVersionById(versionId),
+      db.getCourseWithSectionsByVersionSlim({ repoId, versionId }),
+    ]);
 
     return {
       repo: repoWithSections,
