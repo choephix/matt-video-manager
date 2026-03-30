@@ -200,6 +200,42 @@ describe("CoursePublishService", () => {
 
       expect(result).toBe(true);
     });
+
+    it("accepts a video object and returns false when no file exists", async () => {
+      const { video, run } = await setup();
+
+      const result = await run(
+        Effect.gen(function* () {
+          const db = yield* DBFunctionsService;
+          const svc = yield* CoursePublishService;
+          const fullVideo = yield* db.getVideoWithClipsById(video.id);
+          return yield* svc.isExported(fullVideo);
+        })
+      );
+
+      expect(result).toBe(false);
+    });
+
+    it("accepts a video object and returns true when file exists", async () => {
+      const { video, course, exportHash, run } = await setup();
+
+      const filePath = path.join(
+        finishedVideosDir,
+        `${course.id}-${exportHash}.mp4`
+      );
+      fs.writeFileSync(filePath, "video-data");
+
+      const result = await run(
+        Effect.gen(function* () {
+          const db = yield* DBFunctionsService;
+          const svc = yield* CoursePublishService;
+          const fullVideo = yield* db.getVideoWithClipsById(video.id);
+          return yield* svc.isExported(fullVideo);
+        })
+      );
+
+      expect(result).toBe(true);
+    });
   });
 
   describe("resolveExportPath", () => {
@@ -210,6 +246,23 @@ describe("CoursePublishService", () => {
         Effect.gen(function* () {
           const svc = yield* CoursePublishService;
           return yield* svc.resolveExportPath(video.id);
+        })
+      );
+
+      expect(result).toBe(
+        path.join(finishedVideosDir, `${course.id}-${exportHash}.mp4`)
+      );
+    });
+
+    it("accepts a video object and returns content-addressed path", async () => {
+      const { video, course, exportHash, run } = await setup();
+
+      const result = await run(
+        Effect.gen(function* () {
+          const db = yield* DBFunctionsService;
+          const svc = yield* CoursePublishService;
+          const fullVideo = yield* db.getVideoWithClipsById(video.id);
+          return yield* svc.resolveExportPath(fullVideo);
         })
       );
 

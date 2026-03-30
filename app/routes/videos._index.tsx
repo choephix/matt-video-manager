@@ -57,9 +57,7 @@ export const loader = async () => {
     const hasExportedVideoMap: Record<string, boolean> = {};
     yield* Effect.forEach([...videos, ...archivedVideos], (video) => {
       return Effect.gen(function* () {
-        hasExportedVideoMap[video.id] = yield* publishService.isExported(
-          video.id
-        );
+        hasExportedVideoMap[video.id] = yield* publishService.isExported(video);
       });
     });
 
