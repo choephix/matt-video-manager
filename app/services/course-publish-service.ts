@@ -23,6 +23,19 @@ export class PublishValidationError extends Data.TaggedError(
   unexportedVideoIds: string[];
 }> {}
 
+/** Minimal video shape needed by resolveExportPath / isExported */
+export type VideoForExport = {
+  lesson?: {
+    section: { repoVersion: { repo: { id: string } } };
+  } | null;
+  clips: Array<{
+    videoFilename: string;
+    sourceStartTime: number;
+    sourceEndTime: number;
+    order: string;
+  }>;
+};
+
 const MAX_CONCURRENT_EXPORTS = 6;
 
 const ALLOWED_FILE_EXTENSIONS_FROM_REPO = [
@@ -62,9 +75,12 @@ export class CoursePublishService extends Effect.Service<CoursePublishService>()
       );
 
       const resolveExportPath = Effect.fn("resolveExportPath")(function* (
-        videoId: string
+        videoOrId: string | VideoForExport
       ) {
-        const video = yield* db.getVideoWithClipsById(videoId);
+        const video =
+          typeof videoOrId === "string"
+            ? yield* db.getVideoWithClipsById(videoOrId)
+            : videoOrId;
         const courseId = video.lesson?.section.repoVersion.repo.id;
         if (!courseId || video.clips.length === 0) return null;
 
@@ -74,8 +90,10 @@ export class CoursePublishService extends Effect.Service<CoursePublishService>()
         return resolveExportPathPure(FINISHED_VIDEOS_DIRECTORY, courseId, hash);
       });
 
-      const isExported = Effect.fn("isExported")(function* (videoId: string) {
-        const exportPath = yield* resolveExportPath(videoId);
+      const isExported = Effect.fn("isExported")(function* (
+        videoOrId: string | VideoForExport
+      ) {
+        const exportPath = yield* resolveExportPath(videoOrId);
         if (!exportPath) return false;
         return yield* effectFs.exists(exportPath);
       });

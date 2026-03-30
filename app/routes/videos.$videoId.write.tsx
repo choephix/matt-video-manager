@@ -25,7 +25,7 @@ export const loader = async (args: Route.LoaderArgs) => {
     const publishService = yield* CoursePublishService;
     const video = yield* db.getVideoWithClipsById(videoId);
     const globalLinks = yield* db.getLinks();
-    const videoExists = yield* publishService.isExported(videoId);
+    const videoExists = yield* publishService.isExported(video);
 
     const lesson = video.lesson;
 

@@ -38,7 +38,7 @@ export const loader = async (args: Route.LoaderArgs) => {
     const fs = yield* FileSystem.FileSystem;
     const publishService = yield* CoursePublishService;
     const video = yield* db.getVideoWithClipsById(videoId);
-    const videoExists = yield* publishService.isExported(videoId);
+    const videoExists = yield* publishService.isExported(video);
 
     // Check YouTube auth status
     const youtubeAuth = yield* db.getYoutubeAuth();
