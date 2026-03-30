@@ -1,8 +1,8 @@
 ---
 name: optimize-loader
-description: >
-  Optimize slow React Router loaders by eliminating redundant DB queries, creating slim query variants, and parallelizing independent fetches.
-  Use proactively when writing or reviewing loader code that calls DBFunctionsService, or when triaging a slow page load.
+description:
+  "Optimize slow React Router loaders by eliminating redundant DB queries, creating slim query variants, and parallelizing independent fetches.
+  Use proactively when writing or reviewing loader code that calls DBFunctionsService, or when triaging a slow page load."
 user-invocable: false
 ---
 
