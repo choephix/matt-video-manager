@@ -42,13 +42,16 @@ export const loader = async () => {
     const publishService = yield* CoursePublishService;
 
     const [courses, videos, sidebarVideos, archivedVideos, plans] =
-      yield* Effect.all([
-        db.getCourses(),
-        db.getAllStandaloneVideos(),
-        db.getStandaloneVideosSidebar(),
-        db.getArchivedStandaloneVideos(),
-        db.getPlans(),
-      ]);
+      yield* Effect.all(
+        [
+          db.getCourses(),
+          db.getAllStandaloneVideos(),
+          db.getStandaloneVideosSidebar(),
+          db.getArchivedStandaloneVideos(),
+          db.getPlans(),
+        ],
+        { concurrency: "unbounded" }
+      );
 
     // Check export status for each video
     const hasExportedVideoMap: Record<string, boolean> = {};

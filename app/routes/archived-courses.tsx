@@ -20,12 +20,15 @@ export const loader = async (_args: Route.LoaderArgs) => {
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
     const [archivedCourses, courses, standaloneVideos, plans] =
-      yield* Effect.all([
-        db.getArchivedCourses(),
-        db.getCourses(),
-        db.getStandaloneVideosSidebar(),
-        db.getPlans(),
-      ]);
+      yield* Effect.all(
+        [
+          db.getArchivedCourses(),
+          db.getCourses(),
+          db.getStandaloneVideosSidebar(),
+          db.getPlans(),
+        ],
+        { concurrency: "unbounded" }
+      );
 
     return {
       archivedCourses,

@@ -25,7 +25,8 @@ export const loader = async (_args: Route.LoaderArgs) => {
         db.getCourses(),
         db.getStandaloneVideosSidebar(),
         db.getPlans(),
-      ]
+      ],
+      { concurrency: "unbounded" }
     );
 
     return {

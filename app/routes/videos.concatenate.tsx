@@ -59,16 +59,20 @@ const computeDuration = (
 export const loader = async () => {
   return Effect.gen(function* () {
     const db = yield* DBFunctionsService;
-    const [videos, courseList, sidebarVideos, plans] = yield* Effect.all([
-      db.getAllStandaloneVideos(),
-      db.getCourses(),
-      db.getStandaloneVideosSidebar(),
-      db.getPlans(),
-    ]);
+    const [videos, courseList, sidebarVideos, plans] = yield* Effect.all(
+      [
+        db.getAllStandaloneVideos(),
+        db.getCourses(),
+        db.getStandaloneVideosSidebar(),
+        db.getPlans(),
+      ],
+      { concurrency: "unbounded" }
+    );
 
     // Load all courses with their sections/lessons/videos (draft version) in parallel
     const fullCourses = yield* Effect.all(
-      courseList.map((course) => db.getCourseWithSectionsById(course.id))
+      courseList.map((course) => db.getCourseWithSectionsById(course.id)),
+      { concurrency: "unbounded" }
     );
 
     const courseSources: CourseSource[] = [];
