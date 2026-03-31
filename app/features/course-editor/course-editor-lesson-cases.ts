@@ -93,6 +93,32 @@ export function updateLesson(
   }));
 }
 
+/**
+ * Renumber real lesson paths in order (01.01, 01.02, …), preserving the
+ * section number derived from the first parseable real lesson. Ghost lessons
+ * are left untouched.
+ */
+export function renumberRealLessons(lessons: EditorLesson[]): EditorLesson[] {
+  let sectionNumber = 1;
+  for (const l of lessons) {
+    if (l.fsStatus !== "real") continue;
+    const parsed = parseLessonPath(l.path);
+    if (parsed?.sectionNumber != null) {
+      sectionNumber = parsed.sectionNumber;
+      break;
+    }
+  }
+  let realIndex = 0;
+  return lessons.map((l) => {
+    if (l.fsStatus !== "real") return l;
+    realIndex++;
+    const parsed = parseLessonPath(l.path);
+    if (!parsed) return l;
+    const newPath = buildLessonPath(sectionNumber, realIndex, parsed.slug);
+    return newPath !== l.path ? { ...l, path: newPath } : l;
+  });
+}
+
 // ============================================================================
 // Lesson case handler
 // ============================================================================
@@ -337,16 +363,14 @@ export function handleLessonCase(
       const deletedFrontendId = lesson.frontendId;
       return {
         ...state,
-        sections: state.sections.map((s) =>
-          s.frontendId === section.frontendId
-            ? {
-                ...s,
-                lessons: s.lessons
-                  .filter((l) => l.frontendId !== deletedFrontendId)
-                  .map((l, i) => ({ ...l, order: i + 1 })),
-              }
-            : s
-        ),
+        sections: state.sections.map((s) => {
+          if (s.frontendId !== section.frontendId) return s;
+          const remaining = s.lessons
+            .filter((l) => l.frontendId !== deletedFrontendId)
+            .map((l, i) => ({ ...l, order: i + 1 }));
+
+          return { ...s, lessons: renumberRealLessons(remaining) };
+        }),
       };
     }
 
@@ -367,25 +391,7 @@ export function handleLessonCase(
         .filter((l): l is EditorLesson => l != null)
         .map((l, i) => ({ ...l, order: i + 1 }));
 
-      // Renumber real lesson paths to match new order (mirrors backend computeRenumberingPlan)
-      const realLessons = reorderedLessons.filter((l) => l.fsStatus === "real");
-      let sectionNumber = 1;
-      for (const l of realLessons) {
-        const parsed = parseLessonPath(l.path);
-        if (parsed?.sectionNumber != null) {
-          sectionNumber = parsed.sectionNumber;
-          break;
-        }
-      }
-      let realIndex = 0;
-      const renumberedLessons = reorderedLessons.map((l) => {
-        if (l.fsStatus !== "real") return l;
-        realIndex++;
-        const parsed = parseLessonPath(l.path);
-        if (!parsed) return l;
-        const newPath = buildLessonPath(sectionNumber, realIndex, parsed.slug);
-        return newPath !== l.path ? { ...l, path: newPath } : l;
-      });
+      const renumberedLessons = renumberRealLessons(reorderedLessons);
 
       exec({
         type: "reorder-lessons",
@@ -456,9 +462,6 @@ export function handleLessonCase(
       const sourceBecomesGhost =
         isRealLesson && sourceRealAfter.length === 0 && sourceParsed != null;
 
-      // Renumber remaining source real lesson paths
-      const sourceSectionNumber = sourceParsed?.sectionNumber ?? 1;
-
       return {
         ...state,
         sections: state.sections.map((s) => {
@@ -469,19 +472,7 @@ export function handleLessonCase(
 
             // Renumber remaining real lesson paths in source section
             if (isRealLesson) {
-              let realIdx = 0;
-              remainingLessons = remainingLessons.map((l) => {
-                if (l.fsStatus !== "real") return l;
-                realIdx++;
-                const parsed = parseLessonPath(l.path);
-                if (!parsed) return l;
-                const newPath = buildLessonPath(
-                  sourceSectionNumber,
-                  realIdx,
-                  parsed.slug
-                );
-                return newPath !== l.path ? { ...l, path: newPath } : l;
-              });
+              remainingLessons = renumberRealLessons(remainingLessons);
             }
 
             return {
