@@ -659,4 +659,40 @@ describe("getNextLessonWithoutVideo", () => {
       expect(result!.lessonPath).toBe("lesson-03");
     }).pipe(Effect.provide(testLayer))
   );
+
+  it.effect("treats lesson with only archived videos as having no videos", () =>
+    Effect.gen(function* () {
+      const db = yield* DBFunctionsService;
+      const fixture = yield* Effect.promise(() =>
+        buildCourseFixture([
+          {
+            path: "section-01",
+            order: 1,
+            lessons: [
+              {
+                path: "lesson-01",
+                title: "Lesson 1",
+                order: 1,
+                videos: [{ path: "a.mp4" }],
+              },
+              {
+                path: "lesson-02",
+                title: "Lesson 2 (all archived)",
+                order: 2,
+                videos: [{ path: "b.mp4", archived: true }],
+              },
+            ],
+          },
+        ])
+      );
+
+      const videoA = fixture.videos.find((v) => v.path === "a.mp4")!;
+      const fetched = yield* db.getVideoWithClipsById(videoA.id);
+
+      const result = yield* db.getNextLessonWithoutVideo(fetched);
+      expect(result).not.toBeNull();
+      expect(result!.lessonPath).toBe("lesson-02");
+      expect(result!.sectionPath).toBe("section-01");
+    }).pipe(Effect.provide(testLayer))
+  );
 });
