@@ -324,105 +324,7 @@ describe("courseEditorReducer — lesson operations", () => {
     });
   });
 
-  describe("reorder-lessons", () => {
-    it("should reorder and update order values", () => {
-      const l1 = createLesson({ order: 1, path: "first" });
-      const l2 = createLesson({ order: 2, path: "second" });
-      const l3 = createLesson({ order: 3, path: "third" });
-      const section = createSection({ lessons: [l1, l2, l3] });
-      const state = createTester([section])
-        .send({
-          type: "reorder-lessons",
-          sectionFrontendId: section.frontendId,
-          lessonFrontendIds: [l3.frontendId, l1.frontendId, l2.frontendId],
-        })
-        .getState();
-      expect(state.sections[0]!.lessons.map((l) => l.path)).toEqual([
-        "third",
-        "first",
-        "second",
-      ]);
-      expect(state.sections[0]!.lessons.map((l) => l.order)).toEqual([1, 2, 3]);
-    });
-
-    it("should renumber real lesson paths after reorder", () => {
-      const l1 = createLesson({ order: 1, path: "01.01-first" });
-      const l2 = createLesson({ order: 2, path: "01.02-second" });
-      const l3 = createLesson({ order: 3, path: "01.03-third" });
-      const section = createSection({ lessons: [l1, l2, l3] });
-      const state = createTester([section])
-        .send({
-          type: "reorder-lessons",
-          sectionFrontendId: section.frontendId,
-          lessonFrontendIds: [l3.frontendId, l1.frontendId, l2.frontendId],
-        })
-        .getState();
-      expect(state.sections[0]!.lessons.map((l) => l.path)).toEqual([
-        "01.01-third",
-        "01.02-first",
-        "01.03-second",
-      ]);
-    });
-
-    it("should skip ghost lessons when renumbering paths", () => {
-      const l1 = createLesson({ order: 1, path: "01.01-first" });
-      const ghost = createLesson({
-        order: 2,
-        path: "My Ghost Lesson",
-        fsStatus: "ghost",
-      });
-      const l2 = createLesson({ order: 3, path: "01.02-second" });
-      const section = createSection({ lessons: [l1, ghost, l2] });
-      const state = createTester([section])
-        .send({
-          type: "reorder-lessons",
-          sectionFrontendId: section.frontendId,
-          lessonFrontendIds: [l2.frontendId, ghost.frontendId, l1.frontendId],
-        })
-        .getState();
-      // Real lessons renumbered: second→01, first→02; ghost path unchanged
-      expect(state.sections[0]!.lessons.map((l) => l.path)).toEqual([
-        "01.01-second",
-        "My Ghost Lesson",
-        "01.02-first",
-      ]);
-    });
-
-    it("should preserve section number when renumbering", () => {
-      const l1 = createLesson({ order: 1, path: "03.01-alpha" });
-      const l2 = createLesson({ order: 2, path: "03.02-beta" });
-      const section = createSection({ lessons: [l1, l2] });
-      const state = createTester([section])
-        .send({
-          type: "reorder-lessons",
-          sectionFrontendId: section.frontendId,
-          lessonFrontendIds: [l2.frontendId, l1.frontendId],
-        })
-        .getState();
-      expect(state.sections[0]!.lessons.map((l) => l.path)).toEqual([
-        "03.01-beta",
-        "03.02-alpha",
-      ]);
-    });
-
-    it("should not change paths for non-parseable lesson paths", () => {
-      const l1 = createLesson({ order: 1, path: "plain-lesson" });
-      const l2 = createLesson({ order: 2, path: "another-lesson" });
-      const section = createSection({ lessons: [l1, l2] });
-      const state = createTester([section])
-        .send({
-          type: "reorder-lessons",
-          sectionFrontendId: section.frontendId,
-          lessonFrontendIds: [l2.frontendId, l1.frontendId],
-        })
-        .getState();
-      expect(state.sections[0]!.lessons.map((l) => l.path)).toEqual([
-        "another-lesson",
-        "plain-lesson",
-      ]);
-    });
-  });
-
+  // reorder-lessons tests are in course-editor-reducer-delete-renumber.test.ts
   // move-lesson-to-section tests are in course-editor-reducer-move.test.ts
 
   describe("optimistic ghost section materialization", () => {
@@ -537,6 +439,38 @@ describe("courseEditorReducer — lesson operations", () => {
         .send({ type: "convert-to-ghost", frontendId: lesson.frontendId })
         .getState();
       expect(state.sections[0]!.lessons[0]!.fsStatus).toBe("ghost");
+    });
+
+    it("should renumber adjacent real lessons after converting middle lesson to ghost", () => {
+      const l1 = createLesson({
+        order: 1,
+        path: "01.01-first",
+        fsStatus: "real",
+      });
+      const l2 = createLesson({
+        order: 2,
+        path: "01.02-second",
+        fsStatus: "real",
+      });
+      const l3 = createLesson({
+        order: 3,
+        path: "01.03-third",
+        fsStatus: "real",
+      });
+      const section = createSection({
+        path: "01-intro",
+        lessons: [l1, l2, l3],
+      });
+      const state = createTester([section])
+        .send({ type: "convert-to-ghost", frontendId: l2.frontendId })
+        .getState();
+      const lessons = state.sections[0]!.lessons;
+      // l1 unchanged
+      expect(lessons[0]!.path).toBe("01.01-first");
+      // l2 now ghost, path unchanged
+      expect(lessons[1]!.fsStatus).toBe("ghost");
+      // l3 renumbered: 01.03 → 01.02
+      expect(lessons[2]!.path).toBe("01.02-third");
     });
 
     it("should set fsStatus to real optimistically", () => {

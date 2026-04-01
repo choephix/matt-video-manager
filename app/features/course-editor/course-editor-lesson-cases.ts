@@ -508,8 +508,8 @@ export function handleLessonCase(
     }
 
     case "convert-to-ghost": {
-      const { lesson } = findLesson(state, action.frontendId);
-      if (!lesson) return state;
+      const { lesson, section } = findLesson(state, action.frontendId);
+      if (!lesson || !section) return state;
       exec({
         type: "convert-to-ghost",
         frontendId: action.frontendId,
@@ -517,10 +517,15 @@ export function handleLessonCase(
       });
       return {
         ...state,
-        sections: updateLesson(state, action.frontendId, (l) => ({
-          ...l,
-          fsStatus: "ghost",
-        })),
+        sections: state.sections.map((s) => {
+          if (s.frontendId !== section.frontendId) return s;
+          const updatedLessons = s.lessons.map((l) =>
+            l.frontendId === lesson.frontendId
+              ? { ...l, fsStatus: "ghost" as const }
+              : l
+          );
+          return { ...s, lessons: renumberRealLessons(updatedLessons) };
+        }),
       };
     }
 
