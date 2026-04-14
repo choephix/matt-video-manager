@@ -22,16 +22,19 @@ export const action = async (args: Route.ActionArgs) => {
   const courseId = args.params.courseId;
 
   return Effect.gen(function* () {
-    const { name, filePath } = yield* Schema.decodeUnknown(
-      duplicateCourseSchema
-    )(formDataObject);
+    const parsed = yield* Schema.decodeUnknown(duplicateCourseSchema)(
+      formDataObject
+    );
+
+    const name = parsed.name.trim();
+    const filePath = parsed.filePath.trim();
 
     const db = yield* DBFunctionsService;
 
     // Get source course to validate name/path differ
     const sourceCourse = yield* db.getCourseById(courseId);
 
-    if (name.trim() === sourceCourse.name) {
+    if (name === sourceCourse.name) {
       return yield* Effect.die(
         data(
           { error: "New course name must differ from the original" },
@@ -40,7 +43,7 @@ export const action = async (args: Route.ActionArgs) => {
       );
     }
 
-    if (filePath.trim() === sourceCourse.filePath) {
+    if (filePath === sourceCourse.filePath) {
       return yield* Effect.die(
         data(
           { error: "New file path must differ from the original" },
@@ -54,7 +57,7 @@ export const action = async (args: Route.ActionArgs) => {
     const archivedCourses = yield* db.getArchivedCourses();
     const allCoursesCombined = [...allCourses, ...archivedCourses];
 
-    if (allCoursesCombined.some((c) => c.name === name.trim())) {
+    if (allCoursesCombined.some((c) => c.name === name)) {
       return yield* Effect.die(
         data(
           { error: "A course with this name already exists" },
@@ -63,7 +66,7 @@ export const action = async (args: Route.ActionArgs) => {
       );
     }
 
-    if (allCoursesCombined.some((c) => c.filePath === filePath.trim())) {
+    if (allCoursesCombined.some((c) => c.filePath === filePath)) {
       return yield* Effect.die(
         data(
           { error: "A course with this file path already exists" },
@@ -74,28 +77,26 @@ export const action = async (args: Route.ActionArgs) => {
 
     // Validate directory exists on disk
     const fs = yield* FileSystem.FileSystem;
-    const pathExists = yield* fs.exists(filePath.trim());
+    const pathExists = yield* fs.exists(filePath);
 
     if (!pathExists) {
       return yield* Effect.die(
         data(
-          {
-            error: `Directory does not exist: ${filePath.trim()}`,
-          },
+          { error: `Directory does not exist: ${filePath}` },
           { status: 400 }
         )
       );
     }
 
     // Validate directory is a git repository
-    const gitDirPath = Path.join(filePath.trim(), ".git");
+    const gitDirPath = Path.join(filePath, ".git");
     const isGitRepo = yield* fs.exists(gitDirPath);
 
     if (!isGitRepo) {
       return yield* Effect.die(
         data(
           {
-            error: `Directory is not a valid git repository: ${filePath.trim()}`,
+            error: `Directory is not a valid git repository: ${filePath}`,
           },
           { status: 400 }
         )
@@ -104,8 +105,8 @@ export const action = async (args: Route.ActionArgs) => {
 
     const result = yield* db.duplicateCourse({
       sourceCourseId: courseId,
-      name: name.trim(),
-      filePath: filePath.trim(),
+      name,
+      filePath,
     });
 
     return { id: result.course.id };

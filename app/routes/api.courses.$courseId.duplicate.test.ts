@@ -36,17 +36,20 @@ function duplicateCourseValidation(opts: {
   filePath: string;
 }) {
   return Effect.gen(function* () {
+    const name = opts.name.trim();
+    const filePath = opts.filePath.trim();
+
     const db = yield* DBFunctionsService;
 
     const sourceCourse = yield* db.getCourseById(opts.courseId);
 
-    if (opts.name.trim() === sourceCourse.name) {
+    if (name === sourceCourse.name) {
       return yield* Effect.fail({
         error: "New course name must differ from the original",
       });
     }
 
-    if (opts.filePath.trim() === sourceCourse.filePath) {
+    if (filePath === sourceCourse.filePath) {
       return yield* Effect.fail({
         error: "New file path must differ from the original",
       });
@@ -56,40 +59,40 @@ function duplicateCourseValidation(opts: {
     const archivedCourses = yield* db.getArchivedCourses();
     const allCoursesCombined = [...allCourses, ...archivedCourses];
 
-    if (allCoursesCombined.some((c) => c.name === opts.name.trim())) {
+    if (allCoursesCombined.some((c) => c.name === name)) {
       return yield* Effect.fail({
         error: "A course with this name already exists",
       });
     }
 
-    if (allCoursesCombined.some((c) => c.filePath === opts.filePath.trim())) {
+    if (allCoursesCombined.some((c) => c.filePath === filePath)) {
       return yield* Effect.fail({
         error: "A course with this file path already exists",
       });
     }
 
     const fs = yield* FileSystem.FileSystem;
-    const pathExists = yield* fs.exists(opts.filePath.trim());
+    const pathExists = yield* fs.exists(filePath);
 
     if (!pathExists) {
       return yield* Effect.fail({
-        error: `Directory does not exist: ${opts.filePath.trim()}`,
+        error: `Directory does not exist: ${filePath}`,
       });
     }
 
-    const gitDirPath = Path.join(opts.filePath.trim(), ".git");
+    const gitDirPath = Path.join(filePath, ".git");
     const isGitRepo = yield* fs.exists(gitDirPath);
 
     if (!isGitRepo) {
       return yield* Effect.fail({
-        error: `Directory is not a valid git repository: ${opts.filePath.trim()}`,
+        error: `Directory is not a valid git repository: ${filePath}`,
       });
     }
 
     const result = yield* db.duplicateCourse({
       sourceCourseId: opts.courseId,
-      name: opts.name.trim(),
-      filePath: opts.filePath.trim(),
+      name,
+      filePath,
     });
 
     return { id: result.course.id };
@@ -268,5 +271,61 @@ describe("duplicate course validation", () => {
     );
 
     expect(result.error).toBe("A course with this file path already exists");
+  });
+
+  it("rejects name that matches existing course after trimming whitespace", async () => {
+    const courseId = await createCourseWithVersion(
+      "Course A",
+      "/path/to/course-a"
+    );
+    await createCourseWithVersion("Course B", "/path/to/course-b");
+
+    const result = await runExpectFail(
+      duplicateCourseValidation({
+        courseId,
+        name: "  Course B  ",
+        filePath: "/path/to/new-course",
+      }),
+      ["/path/to/new-course", "/path/to/new-course/.git"]
+    );
+
+    expect(result.error).toBe("A course with this name already exists");
+  });
+
+  it("rejects file path that matches existing course after trimming whitespace", async () => {
+    const courseId = await createCourseWithVersion(
+      "Course A",
+      "/path/to/course-a"
+    );
+    await createCourseWithVersion("Course B", "/path/to/course-b");
+
+    const result = await runExpectFail(
+      duplicateCourseValidation({
+        courseId,
+        name: "Course C",
+        filePath: "  /path/to/course-b  ",
+      }),
+      ["/path/to/course-b", "/path/to/course-b/.git"]
+    );
+
+    expect(result.error).toBe("A course with this file path already exists");
+  });
+
+  it("rejects name that matches original course after trimming whitespace", async () => {
+    const courseId = await createCourseWithVersion(
+      "Course A",
+      "/path/to/course-a"
+    );
+
+    const result = await runExpectFail(
+      duplicateCourseValidation({
+        courseId,
+        name: "  Course A  ",
+        filePath: "/path/to/new-course",
+      }),
+      ["/path/to/new-course", "/path/to/new-course/.git"]
+    );
+
+    expect(result.error).toBe("New course name must differ from the original");
   });
 });
