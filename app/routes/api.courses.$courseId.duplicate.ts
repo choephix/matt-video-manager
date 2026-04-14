@@ -88,9 +88,19 @@ export const action = async (args: Route.ActionArgs) => {
       );
     }
 
-    // Validate directory is a git repository
-    const gitDirPath = Path.join(filePath, ".git");
-    const isGitRepo = yield* fs.exists(gitDirPath);
+    // Validate directory is inside a git repository (check path and ancestors)
+    let isGitRepo = false;
+    let checkDir = filePath;
+    while (true) {
+      const gitDirPath = Path.join(checkDir, ".git");
+      if (yield* fs.exists(gitDirPath)) {
+        isGitRepo = true;
+        break;
+      }
+      const parentDir = Path.dirname(checkDir);
+      if (parentDir === checkDir) break; // reached filesystem root
+      checkDir = parentDir;
+    }
 
     if (!isGitRepo) {
       return yield* Effect.die(

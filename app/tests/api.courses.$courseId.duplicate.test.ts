@@ -80,8 +80,19 @@ function duplicateCourseValidation(opts: {
       });
     }
 
-    const gitDirPath = Path.join(filePath, ".git");
-    const isGitRepo = yield* fs.exists(gitDirPath);
+    // Check path and ancestors for .git
+    let isGitRepo = false;
+    let checkDir = filePath;
+    while (true) {
+      const gitDirPath = Path.join(checkDir, ".git");
+      if (yield* fs.exists(gitDirPath)) {
+        isGitRepo = true;
+        break;
+      }
+      const parentDir = Path.dirname(checkDir);
+      if (parentDir === checkDir) break;
+      checkDir = parentDir;
+    }
 
     if (!isGitRepo) {
       return yield* Effect.fail({
@@ -309,6 +320,25 @@ describe("duplicate course validation", () => {
     );
 
     expect(result.error).toBe("A course with this file path already exists");
+  });
+
+  it("succeeds when path is inside a parent git repository (not itself a git root)", async () => {
+    const courseId = await createCourseWithVersion(
+      "Course A",
+      "/path/to/course-a"
+    );
+
+    // The directory exists, no .git in it, but a parent has .git
+    const result = await run(
+      duplicateCourseValidation({
+        courseId,
+        name: "Course B",
+        filePath: "/path/to/parent-repo/sub-dir",
+      }),
+      ["/path/to/parent-repo/sub-dir", "/path/to/parent-repo/.git"]
+    );
+
+    expect(result).toHaveProperty("id");
   });
 
   it("rejects name that matches original course after trimming whitespace", async () => {
