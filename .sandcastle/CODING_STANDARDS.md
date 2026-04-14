@@ -2,20 +2,6 @@ Wherever possible, use Effect primitives like `FileSystem` over promises. This i
 
 ---
 
-Before writing a changeset, explore other potentially related changesets so you don't duplicate effort.
-
-You may write more than one changeset per commit, if the commit touches multiple user-facing behaviors.
-
----
-
-Any public-facing properties or functions should have JSDOC comments explaining them.
-
----
-
-Do not use lazy `import()`-style imports when importing Node built-ins. Just use imports.
-
----
-
 Optional parameters passed to functions should be scrutinised extremely carefully. They are a huge source of bugs (by omission). Prioritise correctness over backwards compatibility.
 
 ---
