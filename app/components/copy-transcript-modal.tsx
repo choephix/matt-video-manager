@@ -71,14 +71,14 @@ export function CopyTranscriptModal(
 
   const resolvedTranscripts = use(props.videoTranscripts);
 
-  const filters: TranscriptFilterOptions = {
-    priorityFilter: props.priorityFilter,
-    iconFilter: props.iconFilter,
-    fsStatusFilter: props.fsStatusFilter,
-    searchQuery: "",
-  };
-
   const preview = useMemo(() => {
+    const filters: TranscriptFilterOptions = {
+      priorityFilter: props.priorityFilter,
+      iconFilter: props.iconFilter,
+      fsStatusFilter: props.fsStatusFilter,
+      searchQuery: "",
+    };
+
     if (props.mode === "course") {
       const filteredSections = filterSectionsForTranscript(
         props.sections,
@@ -99,7 +99,7 @@ export function CopyTranscriptModal(
       resolvedTranscripts,
       props.sectionDescription
     );
-  }, [props, options, resolvedTranscripts, filters]);
+  }, [props, options, resolvedTranscripts]);
 
   const byteCount = new TextEncoder().encode(preview).length;
   const approxTokens = Math.ceil(byteCount / 4);

@@ -150,6 +150,11 @@ describe("buildCourseTranscript", () => {
     const descriptionCount = (result.match(/<description>/g) || []).length;
     expect(descriptionCount).toBe(1);
   });
+
+  it("8b. produces valid output with empty sections array", () => {
+    const result = buildCourseTranscript("my-course", [], baseOptions, {});
+    expect(result).toBe('<course title="my-course">\n</course>');
+  });
 });
 
 describe("filterSectionsForTranscript", () => {
@@ -264,7 +269,25 @@ describe("filterSectionsForTranscript", () => {
     expect((result[0]!.lessons[0] as unknown as { id: string }).id).toBe("l2");
   });
 
-  it("15. combines multiple filters", () => {
+  it("15. returns empty array when all sections become empty after filtering", () => {
+    const sections = [
+      makeSection({
+        path: "01-all-ghost",
+        lessons: [makeLesson({ id: "l1", fsStatus: "ghost" as never })],
+      }),
+      makeSection({
+        path: "02-also-ghost",
+        lessons: [makeLesson({ id: "l2", fsStatus: "ghost" as never })],
+      }),
+    ];
+    const result = filterSectionsForTranscript(sections, {
+      ...noFilters,
+      fsStatusFilter: "real",
+    });
+    expect(result).toHaveLength(0);
+  });
+
+  it("16. combines multiple filters", () => {
     const sections = [
       makeSection({
         lessons: [
