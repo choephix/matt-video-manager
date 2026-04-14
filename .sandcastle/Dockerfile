@@ -7,9 +7,6 @@ RUN apt-get update && apt-get install -y \
   jq \
   && rm -rf /var/lib/apt/lists/*
 
-# Enable corepack (pnpm, yarn)
-RUN corepack enable
-
 # Install GitHub CLI
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
   | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
@@ -27,9 +24,6 @@ RUN curl -fsSL https://claude.ai/install.sh | bash
 
 # Add Claude to PATH
 ENV PATH="/home/agent/.local/bin:$PATH"
-
-# Create repos directory
-RUN mkdir -p /home/agent/repos
 
 WORKDIR /home/agent
 
