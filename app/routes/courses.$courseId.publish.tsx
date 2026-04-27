@@ -23,15 +23,12 @@ export const loader = async (args: Route.LoaderArgs) => {
     const db = yield* DBFunctionsService;
     const publishService = yield* CoursePublishService;
 
-    const [course, latestVersion, allVersions] = yield* Effect.all(
-      [
-        db.getCourseById(courseId),
-        db.getLatestCourseVersion(courseId),
-        db.getAllVersionsWithStructure(courseId),
-      ],
+    const [course, allVersions] = yield* Effect.all(
+      [db.getCourseById(courseId), db.getAllVersionsWithStructure(courseId)],
       { concurrency: "unbounded" }
     );
 
+    const latestVersion = allVersions[0];
     if (!latestVersion) {
       return yield* Effect.die(data("No version found", { status: 404 }));
     }
@@ -52,9 +49,10 @@ export const loader = async (args: Route.LoaderArgs) => {
       latestVersion.id
     );
 
+    const { sections: _, ...latestVersionMeta } = latestVersion;
     return {
       course,
-      latestVersion,
+      latestVersion: latestVersionMeta,
       previousVersionName: previousVersion?.name ?? null,
       changelog,
       unexportedVideoCount: unexportedVideoIds.length,
