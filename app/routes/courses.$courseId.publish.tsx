@@ -49,9 +49,10 @@ export const loader = async (args: Route.LoaderArgs) => {
       latestVersion.id
     );
 
+    const { sections: _, ...latestVersionMeta } = latestVersion;
     return {
       course,
-      latestVersion,
+      latestVersion: latestVersionMeta,
       previousVersionName: previousVersion?.name ?? null,
       changelog,
       unexportedVideoCount: unexportedVideoIds.length,
