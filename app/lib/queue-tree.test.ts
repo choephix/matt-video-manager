@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildQueueTreeLines } from "./videos.concatenate.queue-tree";
+import { buildQueueTreeLines } from "./queue-tree";
 
 describe("buildQueueTreeLines", () => {
   it("returns just the video line for standalone videos", () => {

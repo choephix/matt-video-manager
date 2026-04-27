@@ -23,7 +23,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Console, Effect } from "effect";
 import { GripVertical, Loader2, Plus, Trash2, VideoIcon } from "lucide-react";
-import { buildQueueTreeLines } from "./videos.concatenate.queue-tree";
+import { buildQueueTreeLines } from "@/lib/queue-tree";
 import { useState, useCallback } from "react";
 import { data, useNavigate, useSearchParams } from "react-router";
 import type { Route } from "./+types/videos.concatenate";
@@ -36,7 +36,6 @@ interface VideoItem {
   id: string;
   path: string;
   duration: number;
-  contextPath?: string;
   contextParts?: string[];
 }
 
@@ -92,7 +91,6 @@ export const loader = async () => {
             id: v.id,
             path: v.path,
             duration: computeDuration(v.clips),
-            contextPath: `${course.name} / ${section.path} / ${lesson.path}`,
             contextParts: [course.name, section.path, lesson.path],
           }));
           if (lessonVideos.length > 0) {
@@ -135,7 +133,6 @@ interface QueueItem {
   id: string;
   path: string;
   duration: number;
-  contextPath?: string;
   contextParts?: string[];
 }
 
