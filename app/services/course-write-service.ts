@@ -13,10 +13,8 @@ import { parseSectionPath, titleFromSlug } from "./section-path-service";
 import { createSectionOps } from "./course-write-service.helpers";
 import { createMaterializeOps } from "./course-write-materialize-ops";
 import { CourseWriteError } from "./course-write-service.types";
-import {
-  CourseRepoSyncValidationService,
-  CourseRepoSyncError,
-} from "./course-repo-sync-validation";
+import { CourseRepoSyncValidationService } from "./course-repo-sync-validation";
+import { createValidationHelpers } from "./course-write-validation-helpers";
 
 export { CourseWriteError } from "./course-write-service.types";
 export { CourseRepoSyncError } from "./course-repo-sync-validation";
@@ -30,32 +28,12 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
       const syncService = yield* CourseRepoSyncValidationService;
       const fileSystem = yield* FileSystem.FileSystem;
 
-      const runValidation = syncService.validate().pipe(
-        Effect.catchAll((e) => {
-          if (e._tag === "CourseRepoSyncError") return Effect.fail(e);
-          return Effect.fail(
-            new CourseRepoSyncError({
-              cause: e,
-              message: `Sync validation encountered an error: ${String(e)}`,
-            })
-          );
-        })
-      );
-
-      /**
-       * Runs sync validation AFTER the operation completes.
-       * Pre-validation was removed because it doubled filesystem I/O
-       * for every request — extremely slow on WSL 2 where each fs call
-       * crosses the Linux/Windows bridge (~100ms+ per call).
-       */
-      const withPostValidation = <A, E>(
-        effect: Effect.Effect<A, E>
-      ): Effect.Effect<A, E | CourseRepoSyncError> =>
-        Effect.gen(function* () {
-          const result = yield* effect;
-          yield* runValidation;
-          return result;
-        });
+      const {
+        runValidation,
+        withPostValidation,
+        repoPathForSection,
+        repoPathForLesson,
+      } = createValidationHelpers(db, syncService);
 
       const { renumberSections, reorderSections, renameSection } =
         createSectionOps(db, repoWrite);
@@ -191,7 +169,7 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
               yield* renumberSections(lesson.section.repoVersionId, repoPath);
             }
           }
-          yield* runValidation;
+          yield* runValidation(repoPath);
         } else {
           // Ghost lesson: DB-only delete, skip filesystem validation
           yield* db.deleteLesson(lessonId);
@@ -334,7 +312,7 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
 
         // Only validate after filesystem-modifying renames
         if (lesson.fsStatus !== "ghost") {
-          yield* runValidation;
+          yield* runValidation(lesson.section.repoVersion.repo.filePath);
         }
 
         return { success: true, path: newPath };
@@ -528,7 +506,7 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
           yield* renumberSections(repoVersionId, repoPath);
         }
 
-        yield* runValidation;
+        yield* runValidation(repoPath);
         return { success: true };
       });
 
@@ -554,22 +532,46 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
       });
 
       return {
-        // Always-FS operations: validate after
+        // Always-FS operations: validate after, scoped to the touched repo
         materializeGhost: (...args: Parameters<typeof materializeGhost>) =>
-          withPostValidation(materializeGhost(...args)),
+          withPostValidation(
+            repoPathForLesson(args[0]),
+            materializeGhost(...args)
+          ),
         createRealLesson: (...args: Parameters<typeof createRealLesson>) =>
-          withPostValidation(createRealLesson(...args)),
+          withPostValidation(
+            repoPathForSection(args[0]),
+            createRealLesson(...args)
+          ),
         materializeCourseWithLesson: (
           ...args: Parameters<typeof materializeCourseWithLesson>
-        ) => withPostValidation(materializeCourseWithLesson(...args)),
+        ) =>
+          withPostValidation(
+            Effect.succeed<string | null>(args[2]),
+            materializeCourseWithLesson(...args)
+          ),
         convertToGhost: (...args: Parameters<typeof convertToGhost>) =>
-          withPostValidation(convertToGhost(...args)),
+          withPostValidation(
+            repoPathForLesson(args[0]),
+            convertToGhost(...args)
+          ),
         reorderLessons: (...args: Parameters<typeof reorderLessons>) =>
-          withPostValidation(reorderLessons(...args)),
+          withPostValidation(
+            repoPathForSection(args[0]),
+            reorderLessons(...args)
+          ),
         reorderSections: (...args: Parameters<typeof reorderSections>) =>
-          withPostValidation(reorderSections(...args)),
+          withPostValidation(
+            args[0][0]
+              ? repoPathForSection(args[0][0])
+              : Effect.succeed<string | null>(null),
+            reorderSections(...args)
+          ),
         renameSection: (...args: Parameters<typeof renameSection>) =>
-          withPostValidation(renameSection(...args)),
+          withPostValidation(
+            repoPathForSection(args[0]),
+            renameSection(...args)
+          ),
         // DB-only operations: no validation
         archiveSection,
         addGhostSection,

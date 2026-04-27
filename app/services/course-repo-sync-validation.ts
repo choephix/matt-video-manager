@@ -19,8 +19,18 @@ export class CourseRepoSyncValidationService extends Effect.Service<CourseRepoSy
       const db = yield* DBFunctionsService;
       const fs = yield* FileSystem.FileSystem;
 
-      const validate = Effect.fn("validateRepoSync")(function* () {
-        const courses = yield* db.getCourses();
+      const validate = Effect.fn("validateRepoSync")(function* (opts: {
+        repoPath: string | null;
+      }) {
+        // Scoped validation: callers must pass the repoPath of the course
+        // they wrote to (or null for ghost courses). Full-course scans were
+        // O(courses × sections × lessons) FS calls; on WSL2 each call costs
+        // ~100ms+, so unscoped validation added 5+ seconds per write op.
+        if (opts.repoPath === null) return; // ghost course — nothing to validate
+        const scopedRepoPath = opts.repoPath;
+
+        const allCourses = yield* db.getCourses();
+        const courses = allCourses.filter((c) => c.filePath === scopedRepoPath);
         const mismatches: string[] = [];
 
         for (const course of courses) {
