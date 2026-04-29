@@ -8,7 +8,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { capitalizeTitle } from "@/utils/capitalize-title";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function CreateSectionModal(props: {
   repoVersionId: string;
@@ -18,7 +18,17 @@ export function CreateSectionModal(props: {
   onCreateSection: (title: string) => void;
 }) {
   const [title, setTitle] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   const isValid = title.trim().length > 0;
+
+  useEffect(() => {
+    if (!props.open) return;
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [props.open]);
 
   return (
     <Dialog
@@ -46,12 +56,12 @@ export function CreateSectionModal(props: {
           <div className="space-y-2">
             <Label htmlFor="section-title">Title</Label>
             <Input
+              ref={inputRef}
               id="section-title"
               name="title"
               placeholder="e.g. Advanced Patterns"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              autoFocus
             />
           </div>
           <div className="flex justify-end space-x-2">

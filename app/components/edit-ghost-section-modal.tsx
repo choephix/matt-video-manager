@@ -8,7 +8,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { capitalizeTitle } from "@/utils/capitalize-title";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function EditGhostSectionModal(props: {
   sectionId: string;
@@ -18,10 +18,20 @@ export function EditGhostSectionModal(props: {
   onRename: (title: string) => void;
 }) {
   const [title, setTitle] = useState(props.currentTitle);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setTitle(props.currentTitle);
   }, [props.currentTitle]);
+
+  useEffect(() => {
+    if (!props.open) return;
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [props.open]);
 
   const isValid = title.trim().length > 0;
 
@@ -49,12 +59,12 @@ export function EditGhostSectionModal(props: {
           <div className="space-y-2">
             <Label htmlFor="ghost-section-title">Title</Label>
             <Input
+              ref={inputRef}
               id="ghost-section-title"
               name="title"
               placeholder="e.g. Before We Start"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              autoFocus
             />
           </div>
           <div className="flex justify-end space-x-2">
