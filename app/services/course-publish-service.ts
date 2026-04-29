@@ -25,6 +25,7 @@ export class PublishValidationError extends Data.TaggedError(
 
 /** Minimal video shape needed by resolveExportPath / isExported */
 export type VideoForExport = {
+  id: string;
   lesson?: {
     section: { repoVersion: { repo: { id: string } } };
   } | null;
@@ -63,6 +64,10 @@ const toExportClips = (
     order: c.order,
   }));
 
+type ExportOwner =
+  | { kind: "course"; courseId: string }
+  | { kind: "standalone" };
+
 export class ExportError extends Data.TaggedError("ExportError")<{
   message: string;
 }> {}
@@ -85,13 +90,17 @@ export class CoursePublishService extends Effect.Service<CoursePublishService>()
           typeof videoOrId === "string"
             ? yield* db.getVideoWithClipsById(videoOrId)
             : videoOrId;
-        const courseId = video.lesson?.section.repoVersion.repo.id;
-        if (!courseId || video.clips.length === 0) return null;
+        if (video.clips.length === 0) return null;
 
         const hash = computeExportHash(toExportClips(video.clips));
         if (!hash) return null;
 
-        return resolveExportPathPure(FINISHED_VIDEOS_DIRECTORY, courseId, hash);
+        const namespace = video.lesson?.section.repoVersion.repo.id ?? video.id;
+        return resolveExportPathPure(
+          FINISHED_VIDEOS_DIRECTORY,
+          namespace,
+          hash
+        );
       });
 
       const isExported = Effect.fn("isExported")(function* (
@@ -104,15 +113,19 @@ export class CoursePublishService extends Effect.Service<CoursePublishService>()
 
       /**
        * Core export logic without GC — used by both exportVideo and batchExport.
-       * Returns { targetPath, courseId } on success.
+       * Returns { targetPath, owner } on success. `owner` distinguishes course
+       * videos (GC-able by courseId) from standalone videos (no GC).
        */
       const exportVideoCore = Effect.fn("exportVideoCore")(function* (
         videoId: string,
         onStage?: (stage: "concatenating-clips" | "normalizing-audio") => void
       ) {
         const video = yield* db.getVideoWithClipsById(videoId);
-        const courseId =
-          video.lesson?.section.repoVersion.repo.id ?? "standalone";
+        const courseId = video.lesson?.section.repoVersion.repo.id;
+        const owner: ExportOwner = courseId
+          ? { kind: "course", courseId }
+          : { kind: "standalone" };
+        const namespace = courseId ?? videoId;
 
         const exportClips = toExportClips(video.clips);
         const hash = computeExportHash(exportClips);
@@ -124,13 +137,13 @@ export class CoursePublishService extends Effect.Service<CoursePublishService>()
 
         const targetPath = resolveExportPathPure(
           FINISHED_VIDEOS_DIRECTORY,
-          courseId,
+          namespace,
           hash
         );
 
         // Skip if already exported
         if (yield* effectFs.exists(targetPath)) {
-          return { targetPath, courseId };
+          return { targetPath, owner };
         }
 
         // Render via ffmpeg → writes to {videoId}.mp4
@@ -159,18 +172,17 @@ export class CoursePublishService extends Effect.Service<CoursePublishService>()
         );
         yield* effectFs.rename(videoIdPath, targetPath);
 
-        return { targetPath, courseId };
+        return { targetPath, owner };
       });
 
       const exportVideo = Effect.fn("exportVideo")(function* (
         videoId: string,
         onStage?: (stage: "concatenating-clips" | "normalizing-audio") => void
       ) {
-        const { targetPath, courseId } = yield* exportVideoCore(
-          videoId,
-          onStage
-        );
-        yield* garbageCollect(courseId);
+        const { targetPath, owner } = yield* exportVideoCore(videoId, onStage);
+        if (owner.kind === "course") {
+          yield* garbageCollect(owner.courseId);
+        }
         return targetPath;
       });
 
