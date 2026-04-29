@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { parseSectionPath } from "@/services/section-path-service";
 import { toSlug } from "@/services/lesson-path-service";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -27,11 +27,21 @@ export function EditSectionModal(props: {
   const currentSlug = parsed?.slug ?? props.currentPath;
 
   const [input, setInput] = useState(currentSlug);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const p = parseSectionPath(props.currentPath);
     setInput(p?.slug ?? props.currentPath);
   }, [props.currentPath]);
+
+  useEffect(() => {
+    if (props.open) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }, 100);
+    }
+  }, [props.open]);
 
   const slug = toSlug(input);
   const isValid = slug.length > 0 && SLUG_PATTERN.test(slug);
@@ -66,11 +76,11 @@ export function EditSectionModal(props: {
                 </span>
               )}
               <Input
+                ref={inputRef}
                 id="section-slug"
                 placeholder="e.g. before-we-start"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                autoFocus
                 className="flex-1"
               />
             </div>
