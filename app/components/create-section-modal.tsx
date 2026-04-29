@@ -22,12 +22,12 @@ export function CreateSectionModal(props: {
   const isValid = title.trim().length > 0;
 
   useEffect(() => {
-    if (props.open) {
-      setTimeout(() => {
-        inputRef.current?.focus();
-        inputRef.current?.select();
-      }, 100);
-    }
+    if (!props.open) return;
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }, 100);
+    return () => clearTimeout(timer);
   }, [props.open]);
 
   return (

@@ -35,12 +35,12 @@ export function EditSectionModal(props: {
   }, [props.currentPath]);
 
   useEffect(() => {
-    if (props.open) {
-      setTimeout(() => {
-        inputRef.current?.focus();
-        inputRef.current?.select();
-      }, 100);
-    }
+    if (!props.open) return;
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }, 100);
+    return () => clearTimeout(timer);
   }, [props.open]);
 
   const slug = toSlug(input);
