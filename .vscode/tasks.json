@@ -4,8 +4,11 @@
     {
       "label": "Run production server",
       "type": "shell",
-      "command": "fnm exec node",
+      "command": "fnm",
       "args": [
+        "exec",
+        "--using=default",
+        "node",
         "--env-file=.env",
         "node_modules/@react-router/serve/bin.js",
         "./build/server/index.js"
