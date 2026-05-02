@@ -335,13 +335,14 @@ export class VideoProcessingService extends Effect.Service<VideoProcessingServic
         return yield* Schema.decodeUnknown(transcribeClipsSchema)(results);
       });
 
-      const getLastFrame = Effect.fn("getLastFrame")(function* (
+      const extractFrame = Effect.fn("extractFrame")(function* (
         inputVideo: string,
-        seekTo: number
+        seekTo: number,
+        cacheKeyPrefix: string
       ) {
         const inputHash = crypto
           .createHash("sha256")
-          .update(inputVideo + seekTo.toFixed(2))
+          .update(cacheKeyPrefix + inputVideo + seekTo.toFixed(2))
           .digest("hex")
           .slice(0, 10);
 
@@ -388,57 +389,18 @@ export class VideoProcessingService extends Effect.Service<VideoProcessingServic
         return outputFile;
       });
 
+      const getLastFrame = Effect.fn("getLastFrame")(function* (
+        inputVideo: string,
+        seekTo: number
+      ) {
+        return yield* extractFrame(inputVideo, seekTo, "");
+      });
+
       const getFirstFrame = Effect.fn("getFirstFrame")(function* (
         inputVideo: string,
         seekTo: number
       ) {
-        const inputHash = crypto
-          .createHash("sha256")
-          .update("first-" + inputVideo + seekTo.toFixed(2))
-          .digest("hex")
-          .slice(0, 10);
-
-        const folder = path.join(tmpdir(), "tt-cli-images");
-        yield* effectFs.makeDirectory(folder, { recursive: true });
-
-        const outputFile = path.join(folder, `${inputHash}.png`);
-
-        const outputFileExists = yield* effectFs.exists(outputFile);
-
-        if (outputFileExists) {
-          return outputFile;
-        }
-
-        const { code, stderr } = yield* runFfmpegCapturingStderr(
-          Command.make(
-            "ffmpeg",
-            "-y",
-            "-hide_banner",
-            "-ss",
-            seekTo.toFixed(2),
-            "-i",
-            inputVideo,
-            "-frames:v",
-            "1",
-            outputFile
-          )
-        ).pipe(
-          Effect.mapError(
-            (e) =>
-              new CouldNotExtractFrameError({
-                cause: e,
-                message: `Failed to extract frame: ${e.message}`,
-              })
-          )
-        );
-        if (code !== 0) {
-          yield* new CouldNotExtractFrameError({
-            cause: null,
-            message: `ffmpeg exit ${code} for ${path.basename(inputVideo)} @ ${seekTo.toFixed(2)}s: ${tailStderr(stderr)}`,
-          });
-        }
-
-        return outputFile;
+        return yield* extractFrame(inputVideo, seekTo, "first-");
       });
 
       /**
