@@ -10,6 +10,7 @@
 
 # Plans backup file (stored in repo but not committed)
 plans-backup.json
+database-backups/
 
 # Per-video operation logs
 .data/
