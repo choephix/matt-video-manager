@@ -1,12 +1,46 @@
 import { Command, FileSystem } from "@effect/platform";
 import { NodeContext } from "@effect/platform-node";
-import { Data, Effect, Stream } from "effect";
+import { Config, Data, Effect, Stream } from "effect";
 import crypto from "node:crypto";
 import path from "node:path";
 import { tmpdir } from "os";
 
 const GPU_PERMITS = 6;
 const CPU_PERMITS = 12;
+
+const getVideoEncoderArgs = (encoder: string): string[] => {
+  if (encoder === "libx264") {
+    return [
+      "-c:v",
+      encoder,
+      "-preset",
+      "slow",
+      "-crf",
+      "19",
+      "-maxrate",
+      "20000k",
+      "-bufsize",
+      "30000k",
+    ];
+  }
+
+  return [
+    "-c:v",
+    encoder,
+    "-preset",
+    "slow",
+    "-rc:v",
+    "vbr",
+    "-cq:v",
+    "19",
+    "-b:v",
+    "15387k",
+    "-maxrate",
+    "20000k",
+    "-bufsize",
+    "30000k",
+  ];
+};
 
 class FFmpegError extends Data.TaggedError("FFmpegError")<{
   cause: unknown;
@@ -20,6 +54,9 @@ export class FFmpegCommandsService extends Effect.Service<FFmpegCommandsService>
       const fs = yield* FileSystem.FileSystem;
       const gpuSemaphore = yield* Effect.makeSemaphore(GPU_PERMITS);
       const cpuSemaphore = yield* Effect.makeSemaphore(CPU_PERMITS);
+      const videoEncoder = yield* Config.string("FFMPEG_VIDEO_ENCODER").pipe(
+        Effect.orElseSucceed(() => "h264_nvenc")
+      );
 
       const detectSilence = Effect.fn("detectSilence")(function* (
         inputVideo: string,
@@ -157,20 +194,7 @@ export class FFmpegCommandsService extends Effect.Service<FFmpegCommandsService>
           "[outv]",
           "-map",
           "[outa]",
-          "-c:v",
-          "h264_nvenc",
-          "-preset",
-          "slow",
-          "-rc:v",
-          "vbr",
-          "-cq:v",
-          "19",
-          "-b:v",
-          "15387k",
-          "-maxrate",
-          "20000k",
-          "-bufsize",
-          "30000k",
+          ...getVideoEncoderArgs(videoEncoder),
           "-fps_mode",
           "cfr",
           "-r",
