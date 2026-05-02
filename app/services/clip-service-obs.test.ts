@@ -27,6 +27,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await truncateAllTables(testDb);
+  delete process.env.OBS_RECORDING_PATH_MODE;
 
   mockVideoProcessing = {
     getLatestOBSVideoClips: vi.fn().mockResolvedValue({ clips: [] }),
@@ -129,6 +130,27 @@ describe("ClipService", () => {
 
       expect(mockVideoProcessing.getLatestOBSVideoClips).toHaveBeenCalledWith({
         filePath: "/mnt/c/Users/Matt/Videos/obs/recording.mkv",
+        startTime: undefined,
+      });
+    });
+
+    it("keeps Windows paths when OBS_RECORDING_PATH_MODE is native", async () => {
+      process.env.OBS_RECORDING_PATH_MODE = "native";
+      const video = await clipService.createVideo("test-video.mp4");
+
+      mockVideoProcessing.getLatestOBSVideoClips = vi
+        .fn()
+        .mockResolvedValue({ clips: [] });
+
+      await clipService.appendFromObs({
+        videoId: video.id,
+        filePath: "X:\\Projects\\OBS Recordings\\recording.mp4",
+        insertionPoint: start,
+        items: [],
+      });
+
+      expect(mockVideoProcessing.getLatestOBSVideoClips).toHaveBeenCalledWith({
+        filePath: "X:\\Projects\\OBS Recordings\\recording.mp4",
         startTime: undefined,
       });
     });

@@ -48,8 +48,10 @@ export interface LoggerAdapter {
 export const noopLogger: LoggerAdapter = { log: () => {} };
 
 // ============================================================================
-// Helper: Windows to WSL path conversion
+// Helper: OBS recording path conversion
 // ============================================================================
+
+export type OBSRecordingPathMode = "wsl" | "native";
 
 export function windowsToWSL(windowsPath: string): string {
   // Convert C:\Users\... to /mnt/c/Users/...
@@ -60,6 +62,21 @@ export function windowsToWSL(windowsPath: string): string {
   const unixPath = pathWithoutDrive.replace(/\\/g, "/");
 
   return `/mnt/${drive}/${unixPath}`;
+}
+
+export function getOBSRecordingPathMode(): OBSRecordingPathMode {
+  return process.env.OBS_RECORDING_PATH_MODE === "native" ? "native" : "wsl";
+}
+
+export function resolveOBSRecordingPath(
+  recordingPath: string,
+  mode: OBSRecordingPathMode = getOBSRecordingPathMode()
+): string {
+  if (mode === "native") {
+    return recordingPath;
+  }
+
+  return windowsToWSL(recordingPath);
 }
 
 // ============================================================================
@@ -226,8 +243,9 @@ export const appendFromObsImpl = (
   Effect.gen(function* () {
     const { videoId, filePath, insertionPoint } = event.input;
 
-    // Convert Windows path to WSL path if provided
-    const resolvedFilePath = filePath ? windowsToWSL(filePath) : undefined;
+    const resolvedFilePath = filePath
+      ? resolveOBSRecordingPath(filePath)
+      : undefined;
 
     // Get all clips (including archived) to find the last clip with this input video
     const allClipsIncludingArchived = yield* Effect.promise(() =>
