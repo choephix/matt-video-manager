@@ -51,6 +51,16 @@ class CouldNotExtractAudioError extends Data.TaggedError(
   message: string;
 }> {}
 
+class CouldNotExtractFrameError extends Data.TaggedError(
+  "CouldNotExtractFrameError"
+)<{
+  cause: unknown;
+  message: string;
+}> {}
+
+const tailStderr = (stderr: string, lines = 8) =>
+  stderr.trim().split("\n").slice(-lines).join(" | ");
+
 class CouldNotRunDavinciResolveScriptError extends Data.TaggedError(
   "CouldNotRunDavinciResolveScriptError"
 )<{
@@ -70,6 +80,24 @@ export class VideoProcessingService extends Effect.Service<VideoProcessingServic
 
       const openaiApiKey = yield* Config.string("OPENAI_API_KEY");
       const openai = new OpenAI({ apiKey: openaiApiKey });
+
+      const runFfmpegCapturingStderr = (
+        command: ReturnType<typeof Command.make>
+      ) =>
+        Effect.scoped(
+          Effect.gen(function* () {
+            const process = yield* Command.start(command);
+            const [, stderr] = yield* Effect.all(
+              [
+                process.stdout.pipe(Stream.decodeText(), Stream.mkString),
+                process.stderr.pipe(Stream.decodeText(), Stream.mkString),
+              ],
+              { concurrency: 2 }
+            );
+            const code = yield* process.exitCode;
+            return { code, stderr };
+          })
+        );
 
       const getLatestOBSVideoClips = Effect.fn("getLatestOBSVideoClips")(
         function* (opts: {
@@ -192,7 +220,7 @@ export class VideoProcessingService extends Effect.Service<VideoProcessingServic
           .slice(0, 12);
         const outputFile = path.join(outputDir, `${outputHash}.mp3`);
 
-        const code = yield* Command.exitCode(
+        const { code, stderr } = yield* runFfmpegCapturingStderr(
           Command.make(
             "ffmpeg",
             "-y",
@@ -222,7 +250,7 @@ export class VideoProcessingService extends Effect.Service<VideoProcessingServic
         if (code !== 0) {
           yield* new CouldNotExtractAudioError({
             cause: null,
-            message: `Failed to extract audio, exit code: ${code}`,
+            message: `ffmpeg exit ${code} for ${path.basename(inputVideo)} @ ${startTime}s+${duration}s: ${tailStderr(stderr)}`,
           });
         }
 
@@ -328,17 +356,34 @@ export class VideoProcessingService extends Effect.Service<VideoProcessingServic
           return outputFile;
         }
 
-        const command = Command.make(
-          "ffmpeg",
-          "-ss",
-          seekTo.toFixed(2),
-          "-i",
-          inputVideo,
-          "-frames:v",
-          "1",
-          outputFile
+        const { code, stderr } = yield* runFfmpegCapturingStderr(
+          Command.make(
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-ss",
+            seekTo.toFixed(2),
+            "-i",
+            inputVideo,
+            "-frames:v",
+            "1",
+            outputFile
+          )
+        ).pipe(
+          Effect.mapError(
+            (e) =>
+              new CouldNotExtractFrameError({
+                cause: e,
+                message: `Failed to extract frame: ${e.message}`,
+              })
+          )
         );
-        yield* Command.exitCode(command);
+        if (code !== 0) {
+          yield* new CouldNotExtractFrameError({
+            cause: null,
+            message: `ffmpeg exit ${code} for ${path.basename(inputVideo)} @ ${seekTo.toFixed(2)}s: ${tailStderr(stderr)}`,
+          });
+        }
 
         return outputFile;
       });
@@ -364,17 +409,34 @@ export class VideoProcessingService extends Effect.Service<VideoProcessingServic
           return outputFile;
         }
 
-        const command = Command.make(
-          "ffmpeg",
-          "-ss",
-          seekTo.toFixed(2),
-          "-i",
-          inputVideo,
-          "-frames:v",
-          "1",
-          outputFile
+        const { code, stderr } = yield* runFfmpegCapturingStderr(
+          Command.make(
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-ss",
+            seekTo.toFixed(2),
+            "-i",
+            inputVideo,
+            "-frames:v",
+            "1",
+            outputFile
+          )
+        ).pipe(
+          Effect.mapError(
+            (e) =>
+              new CouldNotExtractFrameError({
+                cause: e,
+                message: `Failed to extract frame: ${e.message}`,
+              })
+          )
         );
-        yield* Command.exitCode(command);
+        if (code !== 0) {
+          yield* new CouldNotExtractFrameError({
+            cause: null,
+            message: `ffmpeg exit ${code} for ${path.basename(inputVideo)} @ ${seekTo.toFixed(2)}s: ${tailStderr(stderr)}`,
+          });
+        }
 
         return outputFile;
       });
