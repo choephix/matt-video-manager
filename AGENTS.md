@@ -2,7 +2,7 @@
 
 ### Backlog
 
-Issues and PRDs live as GitHub issues in `mattpocock/course-video-manager`, managed via the `gh` CLI. See `docs/agents/backlog.md`.
+Issues and PRDs live as GitHub issues in `choephix/matt-video-manager`, managed via the `gh` CLI. See `docs/agents/backlog.md`.
 
 ### Triage labels
 
