@@ -17,3 +17,6 @@ database-backups/
 
 # Generated assets
 /assets/
+
+# Finished video output
+/finished-videos/
