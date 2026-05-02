@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run production server",
+      "type": "shell",
+      "command": "fnm exec node",
+      "args": [
+        "--env-file=.env",
+        "node_modules/@react-router/serve/bin.js",
+        "./build/server/index.js"
+      ],
+      "options": {
+        "env": {
+          "PORT": "5173"
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+  ]
+}
