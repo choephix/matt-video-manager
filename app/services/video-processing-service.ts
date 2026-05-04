@@ -223,6 +223,7 @@ export class VideoProcessingService extends Effect.Service<VideoProcessingServic
         const { code, stderr } = yield* runFfmpegCapturingStderr(
           Command.make(
             "ffmpeg",
+            "-nostdin",
             "-y",
             "-hide_banner",
             "-ss",
@@ -360,6 +361,7 @@ export class VideoProcessingService extends Effect.Service<VideoProcessingServic
         const { code, stderr } = yield* runFfmpegCapturingStderr(
           Command.make(
             "ffmpeg",
+            "-nostdin",
             "-y",
             "-hide_banner",
             "-ss",

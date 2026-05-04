@@ -66,7 +66,7 @@ export class FFmpegCommandsService extends Effect.Service<FFmpegCommandsService>
           startTime?: number;
         }
       ) {
-        const args: string[] = ["-hide_banner", "-vn"];
+        const args: string[] = ["-nostdin", "-hide_banner", "-vn"];
         if (opts.startTime != null) {
           args.push("-ss", String(opts.startTime));
         }
@@ -185,6 +185,7 @@ export class FFmpegCommandsService extends Effect.Service<FFmpegCommandsService>
         const filterComplex = filterParts.join(";");
 
         const args = [
+          "-nostdin",
           "-y",
           "-hide_banner",
           ...inputArgs,
@@ -285,6 +286,7 @@ export class FFmpegCommandsService extends Effect.Service<FFmpegCommandsService>
         audioFilters.push("loudnorm=I=-16:TP=-1.5:LRA=11");
 
         const args = [
+          "-nostdin",
           "-y",
           "-hide_banner",
           "-i",
@@ -336,6 +338,7 @@ export class FFmpegCommandsService extends Effect.Service<FFmpegCommandsService>
         outputPath: string
       ) {
         const args = [
+          "-nostdin",
           "-y",
           "-hide_banner",
           "-ss",
