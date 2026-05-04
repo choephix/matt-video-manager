@@ -1,5 +1,3 @@
-"use client";
-
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { UploadContext } from "@/features/upload-manager/upload-context";
@@ -404,11 +402,7 @@ export function AiHeroPage({
         {(hasLocalImages || isUploadingImages) && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isUploadingImages}
-              >
+              <Button variant="outline" size="sm" disabled={isUploadingImages}>
                 {isUploadingImages ? (
                   <>
                     <Loader2Icon className="h-4 w-4 animate-spin" />

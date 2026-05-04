@@ -1,5 +1,3 @@
-"use client";
-
 import { useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { UploadContext } from "@/features/upload-manager/upload-context";

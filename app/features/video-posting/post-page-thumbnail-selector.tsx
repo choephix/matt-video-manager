@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { Link, useRevalidator } from "react-router";
 import { Label } from "@/components/ui/label";

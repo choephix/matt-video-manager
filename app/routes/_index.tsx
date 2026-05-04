@@ -1,5 +1,3 @@
-"use client";
-
 import { AppSidebar } from "@/components/app-sidebar";
 import { CreateSectionModal } from "@/components/create-section-modal";
 import { VideoModal } from "@/components/video-player";

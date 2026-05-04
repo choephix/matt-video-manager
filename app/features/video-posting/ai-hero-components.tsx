@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { useFetcher, useRevalidator } from "react-router";
 import { Button } from "@/components/ui/button";

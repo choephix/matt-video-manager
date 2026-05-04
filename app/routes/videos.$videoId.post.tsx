@@ -1,5 +1,3 @@
-"use client";
-
 import { DBFunctionsService } from "@/services/db-service.server";
 import { sortByOrder } from "@/lib/sort-by-order";
 import { runtimeLive } from "@/services/layer.server";

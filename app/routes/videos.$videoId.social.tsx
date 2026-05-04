@@ -1,5 +1,3 @@
-"use client";
-
 import { DBFunctionsService } from "@/services/db-service.server";
 import { FeatureFlagService } from "@/services/feature-flag-service";
 import { sortByOrder } from "@/lib/sort-by-order";
