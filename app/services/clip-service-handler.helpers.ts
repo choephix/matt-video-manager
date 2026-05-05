@@ -13,6 +13,7 @@ import type {
 } from "./clip-service";
 import type { DrizzleService } from "./drizzle-service.server";
 import type { LogEvent } from "./video-editor-logger-service";
+import type { PauseLength } from "@/silence-detection-constants";
 
 // ============================================================================
 // Types
@@ -27,6 +28,7 @@ export interface VideoProcessingAdapter {
   getLatestOBSVideoClips: (opts: {
     filePath: string | undefined;
     startTime: number | undefined;
+    pauseLength?: PauseLength;
   }) => Promise<{
     readonly clips: ReadonlyArray<{
       readonly inputVideo: string;
@@ -254,6 +256,7 @@ export const appendFromObsImpl = (
       videoProcessing.getLatestOBSVideoClips({
         filePath: resolvedFilePath,
         startTime: resolvedStartTime,
+        pauseLength: event.input.pauseLength,
       })
     );
 

@@ -14,6 +14,7 @@ import {
 } from "@/features/video-editor/clip-state-reducer";
 import type { BeatType } from "@/services/video-processing-service";
 import { useOBSConnector } from "@/features/video-editor/obs-connector";
+import { usePauseLength } from "@/features/video-editor/use-pause-length";
 import { VideoEditor } from "@/features/video-editor/video-editor";
 import { createEditEffectHandlers } from "@/features/video-editor/edit-effect-handlers";
 import { DBFunctionsService } from "@/services/db-service.server";
@@ -307,6 +308,10 @@ export const ComponentInner = (props: Route.ComponentProps) => {
 
   clipStateRef.current = clipState;
 
+  const [pauseLength, setPauseLength] = usePauseLength();
+  const pauseLengthRef = useRef(pauseLength);
+  pauseLengthRef.current = pauseLength;
+
   const obsConnector = useOBSConnector({
     onNewClipOptimisticallyAdded: ({ scene, profile, soundDetectionId }) => {
       dispatch({
@@ -316,6 +321,7 @@ export const ComponentInner = (props: Route.ComponentProps) => {
         soundDetectionId,
       });
     },
+    pauseLength,
   });
 
   // Sync OBS recording state to clip-state-reducer sessions
@@ -332,6 +338,7 @@ export const ComponentInner = (props: Route.ComponentProps) => {
           obsConnector.state.type === "obs-recording"
             ? obsConnector.state.latestOutputPath
             : "",
+        pauseLength: pauseLengthRef.current,
       });
     } else if (prevType === "obs-recording" && currType !== "obs-recording") {
       dispatch({ type: "recording-stopped" });
@@ -437,6 +444,9 @@ export const ComponentInner = (props: Route.ComponentProps) => {
       videoId={props.loaderData.video.id}
       liveMediaStream={obsConnector.mediaStream}
       speechDetectorState={obsConnector.speechDetectorState}
+      pauseLength={pauseLength}
+      onPauseLengthChange={setPauseLength}
+      isRecordingActive={obsConnector.state.type === "obs-recording"}
       clipIdsBeingTranscribed={clipState.clipIdsBeingTranscribed}
       fsData={props.loaderData.fsData}
       videoCount={props.loaderData.videoCount}

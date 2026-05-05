@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatSecondsToTimeCode } from "@/services/utils";
 import { LiveMediaStream } from "./live-media-stream";
+import { PauseLengthToggle } from "./pause-length-toggle";
 import { RecordingSignalIndicator } from "./timeline-indicators";
 import { TableOfContents } from "./table-of-contents";
 import {
@@ -345,6 +346,12 @@ export const VideoPlayerPanel = () => {
                 />
               </div>
             </>
+          )}
+
+          {isOBSActive && (
+            <div className="mt-2 flex justify-center">
+              <PauseLengthToggle />
+            </div>
           )}
 
           {currentClip?.type === "on-database" && (

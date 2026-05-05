@@ -65,6 +65,7 @@ const makeSession = (
   status: "recording",
   outputPath: "/tmp/test.mkv",
   startedAt: Date.now(),
+  pauseLength: "short",
   ...overrides,
 });
 

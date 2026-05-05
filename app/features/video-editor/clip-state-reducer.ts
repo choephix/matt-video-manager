@@ -52,12 +52,14 @@ export const clipStateReducer: EffectReducer<
         status: "recording",
         outputPath: action.outputPath,
         startedAt: Date.now(),
+        pauseLength: action.pauseLength,
       };
 
       exec({
         type: "start-session-polling",
         sessionId: newSession.id,
         outputPath: action.outputPath,
+        pauseLength: action.pauseLength,
       });
 
       exec({

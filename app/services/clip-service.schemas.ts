@@ -50,6 +50,7 @@ const AppendFromObsInputSchema = Schema.Struct({
   videoId: Schema.String,
   filePath: Schema.optional(Schema.String),
   insertionPoint: InsertionPointSchema,
+  pauseLength: Schema.optional(Schema.Literal("short", "long")),
 });
 
 const UpdateClipInputSchema = Schema.Struct({

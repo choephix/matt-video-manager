@@ -115,6 +115,10 @@ _Avoid_: Clear, Delete from file system, Unexport
 A time-bounded window during which clips are captured via OBS, grouping optimistic clips before persistence.
 _Avoid_: Session, Take session
 
+**Pause Length**:
+A per-Recording-Session setting (`short` or `long`) that controls how long a silence must last before it ends a clip. `short` (default) cuts on brief mid-sentence pauses; `long` only cuts on extended pauses. Locked at the start of recording and applied symmetrically to both the frontend speech detector and the backend FFmpeg silence detection.
+_Avoid_: Silence mode, Silence sensitivity, Pause threshold
+
 **Insertion Point**:
 The position in a video timeline where new clips or clip sections will be added (start, after-clip, after-clip-section, end).
 _Avoid_: Cursor, Drop target
