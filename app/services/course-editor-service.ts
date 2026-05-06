@@ -105,6 +105,11 @@ export type CourseEditorEvent =
       type: "create-on-disk";
       lessonId: string;
       repoPath?: string;
+    }
+  | {
+      type: "set-lesson-authoring-status";
+      lessonId: string;
+      status: "todo" | "done";
     };
 
 // ============================================================================
@@ -205,6 +210,11 @@ export interface CourseEditorService {
     sectionPath?: string;
     courseFilePath?: string;
   }>;
+
+  setLessonAuthoringStatus(
+    lessonId: string,
+    status: "todo" | "done"
+  ): Promise<{ success: true }>;
 }
 
 // ============================================================================
@@ -370,6 +380,14 @@ export function createCourseEditorService(
         sectionPath?: string;
         courseFilePath?: string;
       }>;
+    },
+
+    async setLessonAuthoringStatus(lessonId, status) {
+      return send({
+        type: "set-lesson-authoring-status",
+        lessonId,
+        status,
+      }) as Promise<{ success: true }>;
     },
   };
 }

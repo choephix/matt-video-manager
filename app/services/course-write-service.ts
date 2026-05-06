@@ -206,6 +206,7 @@ export class CourseWriteService extends Effect.Service<CourseWriteService>()(
         // Mark lesson as ghost in DB
         yield* db.updateLesson(lessonId, {
           fsStatus: "ghost",
+          authoringStatus: null,
         });
 
         // Renumber remaining real lessons to close the gap

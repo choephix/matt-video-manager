@@ -62,6 +62,7 @@ const buildCourseFixture = async (
       .returning();
 
     for (const lessonDef of sectionDef.lessons) {
+      const fsStatus = lessonDef.fsStatus ?? "real";
       const [lesson] = await testDb
         .insert(schema.lessons)
         .values({
@@ -69,7 +70,8 @@ const buildCourseFixture = async (
           path: lessonDef.path,
           title: lessonDef.title,
           order: lessonDef.order,
-          fsStatus: lessonDef.fsStatus ?? "real",
+          fsStatus,
+          authoringStatus: fsStatus === "real" ? "done" : null,
         })
         .returning();
 

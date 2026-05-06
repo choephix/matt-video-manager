@@ -51,6 +51,7 @@ describe("copyVersionStructure", () => {
       icon: "code",
       fsStatus: "real",
       title: "Test Lesson",
+      authoringStatus: "done",
     });
 
     const result = await run(
@@ -152,6 +153,125 @@ describe("copyVersionStructure", () => {
     expect(newSections[0]!.path).toBe("01-active");
   });
 
+  it("preserves lesson authoringStatus when copying a version", async () => {
+    const [course] = await testDb
+      .insert(schema.courses)
+      .values({ name: "AuthoringStatus Copy", filePath: "/tmp/authoring" })
+      .returning();
+
+    const [version] = await testDb
+      .insert(schema.courseVersions)
+      .values({ repoId: course!.id, name: "v1" })
+      .returning();
+
+    const [section] = await testDb
+      .insert(schema.sections)
+      .values({ repoVersionId: version!.id, path: "01-intro", order: 1 })
+      .returning();
+
+    await testDb.insert(schema.lessons).values([
+      {
+        sectionId: section!.id,
+        path: "01-lesson",
+        order: 1,
+        fsStatus: "real",
+        title: "Todo Lesson",
+        authoringStatus: "todo",
+      },
+      {
+        sectionId: section!.id,
+        path: "02-lesson",
+        order: 2,
+        fsStatus: "real",
+        title: "Done Lesson",
+        authoringStatus: "done",
+      },
+      {
+        sectionId: section!.id,
+        path: "ghost-lesson",
+        order: 3,
+        fsStatus: "ghost",
+        title: "Ghost Lesson",
+      },
+    ]);
+
+    const result = await run(
+      Effect.gen(function* () {
+        const db = yield* DBFunctionsService;
+        return yield* db.copyVersionStructure({
+          sourceVersionId: version!.id,
+          repoId: course!.id,
+          newVersionName: "v2",
+        });
+      })
+    );
+
+    const newSections = await testDb.query.sections.findMany({
+      where: (s, { eq }) => eq(s.repoVersionId, result.version.id),
+      with: { lessons: { orderBy: (l, { asc }) => asc(l.order) } },
+    });
+
+    expect(newSections[0]!.lessons).toHaveLength(3);
+    expect(newSections[0]!.lessons[0]!.authoringStatus).toBe("todo");
+    expect(newSections[0]!.lessons[1]!.authoringStatus).toBe("done");
+    expect(newSections[0]!.lessons[2]!.authoringStatus).toBeNull();
+  });
+
+  it("rejects a real lesson with null authoringStatus (constraint)", async () => {
+    const [course] = await testDb
+      .insert(schema.courses)
+      .values({ name: "Constraint Test", filePath: "/tmp/constraint" })
+      .returning();
+
+    const [version] = await testDb
+      .insert(schema.courseVersions)
+      .values({ repoId: course!.id, name: "v1" })
+      .returning();
+
+    const [section] = await testDb
+      .insert(schema.sections)
+      .values({ repoVersionId: version!.id, path: "01-intro", order: 1 })
+      .returning();
+
+    await expect(
+      testDb.insert(schema.lessons).values({
+        sectionId: section!.id,
+        path: "01-lesson",
+        order: 1,
+        fsStatus: "real",
+        title: "Real without status",
+      })
+    ).rejects.toThrow();
+  });
+
+  it("rejects a ghost lesson with non-null authoringStatus (constraint)", async () => {
+    const [course] = await testDb
+      .insert(schema.courses)
+      .values({ name: "Constraint Test 2", filePath: "/tmp/constraint2" })
+      .returning();
+
+    const [version] = await testDb
+      .insert(schema.courseVersions)
+      .values({ repoId: course!.id, name: "v1" })
+      .returning();
+
+    const [section] = await testDb
+      .insert(schema.sections)
+      .values({ repoVersionId: version!.id, path: "01-intro", order: 1 })
+      .returning();
+
+    await expect(
+      testDb.insert(schema.lessons).values({
+        sectionId: section!.id,
+        path: "ghost-lesson",
+        order: 1,
+        fsStatus: "ghost",
+        title: "Ghost with status",
+        authoringStatus: "todo",
+      })
+    ).rejects.toThrow();
+  });
+
   it("preserves lesson fsStatus (ghost/real) when copying a version", async () => {
     const [course] = await testDb
       .insert(schema.courses)
@@ -175,6 +295,7 @@ describe("copyVersionStructure", () => {
         order: 1,
         fsStatus: "real",
         title: "Real Lesson",
+        authoringStatus: "done",
       },
       {
         sectionId: section!.id,

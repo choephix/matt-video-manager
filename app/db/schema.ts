@@ -2,6 +2,7 @@ import type { DatabaseId } from "@/features/video-editor/clip-state-reducer";
 import { relations, sql, type InferSelectModel } from "drizzle-orm";
 import {
   boolean,
+  check,
   customType,
   doublePrecision,
   integer,
@@ -93,32 +94,42 @@ export const sections = createTable("section", {
   order: doublePrecision("order").notNull(),
 });
 
-export const lessons = createTable("lesson", {
-  id: varchar("id", { length: 255 })
-    .notNull()
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  sectionId: varchar("section_id", { length: 255 })
-    .references(() => sections.id, { onDelete: "cascade" })
-    .notNull(),
-  previousVersionLessonId: varchar("previous_version_lesson_id", {
-    length: 255,
-  }),
-  path: text("path").notNull(),
-  title: text("title").notNull().default(""),
-  fsStatus: text("fs_status").notNull().default("real"),
-  description: text("description").notNull().default(""),
-  icon: varchar("icon", { length: 255 }),
-  priority: integer("priority").notNull().default(2),
-  dependencies: text("dependencies").array(),
-  createdAt: timestamp("created_at", {
-    mode: "date",
-    withTimezone: true,
-  })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-  order: doublePrecision("order").notNull(),
-});
+export const lessons = createTable(
+  "lesson",
+  {
+    id: varchar("id", { length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    sectionId: varchar("section_id", { length: 255 })
+      .references(() => sections.id, { onDelete: "cascade" })
+      .notNull(),
+    previousVersionLessonId: varchar("previous_version_lesson_id", {
+      length: 255,
+    }),
+    path: text("path").notNull(),
+    title: text("title").notNull().default(""),
+    fsStatus: text("fs_status").notNull().default("real"),
+    description: text("description").notNull().default(""),
+    icon: varchar("icon", { length: 255 }),
+    priority: integer("priority").notNull().default(2),
+    dependencies: text("dependencies").array(),
+    authoringStatus: text("authoring_status"),
+    createdAt: timestamp("created_at", {
+      mode: "date",
+      withTimezone: true,
+    })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    order: doublePrecision("order").notNull(),
+  },
+  (table) => [
+    check(
+      "lesson_authoring_status_biconditional",
+      sql`(${table.fsStatus} = 'real' AND ${table.authoringStatus} IS NOT NULL) OR (${table.fsStatus} != 'real' AND ${table.authoringStatus} IS NULL)`
+    ),
+  ]
+);
 
 export const videos = createTable("video", {
   id: varchar("id", { length: 255 })

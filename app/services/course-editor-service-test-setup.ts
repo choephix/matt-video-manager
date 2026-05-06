@@ -160,6 +160,7 @@ export async function createSectionWithLessons(
         title: def.title,
         fsStatus: def.fsStatus,
         order: def.order,
+        authoringStatus: def.fsStatus === "real" ? "done" : null,
       })
       .returning();
     lessons.push(lesson!);

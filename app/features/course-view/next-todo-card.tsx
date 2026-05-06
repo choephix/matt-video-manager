@@ -12,10 +12,7 @@ import { X } from "lucide-react";
 import { useNavigate, useFetcher } from "react-router";
 
 function isTodoLesson(lesson: Lesson): boolean {
-  if ((lesson.fsStatus ?? "real") !== "real") return false;
-  if (lesson.videos.length === 0) return true;
-  if (lesson.videos.every((v) => v.clipCount > 1)) return false;
-  return lesson.videos.some((v) => v.clipCount === 0);
+  return lesson.fsStatus === "real" && lesson.authoringStatus === "todo";
 }
 
 export function NextTodoCard({

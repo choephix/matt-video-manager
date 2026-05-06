@@ -184,6 +184,7 @@ describe("CourseEditorService — sections", () => {
         title: "Real Lesson",
         fsStatus: "real",
         order: 1,
+        authoringStatus: "done",
       });
 
       await expect(
@@ -215,6 +216,7 @@ describe("CourseEditorService — sections", () => {
             title: "Real Lesson",
             fsStatus: "real",
             order: 2,
+            authoringStatus: "done",
           },
         ]);
 

@@ -146,7 +146,10 @@ export function createMaterializeOps<E1>(
       order: insertOrder,
     });
 
-    yield* db.updateLesson(newLesson!.id, { fsStatus: "real" });
+    yield* db.updateLesson(newLesson!.id, {
+      fsStatus: "real",
+      authoringStatus: "todo",
+    });
 
     // Renumber sections if we materialized one
     if (sectionMaterialized) {
@@ -275,6 +278,7 @@ export function createMaterializeOps<E1>(
       fsStatus: "real",
       path: plan.newLessonDirName,
       sectionId: lesson.sectionId,
+      authoringStatus: "todo",
     });
 
     if (sectionMaterialized) {

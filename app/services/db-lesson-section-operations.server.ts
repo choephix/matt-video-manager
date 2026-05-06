@@ -145,6 +145,7 @@ export const createLessonSectionOperations = (db: DrizzleDB) => {
             sectionId,
             path: lesson.lessonPathWithNumber,
             order: lesson.lessonNumber,
+            authoringStatus: "todo",
           }))
         )
         .returning()
@@ -189,6 +190,7 @@ export const createLessonSectionOperations = (db: DrizzleDB) => {
       dependencies?: string[];
       icon?: string | null;
       priority?: number;
+      authoringStatus?: string | null;
     }
   ) {
     const lessonResult = yield* makeDbCall(() =>
@@ -204,6 +206,7 @@ export const createLessonSectionOperations = (db: DrizzleDB) => {
           dependencies: lesson.dependencies,
           icon: lesson.icon,
           priority: lesson.priority,
+          authoringStatus: lesson.authoringStatus,
         })
         .where(eq(lessons.id, lessonId))
     );

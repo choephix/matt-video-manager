@@ -304,6 +304,21 @@ export function SortableLessonItem({
                   lessonPriority={lessonPriority}
                   dependencyMap={dependencyMap}
                 />
+                {!isGhost && lesson.authoringStatus === "todo" && (
+                  <button
+                    className="text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-foreground text-background hover:opacity-80 transition-opacity shrink-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      submitEvent({
+                        type: "set-lesson-authoring-status",
+                        lessonId: lesson.id,
+                        status: "done",
+                      });
+                    }}
+                  >
+                    todo
+                  </button>
+                )}
               </div>
               <div className="ml-5">
                 {!isReadOnly && editingDesc ? (
@@ -413,6 +428,19 @@ export function SortableLessonItem({
                       <Ghost className="w-4 h-4" />
                       Convert to Ghost
                     </ContextMenuItem>
+                    {lesson.authoringStatus === "done" && (
+                      <ContextMenuItem
+                        onSelect={() =>
+                          submitEvent({
+                            type: "set-lesson-authoring-status",
+                            lessonId: lesson.id,
+                            status: "todo",
+                          })
+                        }
+                      >
+                        Mark as TODO
+                      </ContextMenuItem>
+                    )}
                   </>
                 )}
                 <ContextMenuSeparator />

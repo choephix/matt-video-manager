@@ -51,6 +51,7 @@ const buildCourseWithVideos = async () => {
       order: 1,
       fsStatus: "real",
       description: "A welcome lesson",
+      authoringStatus: "done",
     })
     .returning();
 
@@ -294,6 +295,7 @@ describe("getCourseStructureById", () => {
             title: "Second",
             order: 2,
             fsStatus: "real",
+            authoringStatus: "done",
           },
           {
             sectionId: sectionA!.id,
@@ -301,6 +303,7 @@ describe("getCourseStructureById", () => {
             title: "First",
             order: 1,
             fsStatus: "real",
+            authoringStatus: "done",
           },
         ])
       );

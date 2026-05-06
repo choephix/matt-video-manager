@@ -386,6 +386,7 @@ export const createVersionOperations = (db: DrizzleDB) => {
                 icon: sourceLesson.icon,
                 priority: sourceLesson.priority,
                 dependencies: sourceLesson.dependencies,
+                authoringStatus: sourceLesson.authoringStatus,
               })
               .returning()
           );

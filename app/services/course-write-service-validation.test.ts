@@ -133,7 +133,11 @@ async function createSectionWithLessons(
   for (const def of lessonDefs) {
     const [lesson] = await db()
       .insert(schema.lessons)
-      .values({ sectionId: section!.id, ...def })
+      .values({
+        sectionId: section!.id,
+        ...def,
+        authoringStatus: def.fsStatus === "real" ? "done" : null,
+      })
       .returning();
     lessons.push(lesson!);
   }
