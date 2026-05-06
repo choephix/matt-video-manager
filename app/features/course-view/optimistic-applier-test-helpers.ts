@@ -1,5 +1,31 @@
 import type { LoaderData } from "./course-view-types";
 
+export function makeVideo(
+  overrides: Partial<
+    LoaderData["selectedCourse"] extends infer C
+      ? C extends {
+          sections: Array<{ lessons: Array<{ videos: Array<infer V> }> }>;
+        }
+        ? V
+        : never
+      : never
+  > = {}
+) {
+  return {
+    id: "video-1",
+    path: "video-01.mp4",
+    totalDuration: 120,
+    firstClipId: null,
+    archived: false,
+    createdAt: new Date(),
+    lessonId: "lesson-1",
+    originalFootagePath: "/footage/video-01",
+    updatedAt: new Date(),
+    clipCount: 0,
+    ...overrides,
+  };
+}
+
 export function makeLesson(
   overrides: Partial<
     LoaderData["selectedCourse"] extends infer C
