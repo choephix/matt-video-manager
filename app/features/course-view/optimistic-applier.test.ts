@@ -453,6 +453,45 @@ describe("applyOptimisticDeleteVideo", () => {
     );
     expect(result.selectedCourse!.sections[0]).toBe(section1);
   });
+
+  it("leaves an empty videos array when the only video is deleted", () => {
+    const lesson = makeLesson({
+      id: "lesson-1",
+      videos: [makeVideo({ id: "only-video" })],
+    });
+    const loaderData = makeLoaderData([makeSection({}, [lesson])]);
+
+    const result = applyOptimisticDeleteVideo(loaderData, "only-video");
+
+    expect(result.selectedCourse!.sections[0]!.lessons[0]!.videos).toEqual([]);
+  });
+
+  it("applies two sequential deletes on the same lesson", () => {
+    const lesson = makeLesson({
+      id: "lesson-1",
+      videos: [
+        makeVideo({ id: "v1", path: "v1.mp4" }),
+        makeVideo({ id: "v2", path: "v2.mp4" }),
+        makeVideo({ id: "v3", path: "v3.mp4" }),
+      ],
+    });
+    const loaderData = makeLoaderData([makeSection({}, [lesson])]);
+
+    const after1 = applyOptimisticDeleteVideo(loaderData, "v1");
+    const after2 = applyOptimisticDeleteVideo(after1, "v3");
+
+    const remaining = after2.selectedCourse!.sections[0]!.lessons[0]!.videos;
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]!.id).toBe("v2");
+  });
+
+  it("returns loaderData unchanged when sections array is empty", () => {
+    const loaderData = makeLoaderData([]);
+
+    const result = applyOptimisticDeleteVideo(loaderData, "video-1");
+
+    expect(result).toBe(loaderData);
+  });
 });
 
 describe("deleteVideoFetcherKey", () => {
