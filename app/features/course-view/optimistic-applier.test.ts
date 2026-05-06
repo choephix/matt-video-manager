@@ -344,6 +344,152 @@ describe("applyOptimisticEvent", () => {
     });
   });
 
+  describe("delete-lesson edge cases", () => {
+    it("leaves section with empty lessons when removing the only lesson", () => {
+      const loaderData = makeLoaderData([
+        makeSection({ id: "section-1" }, [makeLesson({ id: "lesson-1" })]),
+      ]);
+      const event: CourseEditorEvent = {
+        type: "delete-lesson",
+        lessonId: "lesson-1",
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(result.selectedCourse!.sections).toHaveLength(1);
+      expect(result.selectedCourse!.sections[0]!.lessons).toHaveLength(0);
+    });
+
+    it("preserves reference equality for sections after the match", () => {
+      const section1 = makeSection({ id: "section-1" }, [
+        makeLesson({ id: "lesson-1" }),
+      ]);
+      const section2 = makeSection({ id: "section-2" }, [
+        makeLesson({ id: "lesson-2" }),
+      ]);
+      const section3 = makeSection({ id: "section-3" }, [
+        makeLesson({ id: "lesson-3" }),
+      ]);
+      const loaderData = makeLoaderData([section1, section2, section3]);
+
+      const event: CourseEditorEvent = {
+        type: "delete-lesson",
+        lessonId: "lesson-1",
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(result.selectedCourse!.sections[0]).not.toBe(section1);
+      expect(result.selectedCourse!.sections[1]).toBe(section2);
+      expect(result.selectedCourse!.sections[2]).toBe(section3);
+    });
+  });
+
+  describe("archive-section edge cases", () => {
+    it("results in empty sections array when archiving the only section", () => {
+      const loaderData = makeLoaderData([makeSection({ id: "section-1" })]);
+      const event: CourseEditorEvent = {
+        type: "archive-section",
+        sectionId: "section-1",
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(result.selectedCourse!.sections).toHaveLength(0);
+    });
+  });
+
+  describe("convert-to-ghost edge cases", () => {
+    it("is idempotent on an already-ghost lesson", () => {
+      const loaderData = makeLoaderData([
+        makeSection({}, [makeLesson({ id: "lesson-1", fsStatus: "ghost" })]),
+      ]);
+      const event: CourseEditorEvent = {
+        type: "convert-to-ghost",
+        lessonId: "lesson-1",
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(result.selectedCourse!.sections[0]!.lessons[0]!.fsStatus).toBe(
+        "ghost"
+      );
+    });
+  });
+
+  describe("cross-event sequential composition", () => {
+    it("convert-to-ghost then delete-lesson on same lesson", () => {
+      const loaderData = makeLoaderData([
+        makeSection({}, [
+          makeLesson({ id: "lesson-1", fsStatus: "real" }),
+          makeLesson({ id: "lesson-2" }),
+        ]),
+      ]);
+
+      const ghost: CourseEditorEvent = {
+        type: "convert-to-ghost",
+        lessonId: "lesson-1",
+      };
+      const del: CourseEditorEvent = {
+        type: "delete-lesson",
+        lessonId: "lesson-1",
+      };
+
+      const afterGhost = applyOptimisticEvent(loaderData, ghost);
+      const result = applyOptimisticEvent(afterGhost, del);
+
+      expect(result.selectedCourse!.sections[0]!.lessons).toHaveLength(1);
+      expect(result.selectedCourse!.sections[0]!.lessons[0]!.id).toBe(
+        "lesson-2"
+      );
+    });
+
+    it("delete-lesson then convert-to-ghost on deleted lesson is a no-op", () => {
+      const loaderData = makeLoaderData([
+        makeSection({}, [
+          makeLesson({ id: "lesson-1", fsStatus: "real" }),
+          makeLesson({ id: "lesson-2", fsStatus: "real" }),
+        ]),
+      ]);
+
+      const del: CourseEditorEvent = {
+        type: "delete-lesson",
+        lessonId: "lesson-1",
+      };
+      const ghost: CourseEditorEvent = {
+        type: "convert-to-ghost",
+        lessonId: "lesson-1",
+      };
+
+      const afterDelete = applyOptimisticEvent(loaderData, del);
+      const result = applyOptimisticEvent(afterDelete, ghost);
+
+      expect(result).toBe(afterDelete);
+    });
+
+    it("delete-lesson then archive-section on the emptied section", () => {
+      const loaderData = makeLoaderData([
+        makeSection({ id: "section-1" }, [makeLesson({ id: "lesson-1" })]),
+        makeSection({ id: "section-2" }, [makeLesson({ id: "lesson-2" })]),
+      ]);
+
+      const del: CourseEditorEvent = {
+        type: "delete-lesson",
+        lessonId: "lesson-1",
+      };
+      const archive: CourseEditorEvent = {
+        type: "archive-section",
+        sectionId: "section-1",
+      };
+
+      const afterDelete = applyOptimisticEvent(loaderData, del);
+      const result = applyOptimisticEvent(afterDelete, archive);
+
+      expect(result.selectedCourse!.sections).toHaveLength(1);
+      expect(result.selectedCourse!.sections[0]!.id).toBe("section-2");
+    });
+  });
+
   describe("passthrough for unhandled events", () => {
     it("returns loaderData unchanged for create-section", () => {
       const loaderData = makeLoaderData();
