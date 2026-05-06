@@ -139,6 +139,211 @@ describe("applyOptimisticEvent", () => {
     });
   });
 
+  describe("delete-lesson", () => {
+    it("removes the lesson from its containing section", () => {
+      const loaderData = makeLoaderData([
+        makeSection({}, [
+          makeLesson({ id: "lesson-1" }),
+          makeLesson({ id: "lesson-2" }),
+        ]),
+      ]);
+      const event: CourseEditorEvent = {
+        type: "delete-lesson",
+        lessonId: "lesson-1",
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(result.selectedCourse!.sections[0]!.lessons).toHaveLength(1);
+      expect(result.selectedCourse!.sections[0]!.lessons[0]!.id).toBe(
+        "lesson-2"
+      );
+    });
+
+    it("does not mutate the original loaderData", () => {
+      const loaderData = makeLoaderData();
+      const event: CourseEditorEvent = {
+        type: "delete-lesson",
+        lessonId: "lesson-1",
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(result).not.toBe(loaderData);
+      expect(loaderData.selectedCourse!.sections[0]!.lessons).toHaveLength(1);
+    });
+
+    it("returns loaderData unchanged when lesson is not found", () => {
+      const loaderData = makeLoaderData();
+      const event: CourseEditorEvent = {
+        type: "delete-lesson",
+        lessonId: "nonexistent",
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(result).toBe(loaderData);
+    });
+
+    it("finds and removes lesson across multiple sections", () => {
+      const section1 = makeSection({ id: "section-1" }, [
+        makeLesson({ id: "lesson-1" }),
+      ]);
+      const section2 = makeSection({ id: "section-2" }, [
+        makeLesson({ id: "lesson-2" }),
+        makeLesson({ id: "lesson-3" }),
+      ]);
+      const loaderData = makeLoaderData([section1, section2]);
+
+      const event: CourseEditorEvent = {
+        type: "delete-lesson",
+        lessonId: "lesson-2",
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(result.selectedCourse!.sections[0]).toBe(section1);
+      expect(result.selectedCourse!.sections[1]!.lessons).toHaveLength(1);
+      expect(result.selectedCourse!.sections[1]!.lessons[0]!.id).toBe(
+        "lesson-3"
+      );
+    });
+  });
+
+  describe("archive-section", () => {
+    it("removes the section from the course", () => {
+      const section1 = makeSection({ id: "section-1" });
+      const section2 = makeSection({ id: "section-2" }, [
+        makeLesson({ id: "lesson-2" }),
+      ]);
+      const loaderData = makeLoaderData([section1, section2]);
+
+      const event: CourseEditorEvent = {
+        type: "archive-section",
+        sectionId: "section-1",
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(result.selectedCourse!.sections).toHaveLength(1);
+      expect(result.selectedCourse!.sections[0]!.id).toBe("section-2");
+    });
+
+    it("does not mutate the original loaderData", () => {
+      const loaderData = makeLoaderData([
+        makeSection({ id: "section-1" }),
+        makeSection({ id: "section-2" }, [makeLesson({ id: "lesson-2" })]),
+      ]);
+      const event: CourseEditorEvent = {
+        type: "archive-section",
+        sectionId: "section-1",
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(result).not.toBe(loaderData);
+      expect(loaderData.selectedCourse!.sections).toHaveLength(2);
+    });
+
+    it("returns loaderData unchanged when section is not found", () => {
+      const loaderData = makeLoaderData();
+      const event: CourseEditorEvent = {
+        type: "archive-section",
+        sectionId: "nonexistent",
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(result).toBe(loaderData);
+    });
+
+    it("preserves reference equality for remaining sections", () => {
+      const section1 = makeSection({ id: "section-1" });
+      const section2 = makeSection({ id: "section-2" }, [
+        makeLesson({ id: "lesson-2" }),
+      ]);
+      const loaderData = makeLoaderData([section1, section2]);
+
+      const event: CourseEditorEvent = {
+        type: "archive-section",
+        sectionId: "section-1",
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(result.selectedCourse!.sections[0]).toBe(section2);
+    });
+  });
+
+  describe("convert-to-ghost", () => {
+    it("flips fsStatus from real to ghost for the matching lesson", () => {
+      const loaderData = makeLoaderData([
+        makeSection({}, [makeLesson({ id: "lesson-1", fsStatus: "real" })]),
+      ]);
+      const event: CourseEditorEvent = {
+        type: "convert-to-ghost",
+        lessonId: "lesson-1",
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(result.selectedCourse!.sections[0]!.lessons[0]!.fsStatus).toBe(
+        "ghost"
+      );
+    });
+
+    it("does not mutate the original loaderData", () => {
+      const loaderData = makeLoaderData([
+        makeSection({}, [makeLesson({ id: "lesson-1", fsStatus: "real" })]),
+      ]);
+      const event: CourseEditorEvent = {
+        type: "convert-to-ghost",
+        lessonId: "lesson-1",
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(result).not.toBe(loaderData);
+      expect(loaderData.selectedCourse!.sections[0]!.lessons[0]!.fsStatus).toBe(
+        "real"
+      );
+    });
+
+    it("returns loaderData unchanged when lesson is not found", () => {
+      const loaderData = makeLoaderData();
+      const event: CourseEditorEvent = {
+        type: "convert-to-ghost",
+        lessonId: "nonexistent",
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(result).toBe(loaderData);
+    });
+
+    it("finds lesson across multiple sections", () => {
+      const section1 = makeSection({ id: "section-1" }, [
+        makeLesson({ id: "lesson-1", fsStatus: "real" }),
+      ]);
+      const section2 = makeSection({ id: "section-2" }, [
+        makeLesson({ id: "lesson-2", fsStatus: "real" }),
+      ]);
+      const loaderData = makeLoaderData([section1, section2]);
+
+      const event: CourseEditorEvent = {
+        type: "convert-to-ghost",
+        lessonId: "lesson-2",
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(result.selectedCourse!.sections[0]).toBe(section1);
+      expect(result.selectedCourse!.sections[1]!.lessons[0]!.fsStatus).toBe(
+        "ghost"
+      );
+    });
+  });
+
   describe("passthrough for unhandled events", () => {
     it("returns loaderData unchanged for create-section", () => {
       const loaderData = makeLoaderData();
