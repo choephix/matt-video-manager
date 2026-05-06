@@ -204,11 +204,9 @@ function applyMoveLessonToSection(
     (s) => s.id === targetSectionId
   );
   if (targetIndex === -1) return loaderData;
+  if (sourceIndex === targetIndex) return loaderData;
 
   const sections = course.sections.map((section, i) => {
-    if (i === sourceIndex && i === targetIndex) {
-      return section;
-    }
     if (i === sourceIndex) {
       return {
         ...section,

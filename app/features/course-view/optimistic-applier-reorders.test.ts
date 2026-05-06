@@ -391,5 +391,94 @@ describe("applyOptimisticEvent — reorders", () => {
         result.selectedCourse!.sections[1]!.lessons.map((l) => l.id)
       ).toEqual(["l1"]);
     });
+
+    it("returns loaderData by reference when source and target are the same section", () => {
+      const lesson1 = makeLesson({ id: "l1" });
+      const section1 = makeSection({ id: "s1" }, [lesson1]);
+      const loaderData = makeLoaderData([section1]);
+
+      const event: CourseEditorEvent = {
+        type: "move-lesson-to-section",
+        lessonId: "l1",
+        targetSectionId: "s1",
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(result).toBe(loaderData);
+    });
+  });
+
+  describe("defensive handling", () => {
+    it("reorder-sections: handles duplicate sectionIds gracefully", () => {
+      const section1 = makeSection({ id: "s1" });
+      const section2 = makeSection({ id: "s2" }, [
+        makeLesson({ id: "lesson-2" }),
+      ]);
+      const loaderData = makeLoaderData([section1, section2]);
+
+      const event: CourseEditorEvent = {
+        type: "reorder-sections",
+        sectionIds: ["s2", "s2", "s1"],
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(result.selectedCourse!.sections.map((s) => s.id)).toEqual([
+        "s2",
+        "s1",
+      ]);
+    });
+
+    it("reorder-sections: returns unchanged when all sectionIds are unknown", () => {
+      const section1 = makeSection({ id: "s1" });
+      const loaderData = makeLoaderData([section1]);
+
+      const event: CourseEditorEvent = {
+        type: "reorder-sections",
+        sectionIds: ["unknown-1", "unknown-2"],
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(result).toBe(loaderData);
+    });
+
+    it("reorder-lessons: returns unchanged with empty lessonIds", () => {
+      const section = makeSection({ id: "s1" }, [
+        makeLesson({ id: "l1" }),
+        makeLesson({ id: "l2" }),
+      ]);
+      const loaderData = makeLoaderData([section]);
+
+      const event: CourseEditorEvent = {
+        type: "reorder-lessons",
+        sectionId: "s1",
+        lessonIds: [],
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(result).toBe(loaderData);
+    });
+
+    it("reorder-lessons: handles duplicate lessonIds gracefully", () => {
+      const lesson1 = makeLesson({ id: "l1" });
+      const lesson2 = makeLesson({ id: "l2" });
+      const section = makeSection({ id: "s1" }, [lesson1, lesson2]);
+      const loaderData = makeLoaderData([section]);
+
+      const event: CourseEditorEvent = {
+        type: "reorder-lessons",
+        sectionId: "s1",
+        lessonIds: ["l2", "l2", "l1"],
+      };
+
+      const result = applyOptimisticEvent(loaderData, event);
+
+      expect(
+        result.selectedCourse!.sections[0]!.lessons.map((l) => l.id)
+      ).toEqual(["l2", "l1"]);
+    });
   });
 });
