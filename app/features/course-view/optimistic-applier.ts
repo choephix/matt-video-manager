@@ -94,6 +94,12 @@ export function applyOptimisticEvent(
       return withPatchedSection(loaderData, event.sectionId, () => ({
         description: event.description,
       }));
+    case "delete-lesson":
+      return applyDeleteLesson(loaderData, event);
+    case "archive-section":
+      return applyArchiveSection(loaderData, event);
+    case "convert-to-ghost":
+      return applyConvertToGhost(loaderData, event);
     default:
       return loaderData;
   }
@@ -102,6 +108,85 @@ export function applyOptimisticEvent(
 function replaceSlug(path: string, newSlug: string): string {
   const match = path.match(/^(\d[\d.]*-)/);
   return match ? match[1] + newSlug : newSlug;
+}
+
+function applyArchiveSection(
+  loaderData: LoaderData,
+  event: Extract<CourseEditorEvent, { type: "archive-section" }>
+): LoaderData {
+  const course = loaderData.selectedCourse;
+  if (!course) return loaderData;
+
+  const filtered = course.sections.filter(
+    (section) => section.id !== event.sectionId
+  );
+
+  if (filtered.length === course.sections.length) return loaderData;
+
+  return {
+    ...loaderData,
+    selectedCourse: { ...course, sections: filtered },
+  };
+}
+
+function applyConvertToGhost(
+  loaderData: LoaderData,
+  event: Extract<CourseEditorEvent, { type: "convert-to-ghost" }>
+): LoaderData {
+  const course = loaderData.selectedCourse;
+  if (!course) return loaderData;
+
+  let found = false;
+  const sections = course.sections.map((section) => {
+    if (found) return section;
+    let sectionChanged = false;
+    const lessons = section.lessons.map((lesson) => {
+      if (lesson.id === event.lessonId) {
+        found = true;
+        sectionChanged = true;
+        return { ...lesson, fsStatus: "ghost" as const };
+      }
+      return lesson;
+    });
+    return sectionChanged ? { ...section, lessons } : section;
+  });
+
+  if (!found) return loaderData;
+
+  return {
+    ...loaderData,
+    selectedCourse: { ...course, sections },
+  };
+}
+
+function applyDeleteLesson(
+  loaderData: LoaderData,
+  event: Extract<CourseEditorEvent, { type: "delete-lesson" }>
+): LoaderData {
+  const course = loaderData.selectedCourse;
+  if (!course) return loaderData;
+
+  let found = false;
+  const sections = course.sections.map((section) => {
+    if (found) return section;
+    const filtered = section.lessons.filter((lesson) => {
+      if (lesson.id === event.lessonId) {
+        found = true;
+        return false;
+      }
+      return true;
+    });
+    return filtered.length !== section.lessons.length
+      ? { ...section, lessons: filtered }
+      : section;
+  });
+
+  if (!found) return loaderData;
+
+  return {
+    ...loaderData,
+    selectedCourse: { ...course, sections },
+  };
 }
 
 function withPatchedLesson(
