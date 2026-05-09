@@ -28,6 +28,7 @@ describe("clipStateReducer", () => {
       tester.send({
         type: "recording-started",
         outputPath: "/tmp/recording.mkv",
+        pauseLength: "short" as const,
       });
 
       const sessionId = tester.getState().sessions[0]!.id;
@@ -75,6 +76,7 @@ describe("clipStateReducer", () => {
       tester.send({
         type: "recording-started",
         outputPath: "/tmp/recording.mkv",
+        pauseLength: "short" as const,
       });
 
       const sessionId = tester.getState().sessions[0]!.id;
@@ -116,7 +118,11 @@ describe("clipStateReducer", () => {
       const tester = new ReducerTester(clipStateReducer, createInitialState());
 
       tester
-        .send({ type: "recording-started", outputPath: "/tmp/recording.mkv" })
+        .send({
+          type: "recording-started",
+          outputPath: "/tmp/recording.mkv",
+          pauseLength: "short" as const,
+        })
         .send(
           fromPartial({
             type: "new-optimistic-clip-detected",
@@ -150,7 +156,11 @@ describe("clipStateReducer", () => {
 
       // Session 1: create and archive a clip
       tester
-        .send({ type: "recording-started", outputPath: "/tmp/recording.mkv" })
+        .send({
+          type: "recording-started",
+          outputPath: "/tmp/recording.mkv",
+          pauseLength: "short" as const,
+        })
         .send(
           fromPartial({
             type: "new-optimistic-clip-detected",
@@ -166,7 +176,11 @@ describe("clipStateReducer", () => {
 
       // Session 2: create and archive a clip
       tester
-        .send({ type: "recording-started", outputPath: "/tmp/recording.mkv" })
+        .send({
+          type: "recording-started",
+          outputPath: "/tmp/recording.mkv",
+          pauseLength: "short" as const,
+        })
         .send(
           fromPartial({
             type: "new-optimistic-clip-detected",
@@ -194,7 +208,11 @@ describe("clipStateReducer", () => {
       const tester = new ReducerTester(clipStateReducer, createInitialState());
 
       tester
-        .send({ type: "recording-started", outputPath: "/tmp/recording.mkv" })
+        .send({
+          type: "recording-started",
+          outputPath: "/tmp/recording.mkv",
+          pauseLength: "short" as const,
+        })
         .send(
           fromPartial({
             type: "new-optimistic-clip-detected",
@@ -231,7 +249,11 @@ describe("clipStateReducer", () => {
       const tester = new ReducerTester(clipStateReducer, createInitialState());
 
       tester
-        .send({ type: "recording-started", outputPath: "/tmp/recording.mkv" })
+        .send({
+          type: "recording-started",
+          outputPath: "/tmp/recording.mkv",
+          pauseLength: "short" as const,
+        })
         .send(
           fromPartial({
             type: "new-optimistic-clip-detected",
@@ -255,7 +277,11 @@ describe("clipStateReducer", () => {
 
       // Start recording, add two optimistic clips, archive them
       tester
-        .send({ type: "recording-started", outputPath: "/tmp/recording.mkv" })
+        .send({
+          type: "recording-started",
+          outputPath: "/tmp/recording.mkv",
+          pauseLength: "short" as const,
+        })
         .send(
           fromPartial({
             type: "new-optimistic-clip-detected",
@@ -325,7 +351,11 @@ describe("clipStateReducer", () => {
 
       // Session 1: create and archive a clip
       tester
-        .send({ type: "recording-started", outputPath: "/tmp/recording.mkv" })
+        .send({
+          type: "recording-started",
+          outputPath: "/tmp/recording.mkv",
+          pauseLength: "short" as const,
+        })
         .send(
           fromPartial({
             type: "new-optimistic-clip-detected",
@@ -343,6 +373,7 @@ describe("clipStateReducer", () => {
         .send({
           type: "recording-started",
           outputPath: "/tmp/recording2.mkv",
+          pauseLength: "short" as const,
         })
         .send(
           fromPartial({
@@ -368,7 +399,11 @@ describe("clipStateReducer", () => {
       const tester = new ReducerTester(clipStateReducer, createInitialState());
 
       tester
-        .send({ type: "recording-started", outputPath: "/tmp/recording.mkv" })
+        .send({
+          type: "recording-started",
+          outputPath: "/tmp/recording.mkv",
+          pauseLength: "short" as const,
+        })
         .send(
           fromPartial({
             type: "new-optimistic-clip-detected",
@@ -403,7 +438,11 @@ describe("clipStateReducer", () => {
       const tester = new ReducerTester(clipStateReducer, createInitialState());
 
       tester
-        .send({ type: "recording-started", outputPath: "/tmp/recording.mkv" })
+        .send({
+          type: "recording-started",
+          outputPath: "/tmp/recording.mkv",
+          pauseLength: "short" as const,
+        })
         .send(
           fromPartial({
             type: "new-optimistic-clip-detected",

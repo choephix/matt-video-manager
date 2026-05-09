@@ -338,6 +338,7 @@ describe("ClipService", () => {
         sectionId,
         path: "/test/lesson",
         order: 0,
+        authoringStatus: "done",
       });
 
       // Create video with lessonId

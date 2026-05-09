@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import {
   SILENCE_THRESHOLD_DB,
-  SILENCE_DURATION_SECONDS,
   MINIMUM_CLIP_LENGTH_SECONDS,
+  pauseLengthToSeconds,
+  type PauseLength,
 } from "@/silence-detection-constants";
 
 export type SpeechDetectorState =
@@ -31,7 +32,6 @@ export type FrontendSpeechDetectorState =
   | { type: "silence" };
 
 const SPEAKING_THRESHOLD = SILENCE_THRESHOLD_DB;
-const LONG_ENOUGH_TIME_IN_MILLISECONDS = SILENCE_DURATION_SECONDS * 1000;
 const LONG_ENOUGH_SPEECH_TIME_IN_MILLISECONDS =
   MINIMUM_CLIP_LENGTH_SECONDS * 1000;
 
@@ -68,7 +68,9 @@ const resolveFrontendSpeechDetectorState = (
 export const useSpeechDetector = (opts: {
   mediaStream: MediaStream | null;
   isRecording: boolean;
+  pauseLength: PauseLength;
 }) => {
+  const longEnoughTimeInMs = pauseLengthToSeconds(opts.pauseLength) * 1000;
   const [state, setState] = useState<SpeechDetectorState>({
     type: "no-silence-detected",
     lastLongEnoughSilenceEndTime: null,
@@ -151,7 +153,7 @@ export const useSpeechDetector = (opts: {
             });
           } else if (
             e.timeStamp - state.silenceStartTime >
-            LONG_ENOUGH_TIME_IN_MILLISECONDS
+            longEnoughTimeInMs
           ) {
             setState({
               type: "long-enough-silence-detected",
@@ -193,7 +195,7 @@ export const useSpeechDetector = (opts: {
       processor.disconnect();
       audioContext.close();
     };
-  }, [opts.mediaStream, state]);
+  }, [opts.mediaStream, state, longEnoughTimeInMs]);
 
   return resolveFrontendSpeechDetectorState(state);
 };

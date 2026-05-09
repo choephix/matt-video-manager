@@ -13,6 +13,7 @@ import type {
   TimelineItem,
 } from "./clip-state-reducer.types";
 import { createFrontendId, createSessionId } from "./clip-state-reducer.types";
+import { DEFAULT_PAUSE_LENGTH } from "@/silence-detection-constants";
 
 export const handleNewOptimisticClipDetected = (
   state: ClipReducerState,
@@ -43,6 +44,7 @@ export const handleNewOptimisticClipDetected = (
       status: "recording",
       outputPath: "",
       startedAt: Date.now(),
+      pauseLength: DEFAULT_PAUSE_LENGTH,
     };
     sessions = [...sessions, activeSession];
   }

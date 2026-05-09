@@ -72,6 +72,7 @@ async function createFullCourseStructure() {
       icon: "code",
       priority: 3,
       previousVersionLessonId: "some-old-lesson-id",
+      authoringStatus: "done",
     })
     .returning();
 

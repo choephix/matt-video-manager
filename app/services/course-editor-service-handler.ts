@@ -154,6 +154,14 @@ export const handleCourseEditorEvent = Effect.fn("handleCourseEditorEvent")(
         });
       }
 
+      case "set-lesson-authoring-status": {
+        yield* db.getLessonWithHierarchyById(event.lessonId);
+        yield* db.updateLesson(event.lessonId, {
+          authoringStatus: event.status,
+        });
+        return { success: true };
+      }
+
       default: {
         const _exhaustive: never = event;
         throw new Error(`Unknown event type: ${(_exhaustive as any).type}`);

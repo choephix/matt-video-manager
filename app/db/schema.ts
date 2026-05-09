@@ -2,6 +2,7 @@ import type { DatabaseId } from "@/features/video-editor/clip-state-reducer";
 import { relations, sql, type InferSelectModel } from "drizzle-orm";
 import {
   boolean,
+  check,
   customType,
   doublePrecision,
   integer,
@@ -93,32 +94,42 @@ export const sections = createTable("section", {
   order: doublePrecision("order").notNull(),
 });
 
-export const lessons = createTable("lesson", {
-  id: varchar("id", { length: 255 })
-    .notNull()
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  sectionId: varchar("section_id", { length: 255 })
-    .references(() => sections.id, { onDelete: "cascade" })
-    .notNull(),
-  previousVersionLessonId: varchar("previous_version_lesson_id", {
-    length: 255,
-  }),
-  path: text("path").notNull(),
-  title: text("title").notNull().default(""),
-  fsStatus: text("fs_status").notNull().default("real"),
-  description: text("description").notNull().default(""),
-  icon: varchar("icon", { length: 255 }),
-  priority: integer("priority").notNull().default(2),
-  dependencies: text("dependencies").array(),
-  createdAt: timestamp("created_at", {
-    mode: "date",
-    withTimezone: true,
-  })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-  order: doublePrecision("order").notNull(),
-});
+export const lessons = createTable(
+  "lesson",
+  {
+    id: varchar("id", { length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    sectionId: varchar("section_id", { length: 255 })
+      .references(() => sections.id, { onDelete: "cascade" })
+      .notNull(),
+    previousVersionLessonId: varchar("previous_version_lesson_id", {
+      length: 255,
+    }),
+    path: text("path").notNull(),
+    title: text("title").notNull().default(""),
+    fsStatus: text("fs_status").notNull().default("real"),
+    description: text("description").notNull().default(""),
+    icon: varchar("icon", { length: 255 }),
+    priority: integer("priority").notNull().default(2),
+    dependencies: text("dependencies").array(),
+    authoringStatus: text("authoring_status"),
+    createdAt: timestamp("created_at", {
+      mode: "date",
+      withTimezone: true,
+    })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    order: doublePrecision("order").notNull(),
+  },
+  (table) => [
+    check(
+      "lesson_authoring_status_biconditional",
+      sql`(${table.fsStatus} = 'real' AND ${table.authoringStatus} IS NOT NULL) OR (${table.fsStatus} != 'real' AND ${table.authoringStatus} IS NULL)`
+    ),
+  ]
+);
 
 export const videos = createTable("video", {
   id: varchar("id", { length: 255 })
@@ -253,91 +264,6 @@ export const courseVersionsRelations = relations(
 
 export const coursesRelations = relations(courses, ({ many }) => ({
   versions: many(courseVersions),
-}));
-
-// Plan tables (standalone, not tied to courses)
-export const plans = createTable("plan", {
-  id: varchar("id", { length: 255 })
-    .notNull()
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  title: text("title").notNull(),
-  createdAt: timestamp("created_at", {
-    mode: "date",
-    withTimezone: true,
-  })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp("updated_at", {
-    mode: "date",
-    withTimezone: true,
-  })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-  archived: boolean("archived").notNull().default(false),
-});
-
-export const planSections = createTable("plan_section", {
-  id: varchar("id", { length: 255 })
-    .notNull()
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  planId: varchar("plan_id", { length: 255 })
-    .references(() => plans.id, { onDelete: "cascade" })
-    .notNull(),
-  title: text("title").notNull(),
-  order: doublePrecision("order").notNull(),
-  createdAt: timestamp("created_at", {
-    mode: "date",
-    withTimezone: true,
-  })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const planLessons = createTable("plan_lesson", {
-  id: varchar("id", { length: 255 })
-    .notNull()
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  sectionId: varchar("section_id", { length: 255 })
-    .references(() => planSections.id, { onDelete: "cascade" })
-    .notNull(),
-  title: text("title").notNull(),
-  description: text("description").notNull().default(""),
-  icon: varchar("icon", { length: 255 }),
-  status: text("status").notNull().default("todo"),
-  priority: integer("priority").notNull().default(2),
-  dependencies: text("dependencies").array(),
-  order: doublePrecision("order").notNull(),
-  createdAt: timestamp("created_at", {
-    mode: "date",
-    withTimezone: true,
-  })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const plansRelations = relations(plans, ({ many }) => ({
-  sections: many(planSections),
-}));
-
-export const planSectionsRelations = relations(
-  planSections,
-  ({ one, many }) => ({
-    plan: one(plans, {
-      fields: [planSections.planId],
-      references: [plans.id],
-    }),
-    lessons: many(planLessons),
-  })
-);
-
-export const planLessonsRelations = relations(planLessons, ({ one }) => ({
-  section: one(planSections, {
-    fields: [planLessons.sectionId],
-    references: [planSections.id],
-  }),
 }));
 
 // YouTube OAuth tokens table (single-user, stores one token set)

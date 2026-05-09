@@ -8,6 +8,7 @@ import { homedir, tmpdir } from "os";
 import OpenAI from "openai";
 import { FFmpegCommandsService } from "./ffmpeg-commands";
 import { findSilenceInVideo } from "./silence-detection";
+import type { PauseLength } from "@/silence-detection-constants";
 
 export type BeatType = "none" | "long";
 
@@ -103,6 +104,7 @@ export class VideoProcessingService extends Effect.Service<VideoProcessingServic
         function* (opts: {
           filePath: string | undefined;
           startTime: number | undefined;
+          pauseLength?: PauseLength;
         }) {
           if (!opts.filePath) {
             // Without a file path, fall back to the most recent OBS recording.
@@ -140,11 +142,13 @@ export class VideoProcessingService extends Effect.Service<VideoProcessingServic
             const latestFile = filesWithStats[0]!.file;
             return yield* findSilenceInVideo(ffmpegCommands, latestFile, {
               startTime: opts.startTime,
+              pauseLength: opts.pauseLength,
             });
           }
 
           return yield* findSilenceInVideo(ffmpegCommands, opts.filePath, {
             startTime: opts.startTime,
+            pauseLength: opts.pauseLength,
           });
         }
       );

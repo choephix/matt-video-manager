@@ -37,6 +37,7 @@ import {
   Code,
   Ghost,
   GripVertical,
+  ListTodo,
   MessageCircle,
   PencilIcon,
   Play,
@@ -62,7 +63,7 @@ export function SortableLessonItem({
   startExportUpload,
   revealVideoFetcher,
   deleteVideoFileFetcher,
-  deleteVideoFetcher,
+  submitDeleteVideo,
   allFlatLessons,
   dependencyMap,
   allSections,
@@ -83,7 +84,7 @@ export function SortableLessonItem({
   startExportUpload: (videoId: string, path: string) => void;
   revealVideoFetcher: ReturnType<typeof useFetcher>;
   deleteVideoFileFetcher: ReturnType<typeof useFetcher>;
-  deleteVideoFetcher: ReturnType<typeof useFetcher>;
+  submitDeleteVideo: (videoId: string) => void;
   allFlatLessons: DependencyLessonItem[];
   dependencyMap: Record<string, string[]>;
   allSections: { id: string; path: string }[];
@@ -304,6 +305,21 @@ export function SortableLessonItem({
                   lessonPriority={lessonPriority}
                   dependencyMap={dependencyMap}
                 />
+                {!isGhost && lesson.authoringStatus === "todo" && (
+                  <button
+                    className="text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-foreground text-background hover:opacity-80 transition-opacity shrink-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      submitEvent({
+                        type: "set-lesson-authoring-status",
+                        lessonId: lesson.id,
+                        status: "done",
+                      });
+                    }}
+                  >
+                    todo
+                  </button>
+                )}
               </div>
               <div className="ml-5">
                 {!isReadOnly && editingDesc ? (
@@ -413,6 +429,20 @@ export function SortableLessonItem({
                       <Ghost className="w-4 h-4" />
                       Convert to Ghost
                     </ContextMenuItem>
+                    {lesson.authoringStatus === "done" && (
+                      <ContextMenuItem
+                        onSelect={() =>
+                          submitEvent({
+                            type: "set-lesson-authoring-status",
+                            lessonId: lesson.id,
+                            status: "todo",
+                          })
+                        }
+                      >
+                        <ListTodo className="w-4 h-4" />
+                        Mark as TODO
+                      </ContextMenuItem>
+                    )}
                   </>
                 )}
                 <ContextMenuSeparator />
@@ -562,7 +592,7 @@ export function SortableLessonItem({
             startExportUpload={startExportUpload}
             revealVideoFetcher={revealVideoFetcher}
             deleteVideoFileFetcher={deleteVideoFileFetcher}
-            deleteVideoFetcher={deleteVideoFetcher}
+            submitDeleteVideo={submitDeleteVideo}
           />
         </div>
         <CreateOnDiskModal

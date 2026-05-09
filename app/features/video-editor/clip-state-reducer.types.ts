@@ -1,5 +1,6 @@
 import type { DB } from "@/db/schema";
 import type { BeatType } from "@/services/video-processing-service";
+import type { PauseLength } from "@/silence-detection-constants";
 import type { Brand } from "./utils";
 
 export type DatabaseId = Brand<string, "DatabaseId">;
@@ -145,6 +146,7 @@ export type RecordingSession = {
   status: RecordingSessionStatus;
   outputPath: string;
   startedAt: number;
+  pauseLength: PauseLength;
 };
 
 export type ClipReducerState = {
@@ -168,6 +170,7 @@ export type ClipReducerAction =
   | {
       type: "recording-started";
       outputPath: string;
+      pauseLength: PauseLength;
     }
   | {
       type: "recording-stopped";
@@ -356,6 +359,7 @@ export type ClipReducerEffect =
       type: "start-session-polling";
       sessionId: SessionId;
       outputPath: string;
+      pauseLength: PauseLength;
     }
   | {
       type: "revalidate-loader";

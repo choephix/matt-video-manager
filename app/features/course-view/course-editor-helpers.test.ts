@@ -1,7 +1,47 @@
 import { describe, expect, it, vi } from "vitest";
-import { createLessonDragHandler } from "./course-editor-helpers";
+import {
+  createLessonDragHandler,
+  computeFsStatusCounts,
+} from "./course-editor-helpers";
 import type { CourseEditorEvent } from "@/services/course-editor-service";
 import type { DragEndEvent } from "@dnd-kit/core";
+import type { Section, Lesson } from "./course-view-types";
+
+function makeLesson(overrides: Partial<Lesson> = {}): Lesson {
+  return {
+    id: "lesson-1",
+    sectionId: "section-1",
+    previousVersionLessonId: null,
+    path: "lesson-path",
+    title: null,
+    fsStatus: "real",
+    description: null,
+    icon: null,
+    priority: 2,
+    dependencies: null,
+    authoringStatus: "done",
+    createdAt: "2026-01-01",
+    order: "a0",
+    videos: [],
+    ...overrides,
+  } as Lesson;
+}
+
+function makeSection(
+  lessons: Lesson[],
+  overrides: Partial<Section> = {}
+): Section {
+  return {
+    id: "section-1",
+    path: "section-path",
+    fsStatus: "real",
+    order: "a0",
+    lessons,
+    ...overrides,
+  } as Section;
+}
+
+const noFilters = { priorityFilter: [], iconFilter: [], searchQuery: "" };
 
 // Helper to create a fake DragEndEvent
 function makeDragEndEvent(activeId: string, overId: string): DragEndEvent {
@@ -166,5 +206,105 @@ describe("createLessonDragHandler", () => {
       lessonIds: string[];
     };
     expect(event.lessonIds).toEqual(["c", "a", "b"]);
+  });
+});
+
+describe("computeFsStatusCounts", () => {
+  it("counts a todo lesson with no videos", () => {
+    const sections = [
+      makeSection([makeLesson({ authoringStatus: "todo", videos: [] })]),
+    ];
+    const counts = computeFsStatusCounts(sections, noFilters);
+    expect(counts.todo).toBe(1);
+  });
+
+  it("counts a todo lesson that has videos with clips as todo", () => {
+    const sections = [
+      makeSection([
+        makeLesson({
+          authoringStatus: "todo",
+          videos: [
+            { id: "v1", path: "v.mp4", clipCount: 5, totalDuration: 100 },
+          ] as Lesson["videos"],
+        }),
+      ]),
+    ];
+    const counts = computeFsStatusCounts(sections, noFilters);
+    expect(counts.todo).toBe(1);
+  });
+
+  it("does not count a done lesson as todo", () => {
+    const sections = [
+      makeSection([makeLesson({ authoringStatus: "done", videos: [] })]),
+    ];
+    const counts = computeFsStatusCounts(sections, noFilters);
+    expect(counts.todo).toBe(0);
+  });
+
+  it("does not count a ghost lesson as todo", () => {
+    const sections = [
+      makeSection([
+        makeLesson({
+          fsStatus: "ghost",
+          authoringStatus: null,
+          videos: [],
+        }),
+      ]),
+    ];
+    const counts = computeFsStatusCounts(sections, noFilters);
+    expect(counts.todo).toBe(0);
+    expect(counts.ghost).toBe(1);
+  });
+
+  it("counts all todos regardless of priority", () => {
+    const sections = [
+      makeSection([
+        makeLesson({ id: "p1", authoringStatus: "todo", priority: 1 }),
+        makeLesson({ id: "p2", authoringStatus: "todo", priority: 2 }),
+        makeLesson({ id: "p3", authoringStatus: "todo", priority: 3 }),
+      ]),
+    ];
+    const counts = computeFsStatusCounts(sections, noFilters);
+    expect(counts.todo).toBe(3);
+  });
+
+  it("counts todo lessons as both real and todo", () => {
+    const sections = [makeSection([makeLesson({ authoringStatus: "todo" })])];
+    const counts = computeFsStatusCounts(sections, noFilters);
+    expect(counts.real).toBe(1);
+    expect(counts.todo).toBe(1);
+  });
+
+  it("returns all zeros for empty sections", () => {
+    const counts = computeFsStatusCounts([], noFilters);
+    expect(counts).toEqual({ ghost: 0, real: 0, todo: 0 });
+  });
+
+  it("excludes todo lessons that do not match priority filter", () => {
+    const sections = [
+      makeSection([
+        makeLesson({ id: "p1", authoringStatus: "todo", priority: 1 }),
+        makeLesson({ id: "p2", authoringStatus: "todo", priority: 2 }),
+      ]),
+    ];
+    const counts = computeFsStatusCounts(sections, {
+      ...noFilters,
+      priorityFilter: [1],
+    });
+    expect(counts.todo).toBe(1);
+  });
+
+  it("treats null fsStatus as real", () => {
+    const sections = [
+      makeSection([
+        makeLesson({
+          fsStatus: null as unknown as string,
+          authoringStatus: "todo",
+        }),
+      ]),
+    ];
+    const counts = computeFsStatusCounts(sections, noFilters);
+    expect(counts.real).toBe(1);
+    expect(counts.todo).toBe(1);
   });
 });

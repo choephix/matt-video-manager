@@ -28,7 +28,13 @@ import { Console, Effect } from "effect";
 import { getGitStatusAsync } from "@/services/git-status-service.server";
 import { Plus } from "lucide-react";
 import { Suspense, useCallback, useContext, useMemo, useState } from "react";
-import { data, useFetcher, useNavigate, useSearchParams } from "react-router";
+import {
+  data,
+  useFetcher,
+  useNavigate,
+  useSearchParams,
+  useSubmit,
+} from "react-router";
 import { useEffectReducer } from "use-effect-reducer";
 import type { Route } from "./+types/_index";
 import { UploadContext } from "@/features/upload-manager/upload-context";
@@ -49,6 +55,14 @@ import {
   computeFlatLessons,
   computeDependencyMap,
 } from "@/features/course-view/course-editor-helpers";
+import {
+  courseEditorFetcherKeyForEvent,
+  deleteVideoFetcherKey,
+} from "@/features/course-view/optimistic-applier";
+import {
+  useOptimisticCourse,
+  useCourseEditorFailureToast,
+} from "@/features/course-view/use-optimistic-course";
 
 export const meta: Route.MetaFunction = ({ data }) => {
   const selectedCourse = data?.selectedCourse;
@@ -77,8 +91,8 @@ export const loader = async (args: Route.LoaderArgs) => {
     const db = yield* DBFunctionsService;
     const featureFlags = yield* FeatureFlagService;
 
-    const [courses, standaloneVideos, plans] = yield* Effect.all(
-      [db.getCourses(), db.getStandaloneVideosSidebar(), db.getPlans()],
+    const [courses, standaloneVideos] = yield* Effect.all(
+      [db.getCourses(), db.getStandaloneVideosSidebar()],
       { concurrency: "unbounded" }
     );
 
@@ -208,10 +222,8 @@ export const loader = async (args: Route.LoaderArgs) => {
       hasExportedVideoMap,
       lessonFsMaps,
       videoTranscripts,
-      plans,
       gitStatus,
       showMediaFilesList: featureFlags.isEnabled("ENABLE_MEDIA_FILES_LIST"),
-      showPlansSection: featureFlags.isEnabled("ENABLE_PLANS_SECTION"),
     };
   }).pipe(
     Effect.tapErrorCause((e) => Console.dir(e, { depth: null })),
@@ -241,7 +253,6 @@ function ComponentInner(props: Route.ComponentProps) {
   const selectedCourseId = searchParams.get("courseId");
   const loaderData = props.loaderData;
   const courses = loaderData.courses;
-  const currentCourse = loaderData.selectedCourse;
 
   // UI state reducer — no entity state, just modals/selections/filters
   const [viewState, dispatch] = useEffectReducer(
@@ -250,21 +261,27 @@ function ComponentInner(props: Route.ComponentProps) {
     {}
   );
 
-  // Entity mutations go through useFetcher against /api/course-editor.
-  // React Router auto-revalidates the page loader when the fetcher settles.
-  const courseEditorFetcher = useFetcher();
+  // Entity mutations use useSubmit with per-action fetcherKey so
+  // useFetchers() can surface concurrent in-flight events for optimistic UI.
+  const submit = useSubmit();
 
   const submitEvent = useCallback(
     (event: CourseEditorEvent) => {
-      courseEditorFetcher.submit(JSON.stringify(event), {
+      submit(event, {
         method: "post",
         encType: "application/json",
         action: "/api/course-editor",
+        navigate: false,
+        fetcherKey: courseEditorFetcherKeyForEvent(event),
       });
     },
-    [courseEditorFetcher]
+    [submit]
   );
 
+  const optimisticData = useOptimisticCourse(loaderData);
+  useCourseEditorFailureToast();
+
+  const currentCourse = optimisticData.selectedCourse;
   const displaySections = currentCourse?.sections ?? [];
 
   const {
@@ -293,8 +310,22 @@ function ComponentInner(props: Route.ComponentProps) {
 
   useFocusRevalidate({ enabled: !!selectedCourseId, intervalMs: 5000 });
 
+  const submitDeleteVideo = useCallback(
+    (videoId: string) => {
+      submit(
+        { videoId },
+        {
+          method: "post",
+          action: "/api/videos/delete",
+          navigate: false,
+          fetcherKey: deleteVideoFetcherKey(videoId),
+        }
+      );
+    },
+    [submit]
+  );
+
   // Fetchers still needed for video operations and non-entity mutations
-  const deleteVideoFetcher = useFetcher();
   const deleteVideoFileFetcher = useFetcher();
   const revealVideoFetcher = useFetcher();
   const archiveCourseFetcher = useFetcher();
@@ -358,8 +389,6 @@ function ComponentInner(props: Route.ComponentProps) {
         setIsAddStandaloneVideoModalOpen={(open) =>
           dispatch({ type: "set-add-standalone-video-modal-open", open })
         }
-        plans={loaderData.plans}
-        showPlansSection={loaderData.showPlansSection}
       />
 
       {/* Main Content Area */}
@@ -402,7 +431,7 @@ function ComponentInner(props: Route.ComponentProps) {
 
               <div className="mb-10">
                 <StatsBar
-                  selectedCourse={loaderData.selectedCourse}
+                  selectedCourse={currentCourse}
                   gitStatus={loaderData.gitStatus}
                 />
               </div>
@@ -423,7 +452,7 @@ function ComponentInner(props: Route.ComponentProps) {
                       startExportUpload={startExportUpload}
                       revealVideoFetcher={revealVideoFetcher}
                       deleteVideoFileFetcher={deleteVideoFileFetcher}
-                      deleteVideoFetcher={deleteVideoFetcher}
+                      submitDeleteVideo={submitDeleteVideo}
                       allFlatLessons={allFlatLessons}
                       dependencyMap={dependencyMap}
                       dismissed={nextUpDismissed}
@@ -471,7 +500,7 @@ function ComponentInner(props: Route.ComponentProps) {
                   startExportUpload={startExportUpload}
                   revealVideoFetcher={revealVideoFetcher}
                   deleteVideoFileFetcher={deleteVideoFileFetcher}
-                  deleteVideoFetcher={deleteVideoFetcher}
+                  submitDeleteVideo={submitDeleteVideo}
                 />
 
                 {loaderData.selectedVersion && loaderData.isLatestVersion && (

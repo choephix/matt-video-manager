@@ -116,11 +116,7 @@ export function computeFsStatusCounts(
         counts.ghost++;
       } else {
         counts.real++;
-        const isTodo =
-          lesson.videos.length === 0 ||
-          (lesson.videos.some((v) => v.clipCount === 0) &&
-            !lesson.videos.every((v) => v.clipCount > 1));
-        if (isTodo) counts.todo++;
+        if (lesson.authoringStatus === "todo") counts.todo++;
       }
     }
   }
