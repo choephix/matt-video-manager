@@ -20,3 +20,6 @@ database-backups/
 
 # Finished video output
 /finished-videos/
+
+# Embedded PGlite data directory (default location)
+/.pglite/
